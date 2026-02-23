@@ -13,6 +13,7 @@ FROM alpine:latest
 
 WORKDIR /app
 
+COPY --from=builder /app/application.conf .
 COPY --from=builder /bin/bot /app/bot
 
 ENTRYPOINT ["/app/bot"]
