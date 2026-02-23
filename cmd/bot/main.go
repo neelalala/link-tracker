@@ -14,9 +14,7 @@ func main() {
 
 	cmds := application.GetCommands()
 
-	router := application.NewRouter(cmds)
-
-	bot, err := application.NewBot(token, router)
+	bot, err := application.NewBot(token, cmds)
 	if err != nil {
 		log.Panic(err)
 	}

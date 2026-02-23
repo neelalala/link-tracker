@@ -12,16 +12,24 @@ type Bot struct {
 	router *Router
 }
 
-func NewBot(token string, router *Router) (*Bot, error) {
+func NewBot(token string, cmds []domain.Command) (*Bot, error) {
 	api, err := telegram.NewBot(token)
 	if err != nil {
 		return nil, err
 	}
+
+	err = api.SetMyCommands(cmds)
+	if err != nil {
+		return nil, err
+	}
+	router := NewRouter(cmds)
+
 	return &Bot{
 		api:    api,
 		router: router,
 	}, nil
 }
+
 func (b *Bot) Start() {
 	for {
 		updates, err := b.api.GetUpdates()
