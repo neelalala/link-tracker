@@ -13,14 +13,14 @@ import (
 const baseUrl = "https://api.telegram.org/bot"
 const timeout = 60
 
-type Bot struct {
+type BotApi struct {
 	offset int64
 	url    string
 	client *http.Client
 }
 
-func NewBot(token string) *Bot {
-	bot := &Bot{
+func NewBot(token string) *BotApi {
+	bot := &BotApi{
 		offset: 0,
 		url:    baseUrl + token,
 		client: &http.Client{Timeout: timeout*time.Second + 10*time.Second},
@@ -28,7 +28,7 @@ func NewBot(token string) *Bot {
 	return bot
 }
 
-func (b *Bot) SendMessage(chatID int64, text string) error {
+func (b *BotApi) SendMessage(chatID int64, text string) error {
 	query := fmt.Sprintf(`%s/sendMessage?chat_id=%d&text=%s`, b.url, chatID, text)
 
 	resp, err := b.client.Get(query)
@@ -60,7 +60,7 @@ func (b *Bot) SendMessage(chatID int64, text string) error {
 	return nil
 }
 
-func (b *Bot) GetUpdates() ([]domain.Message, error) {
+func (b *BotApi) GetUpdates() ([]domain.Message, error) {
 	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, b.url, timeout, b.offset)
 
 	resp, err := b.client.Get(query)
@@ -124,7 +124,7 @@ func (b *Bot) GetUpdates() ([]domain.Message, error) {
 	return updates, nil
 }
 
-func (b *Bot) SetMyCommands(cmds []domain.Command) error {
+func (b *BotApi) SetMyCommands(cmds []domain.Command) error {
 	query := fmt.Sprintf("%s/setMyCommands", b.url)
 
 	type botCommand struct {
