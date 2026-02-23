@@ -23,7 +23,7 @@ func NewBot(token string) *Bot {
 	bot := &Bot{
 		offset: 0,
 		url:    baseUrl + token,
-		client: &http.Client{Timeout: timeout * time.Second},
+		client: &http.Client{Timeout: timeout*time.Second + 10*time.Second},
 	}
 	return bot
 }
