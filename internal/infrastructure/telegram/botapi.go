@@ -19,13 +19,40 @@ type BotApi struct {
 	client *http.Client
 }
 
-func NewBot(token string) *BotApi {
+func NewBot(token string) (*BotApi, error) {
 	bot := &BotApi{
 		offset: 0,
 		url:    baseUrl + token,
 		client: &http.Client{Timeout: timeout*time.Second + 10*time.Second},
 	}
-	return bot
+
+	query := fmt.Sprintf("%s/getMe", bot.url)
+	resp, err := bot.client.Get(query)
+	if err != nil {
+		return nil, err
+	}
+	result := struct {
+		Ok          bool   `json:"ok"`
+		ErrorCode   int    `json:"error_code"`
+		Description string `json:"description"`
+	}{}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+
+	if !result.Ok {
+		return nil, fmt.Errorf(result.Description)
+	}
+
+	return bot, nil
 }
 
 func (b *BotApi) SendMessage(chatID int64, text string) error {
