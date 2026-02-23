@@ -1,9 +1,9 @@
 package telegram
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
 	"io"
 	"net/http"
@@ -17,15 +17,13 @@ type Bot struct {
 	offset int64
 	url    string
 	client *http.Client
-	router *application.Router
 }
 
-func NewBot(token string, router *application.Router) *Bot {
+func NewBot(token string) *Bot {
 	bot := &Bot{
 		offset: 0,
 		url:    baseUrl + token,
 		client: &http.Client{Timeout: timeout * time.Second},
-		router: router,
 	}
 	return bot
 }
@@ -124,4 +122,38 @@ func (b *Bot) GetUpdates() ([]domain.Message, error) {
 	b.offset++
 
 	return updates, nil
+}
+
+func (b *Bot) SetMyCommands(cmds []domain.Command) error {
+	query := fmt.Sprintf("%s/setMyCommands", b.url)
+
+	type botCommand struct {
+		Command     string `json:"command"`
+		Description string `json:"description"`
+	}
+
+	var botCommands []botCommand
+	for _, cmd := range cmds {
+		botCommands = append(botCommands, botCommand{
+			Command:     cmd.Name,
+			Description: cmd.Description,
+		})
+	}
+
+	payload := map[string]any{
+		"commands": botCommands,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	resp, err := b.client.Post(query, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
 }
