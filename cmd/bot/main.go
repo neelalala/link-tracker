@@ -2,26 +2,37 @@ package main
 
 import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/logger"
+	"io"
+	"log"
 	"log/slog"
 	"os"
 )
 
 func main() {
-	env := os.Getenv("ENV")
-	logger := logger.NewLogger(env, os.Stdout)
-
-	token := os.Getenv("APP_TELEGRAM_TOKEN")
-	if token == "" {
-		logger.Error("APP_TELEGRAM_TOKEN is not set", slog.String("context", "main"))
-		os.Exit(1)
+	cfg, err := config.Load("application.conf")
+	if err != nil {
+		log.Fatalf("error loading config: %v", err)
 	}
+
+	var out io.Writer = os.Stdout
+
+	if cfg.LogsFile != "" {
+		file, err := os.OpenFile(cfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		out = file
+	}
+
+	slogger := logger.NewLogger(cfg.Environment, out)
 
 	cmds := application.GetCommands()
 
-	bot, err := application.NewBot(token, cmds, logger)
+	bot, err := application.NewBot(cfg.TelegramToken, cmds, slogger)
 	if err != nil {
-		logger.Error("Failed to create bot", slog.String("context", "main"), slog.String("token", token), slog.String("error", err.Error()))
+		slogger.Error("Failed to create bot", slog.String("context", "main"), slog.String("token", cfg.TelegramToken), slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
