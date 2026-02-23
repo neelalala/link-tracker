@@ -56,16 +56,31 @@ func NewBot(token string) (*BotApi, error) {
 }
 
 func (b *BotApi) SendMessage(chatID int64, text string) error {
-	query := fmt.Sprintf(`%s/sendMessage?chat_id=%d&text=%s`, b.url, chatID, text)
+	query := fmt.Sprintf(`%s/sendMessage`, b.url)
 
-	resp, err := b.client.Get(query)
+	type botMessage struct {
+		ChatID int64  `json:"chat_id"`
+		Text   string `json:"text"`
+	}
+
+	payload := botMessage{
+		ChatID: chatID,
+		Text:   text,
+	}
+
+	bodyReq, err := json.Marshal(&payload)
+	if err != nil {
+		return err
+	}
+
+	resp, err := b.client.Post(query, "application/json", bytes.NewReader(bodyReq))
 	if err != nil {
 		return err
 	}
 
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	bodyResp, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -76,7 +91,7 @@ func (b *BotApi) SendMessage(chatID int64, text string) error {
 		Description string `json:"description"`
 	}{}
 
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err := json.Unmarshal(bodyResp, &result); err != nil {
 		return err
 	}
 
