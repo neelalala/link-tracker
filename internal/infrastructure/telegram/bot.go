@@ -30,7 +30,34 @@ func NewBot(token string, router *application.Router) *Bot {
 	return bot
 }
 
-func (b *Bot) SendMessage() error {
+func (b *Bot) SendMessage(chatID int64, text string) error {
+	query := fmt.Sprintf(`%s/sendMessage?chat_id=%d&text=%s`, b.url, chatID, text)
+
+	resp, err := b.client.Get(query)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	result := struct {
+		Ok          bool   `json:"ok"`
+		ErrorCode   int    `json:"error_code"`
+		Description string `json:"description"`
+	}{}
+
+	if err := json.Unmarshal(body, &result); err != nil {
+		return err
+	}
+
+	if !result.Ok {
+		return fmt.Errorf(result.Description)
+	}
 
 	return nil
 }
@@ -68,8 +95,7 @@ func (b *Bot) GetUpdates() ([]domain.Message, error) {
 		Description string `json:"description"`
 	}{}
 
-	err = json.Unmarshal(body, &result)
-	if err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
 
