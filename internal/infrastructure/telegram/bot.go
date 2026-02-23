@@ -88,6 +88,9 @@ func (b *Bot) GetUpdates() ([]domain.Message, error) {
 					LastName  string `json:"last_name"`
 					Username  string `json:"username"`
 				} `json:"from"`
+				Chat struct {
+					ID int64 `json:"id"`
+				} `json:"chat"`
 				Text string `json:"text"`
 			} `json:"message"`
 		} `json:"result"`
@@ -106,7 +109,8 @@ func (b *Bot) GetUpdates() ([]domain.Message, error) {
 	updates := make([]domain.Message, len(result.Result))
 	for i, r := range result.Result {
 		updates[i] = domain.Message{
-			ID: r.UpdateID,
+			ID:     r.UpdateID,
+			ChatID: r.Message.Chat.ID,
 			From: domain.User{
 				Name:     fmt.Sprintf("%s %s", r.Message.From.FirstName, r.Message.From.LastName),
 				Username: r.Message.From.Username,
