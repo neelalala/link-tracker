@@ -3,16 +3,17 @@ package application
 import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/telegram"
-	"log"
+	"log/slog"
 	"strings"
 )
 
 type Bot struct {
 	api    *telegram.BotApi
 	router *Router
+	logger *slog.Logger
 }
 
-func NewBot(token string, cmds []domain.Command) (*Bot, error) {
+func NewBot(token string, cmds []domain.Command, logger *slog.Logger) (*Bot, error) {
 	api, err := telegram.NewBot(token)
 	if err != nil {
 		return nil, err
@@ -27,19 +28,23 @@ func NewBot(token string, cmds []domain.Command) (*Bot, error) {
 	return &Bot{
 		api:    api,
 		router: router,
+		logger: logger,
 	}, nil
 }
 
 func (b *Bot) Start() {
+	b.logger.Info("Bot started listening for updates", slog.String("context", "bot.Start"))
+
 	for {
 		updates, err := b.api.GetUpdates()
 		if err != nil {
-			log.Println(err)
+			b.logger.Error("Failed to get updated", slog.String("error", err.Error()), slog.String("context", "api.GetUpdates"))
+			continue
 		}
 		for _, update := range updates {
 			err := b.handleMessage(update)
 			if err != nil {
-				log.Println(err)
+				b.logger.Error("Failed to handle update", slog.String("error", err.Error()), slog.String("context", "bot.handleMessage"))
 			}
 		}
 	}
