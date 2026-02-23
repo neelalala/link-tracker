@@ -49,7 +49,7 @@ func NewBot(token string) (*BotApi, error) {
 	}
 
 	if !result.Ok {
-		return nil, fmt.Errorf(result.Description)
+		return nil, fmt.Errorf("%s", result.Description)
 	}
 
 	return bot, nil
@@ -96,7 +96,7 @@ func (b *BotApi) SendMessage(chatID int64, text string) error {
 	}
 
 	if !result.Ok {
-		return fmt.Errorf(result.Description)
+		return fmt.Errorf("%s", result.Description)
 	}
 
 	return nil
@@ -143,7 +143,7 @@ func (b *BotApi) GetUpdates() ([]domain.Message, error) {
 	}
 
 	if !result.Ok {
-		return nil, fmt.Errorf(result.Description)
+		return nil, fmt.Errorf("%s", result.Description)
 	}
 
 	updates := make([]domain.Message, len(result.Result))
