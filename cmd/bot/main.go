@@ -32,7 +32,7 @@ func main() {
 
 	bot, err := application.NewBot(cfg.TelegramToken, cmds, slogger)
 	if err != nil {
-		slogger.Error("Failed to create bot", slog.String("context", "main"), slog.String("token", cfg.TelegramToken), slog.String("error", err.Error()))
+		slogger.Error("Failed to create bot", slog.String("context", "main"), slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
