@@ -17,38 +17,38 @@ func NewMemoryUserRepository() *MemoryUserRepository {
 	}
 }
 
-func (r *MemoryUserRepository) Create(user domain.User) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.users[user.UserID] = user
+func (repo *MemoryUserRepository) Create(user domain.User) error {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	repo.users[user.UserID] = user
 	return nil
 }
 
-func (r *MemoryUserRepository) GetById(userID int64) (domain.User, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (repo *MemoryUserRepository) GetById(userID int64) (domain.User, error) {
+	repo.mu.RLock()
+	defer repo.mu.RUnlock()
 
-	user, exists := r.users[userID]
+	user, exists := repo.users[userID]
 	if !exists {
 		return domain.User{}, domain.ErrUserNotFound
 	}
 	return user, nil
 }
 
-func (r *MemoryUserRepository) Update(user domain.User) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (repo *MemoryUserRepository) Update(user domain.User) error {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
 
-	if _, exists := r.users[user.UserID]; !exists {
+	if _, exists := repo.users[user.UserID]; !exists {
 		return domain.ErrUserNotFound
 	}
-	r.users[user.UserID] = user
+	repo.users[user.UserID] = user
 	return nil
 }
 
-func (r *MemoryUserRepository) Delete(userID int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	delete(r.users, userID)
+func (repo *MemoryUserRepository) Delete(userID int64) error {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	delete(repo.users, userID)
 	return nil
 }

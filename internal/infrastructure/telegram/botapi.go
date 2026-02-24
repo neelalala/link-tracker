@@ -55,8 +55,8 @@ func NewBot(token string) (*BotApi, error) {
 	return bot, nil
 }
 
-func (b *BotApi) SendMessage(chatID int64, text string) error {
-	query := fmt.Sprintf(`%s/sendMessage`, b.url)
+func (api *BotApi) SendMessage(chatID int64, text string) error {
+	query := fmt.Sprintf(`%s/sendMessage`, api.url)
 
 	type botMessage struct {
 		ChatID int64  `json:"chat_id"`
@@ -73,7 +73,7 @@ func (b *BotApi) SendMessage(chatID int64, text string) error {
 		return err
 	}
 
-	resp, err := b.client.Post(query, "application/json", bytes.NewReader(bodyReq))
+	resp, err := api.client.Post(query, "application/json", bytes.NewReader(bodyReq))
 	if err != nil {
 		return err
 	}
@@ -102,10 +102,10 @@ func (b *BotApi) SendMessage(chatID int64, text string) error {
 	return nil
 }
 
-func (b *BotApi) GetUpdates() ([]domain.Message, error) {
-	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, b.url, timeout, b.offset)
+func (api *BotApi) GetUpdates() ([]domain.Message, error) {
+	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, api.url, timeout, api.offset)
 
-	resp, err := b.client.Get(query)
+	resp, err := api.client.Get(query)
 	if err != nil {
 		return nil, err
 	}
@@ -147,27 +147,27 @@ func (b *BotApi) GetUpdates() ([]domain.Message, error) {
 	}
 
 	updates := make([]domain.Message, len(result.Result))
-	for i, r := range result.Result {
+	for i, res := range result.Result {
 		updates[i] = domain.Message{
-			ID:     r.UpdateID,
-			ChatID: r.Message.Chat.ID,
+			ID:     res.UpdateID,
+			ChatID: res.Message.Chat.ID,
 			From: domain.User{
-				Name:     fmt.Sprintf("%s %s", r.Message.From.FirstName, r.Message.From.LastName),
-				Username: r.Message.From.Username,
-				UserID:   r.Message.From.ID,
+				Name:     fmt.Sprintf("%s %s", res.Message.From.FirstName, res.Message.From.LastName),
+				Username: res.Message.From.Username,
+				UserID:   res.Message.From.ID,
 			},
-			Text: r.Message.Text,
+			Text: res.Message.Text,
 		}
 
-		b.offset = max(b.offset, r.UpdateID)
+		api.offset = max(api.offset, res.UpdateID)
 	}
-	b.offset++
+	api.offset++
 
 	return updates, nil
 }
 
-func (b *BotApi) SetMyCommands(cmds []domain.Command) error {
-	query := fmt.Sprintf("%s/setMyCommands", b.url)
+func (api *BotApi) SetMyCommands(cmds []domain.Command) error {
+	query := fmt.Sprintf("%s/setMyCommands", api.url)
 
 	type botCommand struct {
 		Command     string `json:"command"`
@@ -191,7 +191,7 @@ func (b *BotApi) SetMyCommands(cmds []domain.Command) error {
 		return err
 	}
 
-	resp, err := b.client.Post(query, "application/json", bytes.NewBuffer(body))
+	resp, err := api.client.Post(query, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		return err
 	}

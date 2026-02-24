@@ -32,29 +32,29 @@ func NewBot(token string, cmds []domain.Command, logger *slog.Logger) (*Bot, err
 	}, nil
 }
 
-func (b *Bot) Start() {
-	b.logger.Info("Bot started listening for updates", slog.String("context", "bot.Start"))
+func (bot *Bot) Start() {
+	bot.logger.Info("Bot started listening for updates", slog.String("context", "bot.Start"))
 
 	for {
-		updates, err := b.api.GetUpdates()
+		updates, err := bot.api.GetUpdates()
 		if err != nil {
-			b.logger.Error("Failed to get updated", slog.String("error", err.Error()), slog.String("context", "api.GetUpdates"))
+			bot.logger.Error("Failed to get updated", slog.String("error", err.Error()), slog.String("context", "api.GetUpdates"))
 			continue
 		}
 		for _, update := range updates {
-			err := b.handleMessage(update)
+			err := bot.handleMessage(update)
 			if err != nil {
-				b.logger.Error("Failed to handle update", slog.String("error", err.Error()), slog.String("context", "bot.handleMessage"))
+				bot.logger.Error("Failed to handle update", slog.String("error", err.Error()), slog.String("context", "bot.handleMessage"))
 			}
 		}
 	}
 }
 
-func (b *Bot) handleMessage(msg domain.Message) error {
+func (bot *Bot) handleMessage(msg domain.Message) error {
 	if strings.HasPrefix(msg.Text, "/") {
 		ss := strings.Split(msg.Text, " ")
-		resp := b.router.Handle(ss[0], msg.From)
-		return b.api.SendMessage(msg.ChatID, resp)
+		resp := bot.router.Handle(ss[0], msg.From)
+		return bot.api.SendMessage(msg.ChatID, resp)
 	}
 	return nil
 }
