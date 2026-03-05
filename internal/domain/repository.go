@@ -9,3 +9,11 @@ type UserRepository interface {
 	GetById(userID int64) (User, error)
 	Delete(userID int64) error
 }
+
+var ErrLinkNotFound = errors.New("link not found")
+
+type LinkRepository interface {
+	Save(link Link) error
+	GetByUserIdChatId(userID, chatID int64) ([]Link, error)
+	Delete(link Link) error
+}
