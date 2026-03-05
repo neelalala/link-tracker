@@ -73,8 +73,11 @@ func (service *CommandService) handleTrack(user domain.User, chatID int64, args 
 
 	err := service.linkRepo.Save(link)
 	if err != nil {
-		service.logger.Error("Cannot save link.", slog.String("context", "linkRepo.Save"), slog.String("link", link.URL), slog.String("error", err.Error()))
-		return "Something went wrong while saving the link."
+		if !errors.Is(err, domain.ErrLinkAlreadyTracked) {
+			service.logger.Error("Cannot save link.", slog.String("context", "linkRepo.Save"), slog.String("link", link.URL), slog.String("error", err.Error()))
+			return "Something went wrong while saving the link."
+		}
+		return "You're already tracking this link."
 	}
 
 	return fmt.Sprintf("Tracking link %s", link.URL)
