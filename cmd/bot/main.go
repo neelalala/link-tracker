@@ -4,6 +4,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/logger"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/repository"
 	"io"
 	"log"
 	"log/slog"
@@ -28,7 +29,11 @@ func main() {
 
 	slogger := logger.NewLogger(cfg.Environment, out)
 
-	cmds := application.GetCommands()
+	userRepo := repository.NewMemoryUserRepository()
+	linkRepo := repository.NewMemoryLinkRepository()
+
+	commandService := application.NewCommandService(userRepo, linkRepo, slogger)
+	cmds := commandService.GetCommands()
 
 	bot, err := application.NewBot(cfg.TelegramToken, cmds, slogger)
 	if err != nil {
