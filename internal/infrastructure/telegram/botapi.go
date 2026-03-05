@@ -154,7 +154,7 @@ func (api *BotApi) GetUpdates() ([]domain.Message, error) {
 			From: domain.User{
 				Name:     fmt.Sprintf("%s %s", res.Message.From.FirstName, res.Message.From.LastName),
 				Username: res.Message.From.Username,
-				UserID:   res.Message.From.ID,
+				ID:       res.Message.From.ID,
 			},
 			Text: res.Message.Text,
 		}

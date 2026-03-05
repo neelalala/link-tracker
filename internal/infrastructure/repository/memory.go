@@ -20,7 +20,7 @@ func NewMemoryUserRepository() *MemoryUserRepository {
 func (repo *MemoryUserRepository) Create(user domain.User) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
-	repo.users[user.UserID] = user
+	repo.users[user.ID] = user
 	return nil
 }
 
@@ -39,10 +39,10 @@ func (repo *MemoryUserRepository) Update(user domain.User) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
-	if _, exists := repo.users[user.UserID]; !exists {
+	if _, exists := repo.users[user.ID]; !exists {
 		return domain.ErrUserNotFound
 	}
-	repo.users[user.UserID] = user
+	repo.users[user.ID] = user
 	return nil
 }
 

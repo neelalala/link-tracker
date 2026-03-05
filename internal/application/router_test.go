@@ -11,7 +11,7 @@ func TestRouter_Handle(t *testing.T) {
 	router := NewRouter(cmds)
 
 	testUser := domain.User{
-		UserID:   12345,
+		ID:       12345,
 		Username: "test",
 		Name:     "Test",
 	}
