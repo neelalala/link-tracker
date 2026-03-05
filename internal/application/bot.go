@@ -53,7 +53,7 @@ func (bot *Bot) Start() {
 func (bot *Bot) handleMessage(msg domain.Message) error {
 	if strings.HasPrefix(msg.Text, "/") {
 		ss := strings.Split(msg.Text, " ")
-		resp := bot.router.Handle(ss[0], msg.From)
+		resp := bot.router.Handle(ss[0], ss[1:], msg.From, msg.ChatID)
 		return bot.api.SendMessage(msg.ChatID, resp)
 	}
 	return nil

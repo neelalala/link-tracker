@@ -18,10 +18,10 @@ func NewRouter(cmds []domain.Command) *Router {
 	return r
 }
 
-func (router *Router) Handle(command string, user domain.User) string {
+func (router *Router) Handle(command string, args []string, user domain.User, chatID int64) string {
 	cmd, exists := router.commands[command]
 	if !exists {
 		return "Unknown command. Use /help to list all commands."
 	}
-	return cmd.Do(user)
+	return cmd.Do(user, chatID, args)
 }
