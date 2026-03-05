@@ -56,7 +56,17 @@ func NewMemoryLinkRepository() *MemoryLinkRepository {
 func (linkRepo *MemoryLinkRepository) Save(link domain.Link) error {
 	linkRepo.mu.Lock()
 	defer linkRepo.mu.Unlock()
-	linkRepo.links[link.ChatID] = append(linkRepo.links[link.ChatID], link)
+	chatLinks := linkRepo.links[link.ChatID]
+
+	for i, existingLink := range chatLinks {
+		if existingLink.UserID == link.UserID && existingLink.URL == link.URL {
+			chatLinks[i] = link
+			return nil
+		}
+	}
+
+	linkRepo.links[link.ChatID] = append(chatLinks, link)
+
 	return nil
 }
 
