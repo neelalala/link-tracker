@@ -17,7 +17,7 @@ func NewMemoryUserRepository() *MemoryUserRepository {
 	}
 }
 
-func (repo *MemoryUserRepository) Create(user domain.User) error {
+func (repo *MemoryUserRepository) Save(user domain.User) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 	repo.users[user.ID] = user
@@ -33,17 +33,6 @@ func (repo *MemoryUserRepository) GetById(userID int64) (domain.User, error) {
 		return domain.User{}, domain.ErrUserNotFound
 	}
 	return user, nil
-}
-
-func (repo *MemoryUserRepository) Update(user domain.User) error {
-	repo.mu.Lock()
-	defer repo.mu.Unlock()
-
-	if _, exists := repo.users[user.ID]; !exists {
-		return domain.ErrUserNotFound
-	}
-	repo.users[user.ID] = user
-	return nil
 }
 
 func (repo *MemoryUserRepository) Delete(userID int64) error {
