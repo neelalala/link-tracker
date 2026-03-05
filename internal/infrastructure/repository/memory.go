@@ -58,10 +58,9 @@ func (linkRepo *MemoryLinkRepository) Save(link domain.Link) error {
 	defer linkRepo.mu.Unlock()
 	chatLinks := linkRepo.links[link.ChatID]
 
-	for i, existingLink := range chatLinks {
+	for _, existingLink := range chatLinks {
 		if existingLink.UserID == link.UserID && existingLink.URL == link.URL {
-			chatLinks[i] = link
-			return nil
+			return domain.ErrLinkAlreadyTracked
 		}
 	}
 
