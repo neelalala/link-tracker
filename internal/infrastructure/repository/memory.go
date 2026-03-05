@@ -41,3 +41,53 @@ func (repo *MemoryUserRepository) Delete(userID int64) error {
 	delete(repo.users, userID)
 	return nil
 }
+
+type MemoryLinkRepository struct {
+	mu    sync.RWMutex
+	links map[int64][]domain.Link // chatID -> []link
+}
+
+func NewMemoryLinkRepository() *MemoryLinkRepository {
+	return &MemoryLinkRepository{
+		links: make(map[int64][]domain.Link),
+	}
+}
+
+func (linkRepo *MemoryLinkRepository) Save(link domain.Link) error {
+	linkRepo.mu.Lock()
+	defer linkRepo.mu.Unlock()
+	linkRepo.links[link.ChatID] = append(linkRepo.links[link.ChatID], link)
+	return nil
+}
+
+func (linkRepo *MemoryLinkRepository) GetByUserIdChatId(userID, chatID int64) ([]domain.Link, error) {
+	chatLinks, ok := linkRepo.links[chatID]
+	if !ok {
+		return []domain.Link{}, nil
+	}
+	var links []domain.Link
+	for _, link := range chatLinks {
+		if link.UserID == userID {
+			links = append(links, link)
+		}
+	}
+	return links, nil
+}
+
+func (linkRepo *MemoryLinkRepository) Delete(link domain.Link) error {
+	linkRepo.mu.Lock()
+	defer linkRepo.mu.Unlock()
+	chatLinks, ok := linkRepo.links[link.ChatID]
+	if !ok {
+		return domain.ErrLinkNotFound
+	}
+	for i, chatLink := range chatLinks {
+		if chatLink.UserID == link.UserID && chatLink.URL == link.URL {
+			chatLinks = append(chatLinks[:i], chatLinks[i+1:]...)
+			linkRepo.links[link.ChatID] = chatLinks
+			return nil
+		}
+	}
+
+	return domain.ErrLinkNotFound
+}
