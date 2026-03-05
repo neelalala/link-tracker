@@ -10,7 +10,10 @@ type UserRepository interface {
 	Delete(userID int64) error
 }
 
-var ErrLinkNotFound = errors.New("link not found")
+var (
+	ErrLinkAlreadyTracked = errors.New("link already tracked")
+	ErrLinkNotFound       = errors.New("link not found")
+)
 
 type LinkRepository interface {
 	Save(link Link) error
