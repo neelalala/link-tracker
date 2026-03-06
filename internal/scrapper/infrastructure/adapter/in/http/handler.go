@@ -276,7 +276,7 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 			)
 			return
 		}
-		if errors.Is(err, domain.ErrLinkAlreadyTracked) {
+		if errors.Is(err, domain.ErrAlreadySubscribed) {
 			handler.writeError(w, http.StatusConflict,
 				"Link already tracked",
 				"conflict",
@@ -378,7 +378,7 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 			)
 			return
 		}
-		if errors.Is(err, domain.ErrLinkNotTracked) {
+		if errors.Is(err, domain.ErrNotSubscribed) {
 			handler.writeError(w, http.StatusNotFound,
 				"Link not tracked",
 				"not_found",
