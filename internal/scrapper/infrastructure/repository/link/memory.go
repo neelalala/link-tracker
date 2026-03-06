@@ -1,0 +1,62 @@
+package link
+
+import (
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"sync"
+)
+
+type MemoryRepository struct {
+	mu     sync.RWMutex
+	links  map[string]domain.Link
+	nextID int64
+}
+
+func NewMemoryRepository() *MemoryRepository {
+	return &MemoryRepository{
+		links:  make(map[string]domain.Link),
+		nextID: 1,
+	}
+}
+
+func (linkRepo *MemoryRepository) Save(link domain.Link) (domain.Link, error) {
+	linkRepo.mu.Lock()
+	defer linkRepo.mu.Unlock()
+	if link.ID == 0 {
+		link.ID = linkRepo.nextID
+		linkRepo.nextID++
+	}
+	linkRepo.links[link.URL] = link
+	return link, nil
+}
+
+func (linkRepo *MemoryRepository) GetById(id int64) (domain.Link, error) {
+	linkRepo.mu.RLock()
+	defer linkRepo.mu.RUnlock()
+	for _, link := range linkRepo.links {
+		if link.ID == id {
+			return link, nil
+		}
+	}
+	return domain.Link{}, domain.ErrLinkNotFound
+}
+
+func (linkRepo *MemoryRepository) GetByUrl(url string) (domain.Link, error) {
+	linkRepo.mu.RLock()
+	defer linkRepo.mu.RUnlock()
+	if link, ok := linkRepo.links[url]; ok {
+		return link, nil
+	}
+	return domain.Link{}, domain.ErrLinkNotFound
+}
+
+func (linkRepo *MemoryRepository) Delete(link domain.Link) error {
+	linkRepo.mu.Lock()
+	defer linkRepo.mu.Unlock()
+
+	if _, ok := linkRepo.links[link.URL]; !ok {
+		return domain.ErrLinkNotFound
+	}
+
+	delete(linkRepo.links, link.URL)
+	return nil
+}
