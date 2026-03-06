@@ -12,7 +12,7 @@ var (
 )
 
 type ChatRepository interface {
-	Save(Chat) error
+	Create(Chat) error
 	GetById(int64) (Chat, error)
 	Delete(Chat) error
 }
