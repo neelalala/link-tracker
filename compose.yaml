@@ -3,5 +3,7 @@ services:
     build:
       context: .
       dockerfile: cmd/bot/Dockerfile
+    ports:
+      - "${API_SERVER_PORT:-63342}:63342" # это только на время, потом не нужно будет это показывать, тк микросервисы все будут в одной сети
     env_file:
       - .env

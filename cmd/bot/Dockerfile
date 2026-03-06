@@ -16,4 +16,6 @@ WORKDIR /app
 COPY --from=builder /app/application.conf .
 COPY --from=builder /bin/bot /app/bot
 
+EXPOSE 63342
+
 ENTRYPOINT ["/app/bot"]
