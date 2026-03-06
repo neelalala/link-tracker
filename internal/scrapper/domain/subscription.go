@@ -17,7 +17,8 @@ type TrackedLink struct {
 }
 
 var (
-	ErrLinkNotTracked = errors.New("subscription is not subscribed")
+	ErrAlreadySubscribed = errors.New("already subscribed")
+	ErrNotSubscribed     = errors.New("not subscribed")
 )
 
 type SubscriptionRepository interface {

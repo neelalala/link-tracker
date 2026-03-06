@@ -23,12 +23,11 @@ type LinkUpdateHandler interface {
 }
 
 var (
-	ErrLinkNotFound       = errors.New("link not found")
-	ErrLinkAlreadyTracked = errors.New("link already tracked")
+	ErrLinkNotFound = errors.New("link not found")
 )
 
 type LinkRepository interface {
-	Save(link Link) error
+	Save(link Link) (Link, error)
 	GetById(id int64) (Link, error)
 	GetByUrl(url string) (Link, error)
 	Delete(link Link) error
