@@ -6,3 +6,13 @@ type Link struct {
 	URL    string
 	Tags   []string
 }
+
+type LinkUpdateHandler interface {
+	HandleUpdate(update LinkUpdate) error
+}
+type LinkUpdate struct {
+	ID          int64
+	URL         string
+	Description string
+	TgChatIDs   []int64
+}
