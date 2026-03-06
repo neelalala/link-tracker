@@ -24,6 +24,10 @@ func (subRepo *MemoryRepository) Save(subscription domain.Subscription) error {
 		subRepo.links[subscription.LinkID] = make(map[int64]domain.Subscription)
 	}
 
+	if _, ok := subRepo.links[subscription.LinkID][subscription.ChatID]; ok {
+		return domain.ErrAlreadySubscribed
+	}
+
 	subRepo.links[subscription.LinkID][subscription.ChatID] = subscription
 	return nil
 }
