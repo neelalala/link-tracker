@@ -2,7 +2,7 @@ package application
 
 import (
 	"github.com/stretchr/testify/assert"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"testing"
 )
 

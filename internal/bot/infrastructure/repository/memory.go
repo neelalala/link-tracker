@@ -1,36 +1,36 @@
 package repository
 
 import (
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
+	domain2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"sync"
 )
 
 type MemoryUserRepository struct {
 	mu    sync.RWMutex
-	users map[int64]domain.User
+	users map[int64]domain2.User
 }
 
 func NewMemoryUserRepository() *MemoryUserRepository {
 	return &MemoryUserRepository{
 		mu:    sync.RWMutex{},
-		users: make(map[int64]domain.User),
+		users: make(map[int64]domain2.User),
 	}
 }
 
-func (repo *MemoryUserRepository) Save(user domain.User) error {
+func (repo *MemoryUserRepository) Save(user domain2.User) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 	repo.users[user.ID] = user
 	return nil
 }
 
-func (repo *MemoryUserRepository) GetById(userID int64) (domain.User, error) {
+func (repo *MemoryUserRepository) GetById(userID int64) (domain2.User, error) {
 	repo.mu.RLock()
 	defer repo.mu.RUnlock()
 
 	user, exists := repo.users[userID]
 	if !exists {
-		return domain.User{}, domain.ErrUserNotFound
+		return domain2.User{}, domain2.ErrUserNotFound
 	}
 	return user, nil
 }
@@ -44,23 +44,23 @@ func (repo *MemoryUserRepository) Delete(userID int64) error {
 
 type MemoryLinkRepository struct {
 	mu    sync.RWMutex
-	links map[int64][]domain.Link // chatID -> []link
+	links map[int64][]domain2.Link // chatID -> []link
 }
 
 func NewMemoryLinkRepository() *MemoryLinkRepository {
 	return &MemoryLinkRepository{
-		links: make(map[int64][]domain.Link),
+		links: make(map[int64][]domain2.Link),
 	}
 }
 
-func (linkRepo *MemoryLinkRepository) Save(link domain.Link) error {
+func (linkRepo *MemoryLinkRepository) Save(link domain2.Link) error {
 	linkRepo.mu.Lock()
 	defer linkRepo.mu.Unlock()
 	chatLinks := linkRepo.links[link.ChatID]
 
 	for _, existingLink := range chatLinks {
 		if existingLink.UserID == link.UserID && existingLink.URL == link.URL {
-			return domain.ErrLinkAlreadyTracked
+			return domain2.ErrLinkAlreadyTracked
 		}
 	}
 
@@ -69,12 +69,12 @@ func (linkRepo *MemoryLinkRepository) Save(link domain.Link) error {
 	return nil
 }
 
-func (linkRepo *MemoryLinkRepository) GetByUserIdChatId(userID, chatID int64) ([]domain.Link, error) {
+func (linkRepo *MemoryLinkRepository) GetByUserIdChatId(userID, chatID int64) ([]domain2.Link, error) {
 	chatLinks, ok := linkRepo.links[chatID]
 	if !ok {
-		return []domain.Link{}, nil
+		return []domain2.Link{}, nil
 	}
-	var links []domain.Link
+	var links []domain2.Link
 	for _, link := range chatLinks {
 		if link.UserID == userID {
 			links = append(links, link)
@@ -83,12 +83,12 @@ func (linkRepo *MemoryLinkRepository) GetByUserIdChatId(userID, chatID int64) ([
 	return links, nil
 }
 
-func (linkRepo *MemoryLinkRepository) Delete(link domain.Link) error {
+func (linkRepo *MemoryLinkRepository) Delete(link domain2.Link) error {
 	linkRepo.mu.Lock()
 	defer linkRepo.mu.Unlock()
 	chatLinks, ok := linkRepo.links[link.ChatID]
 	if !ok {
-		return domain.ErrLinkNotFound
+		return domain2.ErrLinkNotFound
 	}
 	for i, chatLink := range chatLinks {
 		if chatLink.UserID == link.UserID && chatLink.URL == link.URL {
@@ -98,5 +98,5 @@ func (linkRepo *MemoryLinkRepository) Delete(link domain.Link) error {
 		}
 	}
 
-	return domain.ErrLinkNotFound
+	return domain2.ErrLinkNotFound
 }

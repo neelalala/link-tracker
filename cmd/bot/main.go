@@ -1,19 +1,20 @@
 package main
 
 import (
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/adapter/in/http"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/adapter/in/telegram"
-	telegram2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/adapter/out/telegram"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/logger"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/repository"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/http"
+	telegram_in "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/telegram"
+	telegram_out "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/telegram"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/logger"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository"
 	"io"
 	"log"
 	"log/slog"
 	"os"
 )
 
+// TODO переписать command_service тк требовалось state machine паттерн для /track
 func main() {
 	cfg, err := config.Load("application.conf")
 	if err != nil {
@@ -32,7 +33,7 @@ func main() {
 
 	slogger := logger.NewLogger(cfg.Environment, out)
 
-	tgClient, err := telegram2.NewClient(cfg.TelegramToken)
+	tgClient, err := telegram_out.NewClient(cfg.TelegramToken)
 	if err != nil {
 		slogger.Error("Error creating telegram client", slog.String("context", "main"), slog.String("error", err.Error()))
 	}
@@ -53,7 +54,7 @@ func main() {
 			os.Exit(1)
 		}
 	}()
-	poller, err := telegram.NewPoller(tgClient, cmds, slogger)
+	poller, err := telegram_in.NewPoller(tgClient, cmds, slogger)
 	if err != nil {
 		slogger.Error("Failed to create bot", slog.String("context", "main"), slog.String("error", err.Error()))
 		os.Exit(1)

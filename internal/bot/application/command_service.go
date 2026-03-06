@@ -3,18 +3,18 @@ package application
 import (
 	"errors"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
+	domain2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"log/slog"
 	"strings"
 )
 
 type CommandService struct {
-	userRepo domain.UserRepository
-	linkRepo domain.LinkRepository
+	userRepo domain2.UserRepository
+	linkRepo domain2.LinkRepository
 	logger   *slog.Logger
 }
 
-func NewCommandService(userRepo domain.UserRepository, linkRepo domain.LinkRepository, logger *slog.Logger) *CommandService {
+func NewCommandService(userRepo domain2.UserRepository, linkRepo domain2.LinkRepository, logger *slog.Logger) *CommandService {
 	return &CommandService{
 		userRepo: userRepo,
 		linkRepo: linkRepo,
@@ -22,8 +22,8 @@ func NewCommandService(userRepo domain.UserRepository, linkRepo domain.LinkRepos
 	}
 }
 
-func (service *CommandService) GetCommands() []domain.Command {
-	return []domain.Command{
+func (service *CommandService) GetCommands() []domain2.Command {
+	return []domain2.Command{
 		{
 			Name:        "start",
 			Description: "What this bot can do",
@@ -52,7 +52,7 @@ func (service *CommandService) GetCommands() []domain.Command {
 	}
 }
 
-func (service *CommandService) handleTrack(user domain.User, chatID int64, args []string) string {
+func (service *CommandService) handleTrack(user domain2.User, chatID int64, args []string) string {
 	if len(args) == 0 {
 		return "Please provide a link to track."
 	}
@@ -64,7 +64,7 @@ func (service *CommandService) handleTrack(user domain.User, chatID int64, args 
 		tags = args[1:]
 	}
 
-	link := domain.Link{
+	link := domain2.Link{
 		UserID: user.ID,
 		ChatID: chatID,
 		URL:    url,
@@ -73,7 +73,7 @@ func (service *CommandService) handleTrack(user domain.User, chatID int64, args 
 
 	err := service.linkRepo.Save(link)
 	if err != nil {
-		if !errors.Is(err, domain.ErrLinkAlreadyTracked) {
+		if !errors.Is(err, domain2.ErrLinkAlreadyTracked) {
 			service.logger.Error("Cannot save link.", slog.String("context", "linkRepo.Save"), slog.String("link", link.URL), slog.String("error", err.Error()))
 			return "Something went wrong while saving the link."
 		}
@@ -83,7 +83,7 @@ func (service *CommandService) handleTrack(user domain.User, chatID int64, args 
 	return fmt.Sprintf("Tracking link %s", link.URL)
 }
 
-func (service *CommandService) handleUntrack(user domain.User, chatID int64, args []string) string {
+func (service *CommandService) handleUntrack(user domain2.User, chatID int64, args []string) string {
 	if len(args) == 0 {
 		return "Please provide a link to untrack."
 	}
@@ -105,7 +105,7 @@ func (service *CommandService) handleUntrack(user domain.User, chatID int64, arg
 		}
 		err := service.linkRepo.Delete(link)
 		if err != nil {
-			if !errors.Is(err, domain.ErrLinkNotFound) {
+			if !errors.Is(err, domain2.ErrLinkNotFound) {
 				service.logger.Error("Cannot delete link.", slog.String("context", "linkRepo.Delete"), slog.String("error", err.Error()), slog.String("link", link.URL))
 				return "Something went wrong while deleting link."
 			}
@@ -117,7 +117,7 @@ func (service *CommandService) handleUntrack(user domain.User, chatID int64, arg
 	return "You're not tracking this link."
 }
 
-func (service *CommandService) handleList(user domain.User, chatID int64, args []string) string {
+func (service *CommandService) handleList(user domain2.User, chatID int64, args []string) string {
 	links, err := service.linkRepo.GetByUserIdChatId(user.ID, chatID)
 	if err != nil {
 		service.logger.Error("Cannot get link.", slog.String("context", "linkRepo.GetByUserIdChatId"), slog.Int64("userID", user.ID), slog.Int64("chatID", chatID), slog.String("error", err.Error()))
@@ -148,11 +148,11 @@ func (service *CommandService) noLinksTracked() string {
 	return "You have no tracked links."
 }
 
-func (service *CommandService) handleStart(user domain.User, chatID int64, args []string) string {
+func (service *CommandService) handleStart(user domain2.User, chatID int64, args []string) string {
 	return "Hi! This bot can track updates on your links, so you won't miss on news! /help for list my commands"
 }
 
-func (service *CommandService) handleHelp(user domain.User, chatID int64, args []string) string {
+func (service *CommandService) handleHelp(user domain2.User, chatID int64, args []string) string {
 	return `Available commands:
 /start – what this bot can do
 /help – list all available commands

@@ -1,9 +1,9 @@
 package telegram
 
 import (
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/adapter/out/telegram"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
+	domain2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/telegram"
 	"log/slog"
 	"strings"
 )
@@ -14,7 +14,7 @@ type Poller struct {
 	logger   *slog.Logger
 }
 
-func NewPoller(tgClient *telegram.Client, cmds []domain.Command, logger *slog.Logger) (*Poller, error) {
+func NewPoller(tgClient *telegram.Client, cmds []domain2.Command, logger *slog.Logger) (*Poller, error) {
 	err := tgClient.SetMyCommands(cmds)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (poller *Poller) Start() {
 	}
 }
 
-func (poller *Poller) handleMessage(msg domain.Message) error {
+func (poller *Poller) handleMessage(msg domain2.Message) error {
 	if strings.HasPrefix(msg.Text, "/") {
 		ss := strings.Split(msg.Text, " ")
 		resp := poller.router.Handle(ss[0], ss[1:], msg.From, msg.ChatID)
