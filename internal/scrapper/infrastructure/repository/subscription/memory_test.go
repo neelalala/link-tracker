@@ -36,15 +36,17 @@ func TestMemorySubscriptionRepository(t *testing.T) {
 	})
 
 	t.Run("Delete Subscription", func(t *testing.T) {
-		err := repo.Delete(sub2)
+		sub, err := repo.Delete(sub2)
 		assert.NoErrorf(t, err, "expected no error, got %v", err)
+		assert.Equalf(t, sub2.ChatID, sub.ChatID, "expected sub: %v, got: %v", sub2.ChatID, sub.ChatID)
 
 		subs, err := repo.GetByLinkId(100)
 		require.NoErrorf(t, err, "expected no error, got %v", err)
 		assert.Lenf(t, subs, 1, "expected 1 subscription remaining, got %d", len(subs))
 
-		err = repo.Delete(sub1)
+		sub, err = repo.Delete(sub1)
 		assert.NoErrorf(t, err, "expected no error, got %v", err)
+		assert.Equalf(t, sub1, sub, "expected sub: %v, got: %v", sub1, sub)
 
 		_, err = repo.GetByLinkId(100)
 		assert.Truef(t, errors.Is(err, domain.ErrLinkNotFound), "expected ErrLinkNotFound since all subs are deleted, got %v", err)

@@ -25,5 +25,5 @@ type SubscriptionRepository interface {
 	Save(Subscription) error
 	GetByChatId(int64) ([]Subscription, error)
 	GetByLinkId(int64) ([]Subscription, error)
-	Delete(Subscription) error
+	Delete(Subscription) (Subscription, error)
 }

@@ -59,20 +59,21 @@ func (subRepo *MemoryRepository) GetByLinkId(id int64) ([]domain.Subscription, e
 	return subscriptions, nil
 }
 
-func (subRepo *MemoryRepository) Delete(subscription domain.Subscription) error {
+func (subRepo *MemoryRepository) Delete(subscription domain.Subscription) (domain.Subscription, error) {
 	subRepo.mu.Lock()
 	defer subRepo.mu.Unlock()
 	if _, ok := subRepo.links[subscription.LinkID]; !ok {
-		return domain.ErrLinkNotFound
+		return domain.Subscription{}, domain.ErrLinkNotFound
 	}
 
 	subs := subRepo.links[subscription.LinkID]
 	if _, ok := subs[subscription.ChatID]; !ok {
-		return domain.ErrNotSubscribed
+		return domain.Subscription{}, domain.ErrNotSubscribed
 	}
+	sub := subs[subscription.ChatID]
 	delete(subs, subscription.ChatID)
 	if len(subs) == 0 {
 		delete(subRepo.links, subscription.LinkID)
 	}
-	return nil
+	return sub, nil
 }
