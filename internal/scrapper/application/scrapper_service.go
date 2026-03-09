@@ -84,6 +84,11 @@ func (s *ScrapperService) processLink(link domain.Link) {
 
 	if fetcher == nil {
 		s.logger.Warn("no fetcher found for url", slog.String("url", link.URL))
+		update := domain.LinkUpdate{
+			URL:         link.URL,
+			Description: "no fetcher for this link yet",
+		}
+		s.notifier.SendUpdate(update)
 		return
 	}
 
