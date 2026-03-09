@@ -2,7 +2,6 @@ package application
 
 import (
 	"errors"
-	pkg_domain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/pkg/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
 	"time"
@@ -19,7 +18,7 @@ type SubscriptionService interface {
 
 type Service struct {
 	chatRepo domain.ChatRepository
-	linkRepo pkg_domain.LinkRepository
+	linkRepo domain.LinkRepository
 	subRepo  domain.SubscriptionRepository
 
 	logger *slog.Logger
@@ -27,7 +26,7 @@ type Service struct {
 
 func NewSubscriptionService(
 	chatRepo domain.ChatRepository,
-	linkRepo pkg_domain.LinkRepository,
+	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,
 	logger *slog.Logger,
 ) *Service {
@@ -83,10 +82,10 @@ func (service *Service) AddLink(chatID int64, url string, tags, filters []string
 
 	link, err := service.linkRepo.GetByUrl(url)
 	if err != nil {
-		if !errors.Is(err, pkg_domain.ErrLinkNotFound) {
+		if !errors.Is(err, domain.ErrLinkNotFound) {
 			return domain.TrackedLink{}, err
 		}
-		link, err = service.linkRepo.Save(pkg_domain.Link{
+		link, err = service.linkRepo.Save(domain.Link{
 			URL:         url,
 			LastUpdated: time.Now(),
 		})
@@ -144,7 +143,7 @@ func (service *Service) RemoveLink(chatID int64, url string) (domain.TrackedLink
 	}
 
 	if _, err := service.subRepo.GetByLinkId(link.ID); err != nil {
-		if !errors.Is(err, pkg_domain.ErrLinkNotFound) {
+		if !errors.Is(err, domain.ErrLinkNotFound) {
 			return domain.TrackedLink{}, err
 		}
 		_ = service.linkRepo.Delete(link)
