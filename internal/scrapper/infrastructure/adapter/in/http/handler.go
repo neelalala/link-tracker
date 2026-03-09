@@ -172,6 +172,16 @@ func (handler *Handler) HandleGetLinks(w http.ResponseWriter, r *http.Request) {
 	}
 	links, err := handler.service.GetTrackedLinks(chatId)
 	if err != nil {
+		if errors.Is(err, domain.ErrChatNotRegistered) {
+			handler.writeError(w, http.StatusNotFound,
+				"Chat not registered",
+				"not_found",
+				"bad_request_exception",
+				fmt.Sprintf("Chat with id %d not registered", chatId),
+				err,
+			)
+			return
+		}
 		handler.logger.Error(
 			"failed to get tracked links",
 			slog.Int64("chat_id", chatId),
