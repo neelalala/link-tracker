@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	domain2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"io"
 	"net/http"
 	"time"
@@ -102,7 +102,7 @@ func (api *Client) SendMessage(chatID int64, text string) error {
 	return nil
 }
 
-func (api *Client) GetUpdates() ([]domain2.Message, error) {
+func (api *Client) GetUpdates() ([]domain.Message, error) {
 	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, api.url, timeout, api.offset)
 
 	resp, err := api.client.Get(query)
@@ -146,17 +146,12 @@ func (api *Client) GetUpdates() ([]domain2.Message, error) {
 		return nil, fmt.Errorf("%s", result.Description)
 	}
 
-	updates := make([]domain2.Message, len(result.Result))
+	updates := make([]domain.Message, len(result.Result))
 	for i, res := range result.Result {
-		updates[i] = domain2.Message{
+		updates[i] = domain.Message{
 			ID:     res.UpdateID,
 			ChatID: res.Message.Chat.ID,
-			From: domain2.User{
-				Name:     fmt.Sprintf("%s %s", res.Message.From.FirstName, res.Message.From.LastName),
-				Username: res.Message.From.Username,
-				ID:       res.Message.From.ID,
-			},
-			Text: res.Message.Text,
+			Text:   res.Message.Text,
 		}
 
 		api.offset = max(api.offset, res.UpdateID)
@@ -166,7 +161,7 @@ func (api *Client) GetUpdates() ([]domain2.Message, error) {
 	return updates, nil
 }
 
-func (api *Client) SetMyCommands(cmds []domain2.Command) error {
+func (api *Client) SetMyCommands(cmds []domain.Command) error {
 	query := fmt.Sprintf("%s/setMyCommands", api.url)
 
 	type botCommand struct {
