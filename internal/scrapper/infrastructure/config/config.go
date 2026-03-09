@@ -6,11 +6,11 @@ import (
 )
 
 type Config struct {
-	TelegramToken string `config:"telegram-token"`
-	Environment   string `config:"environment,local"`
-	LogsFile      string `config:"logs-file,"`
-	ScrapperUrl   string `config:"scrapper-url"`
-	BotApiPort    uint16 `config:"bot-api-port"`
+	UpdateIntervalSeconds int    `yaml:"update-interval-seconds"`
+	Environment           string `config:"environment,local"`
+	LogsFile              string `config:"logs-file,"`
+	BotUrl                string `config:"bot-url"`
+	ScrapperApiPort       uint16 `config:"scrapper-api-port"`
 }
 
 func Load(configPath string) (*Config, error) {
