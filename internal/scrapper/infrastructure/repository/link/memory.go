@@ -2,6 +2,7 @@ package link
 
 import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"sort"
 	"sync"
 )
 
@@ -59,4 +60,29 @@ func (linkRepo *MemoryRepository) Delete(link domain.Link) error {
 
 	delete(linkRepo.links, link.URL)
 	return nil
+}
+
+func (linkRepo *MemoryRepository) GetBatch(limit int, offset int) ([]domain.Link, error) {
+	linkRepo.mu.RLock()
+	defer linkRepo.mu.RUnlock()
+
+	allLinks := make([]domain.Link, 0, len(linkRepo.links))
+	for _, link := range linkRepo.links {
+		allLinks = append(allLinks, link)
+	}
+
+	sort.Slice(allLinks, func(i, j int) bool {
+		return allLinks[i].ID < allLinks[j].ID
+	})
+
+	if offset >= len(allLinks) {
+		return []domain.Link{}, nil
+	}
+
+	end := offset + limit
+	if end > len(allLinks) {
+		end = len(allLinks)
+	}
+
+	return allLinks[offset:end], nil
 }

@@ -18,10 +18,6 @@ type LinkUpdate struct {
 	TgChatIDs   []int64
 }
 
-type LinkUpdateHandler interface {
-	HandleUpdate(update LinkUpdate) error
-}
-
 var (
 	ErrLinkNotFound = errors.New("link not found")
 )
@@ -31,4 +27,5 @@ type LinkRepository interface {
 	GetById(id int64) (Link, error)
 	GetByUrl(url string) (Link, error)
 	Delete(link Link) error
+	GetBatch(limit int, offset int) ([]Link, error)
 }
