@@ -15,8 +15,8 @@ type Server struct {
 func NewServer(port uint16, service application.SubscriptionService, logger *slog.Logger) *Server {
 	handler := NewHandler(service, logger)
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /tg-caht/{id}", handler.HandlePostTgChat)
-	mux.HandleFunc("DELETE /tg-caht/{id}", handler.HandleDeleteTgChat)
+	mux.HandleFunc("POST /tg-chat/{id}", handler.HandlePostTgChat)
+	mux.HandleFunc("DELETE /tg-chat/{id}", handler.HandleDeleteTgChat)
 	mux.HandleFunc("GET /links", handler.HandleGetLinks)
 	mux.HandleFunc("POST /links", handler.HandlePostLinks)
 	mux.HandleFunc("DELETE /links", handler.HandleDeleteLinks)
