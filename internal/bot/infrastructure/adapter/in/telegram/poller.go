@@ -2,29 +2,31 @@ package telegram
 
 import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
-	domain2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/telegram"
 	"log/slog"
 	"strings"
 )
 
 type Poller struct {
-	tgClient *telegram.Client
-	router   *application.Router
-	logger   *slog.Logger
+	tgClient       *telegram.Client
+	commandService *application.CommandService
+	logger         *slog.Logger
 }
 
-func NewPoller(tgClient *telegram.Client, cmds []domain2.Command, logger *slog.Logger) (*Poller, error) {
+func NewPoller(tgClient *telegram.Client, scrapper application.Scrapper, logger *slog.Logger) (*Poller, error) {
+	commandService := application.NewCommandService(scrapper, logger)
+
+	cmds := commandService.GetCommands()
 	err := tgClient.SetMyCommands(cmds)
 	if err != nil {
 		return nil, err
 	}
-	router := application.NewRouter(cmds)
 
 	return &Poller{
-		tgClient: tgClient,
-		router:   router,
-		logger:   logger,
+		tgClient:       tgClient,
+		commandService: commandService,
+		logger:         logger,
 	}, nil
 }
 
@@ -46,10 +48,9 @@ func (poller *Poller) Start() {
 	}
 }
 
-func (poller *Poller) handleMessage(msg domain2.Message) error {
+func (poller *Poller) handleMessage(msg domain.Message) error {
 	if strings.HasPrefix(msg.Text, "/") {
-		ss := strings.Split(msg.Text, " ")
-		resp := poller.router.Handle(ss[0], ss[1:], msg.From, msg.ChatID)
+		resp := poller.commandService.HandleMessage(msg.ChatID, msg.Text)
 		return poller.tgClient.SendMessage(msg.ChatID, resp)
 	}
 	return nil
