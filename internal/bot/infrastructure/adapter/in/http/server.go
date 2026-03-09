@@ -2,17 +2,21 @@ package http
 
 import (
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
 	"net/http"
 )
+
+type LinkUpdateHandler interface {
+	HandleUpdate(update scrapperdomain.LinkUpdate) error
+}
 
 type Server struct {
 	port uint16
 	mux  *http.ServeMux
 }
 
-func NewServer(port uint16, updateHandler domain.LinkUpdateHandler, logger *slog.Logger) *Server {
+func NewServer(port uint16, updateHandler LinkUpdateHandler, logger *slog.Logger) *Server {
 	handler := NewHandler(updateHandler, logger)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /updates", handler.HandleUpdates)

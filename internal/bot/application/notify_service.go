@@ -3,7 +3,7 @@ package application
 import (
 	"errors"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
 )
 
@@ -23,7 +23,7 @@ func NewNotifierService(logger *slog.Logger, sender MessageSender) *NotifierServ
 	}
 }
 
-func (service *NotifierService) HandleUpdate(update domain.LinkUpdate) error {
+func (service *NotifierService) HandleUpdate(update scrapperdomain.LinkUpdate) error {
 	if update.URL == "" {
 		return errors.New("no url provided")
 	}

@@ -3,7 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"io"
 	"log/slog"
 	"net/http"
@@ -12,11 +12,11 @@ import (
 const BodyBytesLimit = 1 << 20
 
 type Handler struct {
-	updateHandler domain.LinkUpdateHandler
+	updateHandler LinkUpdateHandler
 	logger        *slog.Logger
 }
 
-func NewHandler(updateHandler domain.LinkUpdateHandler, logger *slog.Logger) *Handler {
+func NewHandler(updateHandler LinkUpdateHandler, logger *slog.Logger) *Handler {
 	return &Handler{
 		updateHandler: updateHandler,
 		logger:        logger,
@@ -89,7 +89,7 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	linkUpdate := domain.LinkUpdate{
+	linkUpdate := scrapperdomain.LinkUpdate{
 		ID:          req.Id,
 		URL:         req.Url,
 		Description: req.Description,
