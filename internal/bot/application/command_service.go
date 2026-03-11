@@ -129,9 +129,9 @@ func (service *CommandService) processSM(chatID int64, text string, session *Tra
 		}
 
 		return fmt.Sprintf("Success! Now tracking link: %s", session.URL)
+	default:
+		return "Unknown state. Process cancelled."
 	}
-
-	return "Unknown state. Process cancelled."
 }
 
 func (service *CommandService) executeCommand(chatID int64, cmd string, args []string) string {
