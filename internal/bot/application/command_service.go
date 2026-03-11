@@ -52,33 +52,34 @@ func NewCommandService(scrapper Scrapper, logger *slog.Logger) *CommandService {
 func (service *CommandService) HandleMessage(chatID int64, text string) string {
 	text = strings.TrimSpace(text)
 
-	if text == "/cancel" {
-		service.clearSession(chatID)
-		return "Tracking process cancelled."
-	}
-
+	sb := strings.Builder{}
 	service.mu.RLock()
 	session, exists := service.sessions[chatID]
 	service.mu.RUnlock()
 
 	if exists && strings.HasPrefix(text, "/") {
-		service.sessions[chatID].State = StateIdle
+		service.clearSession(chatID)
+		sb.WriteString("Tracking process cancelled.\n\n")
+		exists = false
 	}
 
 	// TODO can start /track even if not registered
 	if exists && session.State != StateIdle {
-		return service.processSM(chatID, text, session)
+		sb.WriteString(service.processSM(chatID, text, session))
+		return sb.String()
 	}
 
 	parts := strings.Fields(text)
 	if len(parts) == 0 || !strings.HasPrefix(parts[0], "/") {
-		return "I only understand commands. Try /help."
+		sb.WriteString("I only understand commands. Try /help.")
+		return sb.String()
 	}
 
 	commandName := strings.TrimPrefix(parts[0], "/")
 	args := parts[1:]
 
-	return service.executeCommand(chatID, commandName, args)
+	sb.WriteString(service.executeCommand(chatID, commandName, args))
+	return sb.String()
 }
 
 func (service *CommandService) clearSession(chatID int64) {
@@ -149,6 +150,8 @@ func (service *CommandService) executeCommand(chatID int64, cmd string, args []s
 		return service.handleUntrack(chatID, args)
 	case "list":
 		return service.handleList(chatID)
+	case "cancel":
+		return ""
 	default:
 		return "Unknown command. Try /help."
 	}
