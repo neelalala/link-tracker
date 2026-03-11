@@ -19,6 +19,6 @@ func NewLogger(env string, w io.Writer) *slog.Logger {
 	}
 
 	return slog.New(handler).With(
-		slog.String("service", "link-tracker-bot"),
+		slog.String("service", "scrapper-bot"),
 	)
 }
