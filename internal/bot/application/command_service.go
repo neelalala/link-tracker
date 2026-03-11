@@ -149,7 +149,7 @@ func (service *CommandService) executeCommand(chatID int64, cmd string, args []s
 	case "untrack":
 		return service.handleUntrack(chatID, args)
 	case "list":
-		return service.handleList(chatID)
+		return service.handleList(chatID, args)
 	case "cancel":
 		return ""
 	default:
@@ -175,7 +175,7 @@ func (service *CommandService) handleUntrack(chatID int64, args []string) string
 	return fmt.Sprintf("Link %s has been untracked.", url)
 }
 
-func (service *CommandService) handleList(chatID int64) string {
+func (service *CommandService) handleList(chatID int64, args []string) string {
 	links, err := service.scrapper.GetTrackedLinks(chatID)
 	if err != nil {
 		service.logger.Error("Scrapper GetTrackedLinks failed", slog.String("error", err.Error()))
@@ -186,8 +186,35 @@ func (service *CommandService) handleList(chatID int64) string {
 		return "You have no tracked links."
 	}
 
+	if len(args) > 0 {
+		tags := make([]string, 0, len(links))
+		for _, arg := range args {
+			tags = append(tags, strings.TrimSuffix(arg, ","))
+		}
+
+		links = service.filterWithTags(links, tags)
+		if len(links) == 0 {
+			sb := strings.Builder{}
+			sb.WriteString("You have no tracked links with tags ")
+			for _, arg := range args {
+				sb.WriteString(arg)
+			}
+			return sb.String()
+		}
+	}
+
 	sb := strings.Builder{}
-	sb.WriteString("Your tracked links:\n")
+	sb.WriteString("Your tracked links")
+	if len(args) > 0 {
+		sb.WriteString(" with tags ")
+		for i, arg := range args {
+			sb.WriteString(arg)
+			if i < len(args)-1 {
+				sb.WriteString(" ")
+			}
+		}
+	}
+	sb.WriteString(":\n")
 	for i, link := range links {
 		sb.WriteString(link.URL)
 		if len(link.Tags) > 0 {
@@ -199,6 +226,22 @@ func (service *CommandService) handleList(chatID int64) string {
 	}
 
 	return sb.String()
+}
+
+func (service *CommandService) filterWithTags(links []scrapperdomain.TrackedLink, tags []string) []scrapperdomain.TrackedLink {
+	filteredLinks := make([]scrapperdomain.TrackedLink, 0)
+Outer:
+	for _, link := range links {
+		for _, tag := range tags {
+			for _, userTag := range link.Tags {
+				if userTag == tag {
+					filteredLinks = append(filteredLinks, link)
+					continue Outer
+				}
+			}
+		}
+	}
+	return filteredLinks
 }
 
 func (service *CommandService) handleStart(chatID int64) string {
