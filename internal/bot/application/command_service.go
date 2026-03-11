@@ -62,10 +62,10 @@ func (service *CommandService) HandleMessage(chatID int64, text string) string {
 	service.mu.RUnlock()
 
 	if exists && strings.HasPrefix(text, "/") {
-		service.clearSession(chatID)
-		exists = false
+		service.sessions[chatID].State = StateIdle
 	}
 
+	// TODO can start /track even if not registered
 	if exists && session.State != StateIdle {
 		return service.processSM(chatID, text, session)
 	}
@@ -137,9 +137,9 @@ func (service *CommandService) processSM(chatID int64, text string, session *Tra
 func (service *CommandService) executeCommand(chatID int64, cmd string, args []string) string {
 	switch cmd {
 	case "start":
-		return service.handleStart(chatID, args)
+		return service.handleStart(chatID)
 	case "help":
-		return service.handleHelp(chatID, args)
+		return service.handleHelp()
 	case "track":
 		service.mu.Lock()
 		service.sessions[chatID] = &TrackSession{State: StateWaitingForURL}
@@ -148,7 +148,7 @@ func (service *CommandService) executeCommand(chatID int64, cmd string, args []s
 	case "untrack":
 		return service.handleUntrack(chatID, args)
 	case "list":
-		return service.handleList(chatID, args)
+		return service.handleList(chatID)
 	default:
 		return "Unknown command. Try /help."
 	}
@@ -172,7 +172,7 @@ func (service *CommandService) handleUntrack(chatID int64, args []string) string
 	return fmt.Sprintf("Link %s has been untracked.", url)
 }
 
-func (service *CommandService) handleList(chatID int64, args []string) string {
+func (service *CommandService) handleList(chatID int64) string {
 	links, err := service.scrapper.GetTrackedLinks(chatID)
 	if err != nil {
 		service.logger.Error("Scrapper GetTrackedLinks failed", slog.String("error", err.Error()))
@@ -198,7 +198,7 @@ func (service *CommandService) handleList(chatID int64, args []string) string {
 	return sb.String()
 }
 
-func (service *CommandService) handleStart(chatID int64, args []string) string {
+func (service *CommandService) handleStart(chatID int64) string {
 	err := service.scrapper.RegisterChat(chatID)
 	if err != nil {
 		if errors.Is(err, scrapperdomain.ErrChatAlreadyRegistered) {
@@ -209,7 +209,7 @@ func (service *CommandService) handleStart(chatID int64, args []string) string {
 	return "Hi! This bot can track updates on your links, so you won't miss on news! /help for list my commands"
 }
 
-func (service *CommandService) handleHelp(chatID int64, args []string) string {
+func (service *CommandService) handleHelp() string {
 	return `Available commands:
 /start – what this bot can do
 /help – list all available commands
