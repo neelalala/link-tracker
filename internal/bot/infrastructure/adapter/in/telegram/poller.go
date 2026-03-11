@@ -5,7 +5,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/telegram"
 	"log/slog"
-	"strings"
 )
 
 type Poller struct {
@@ -49,9 +48,6 @@ func (poller *Poller) Start() {
 }
 
 func (poller *Poller) handleMessage(msg domain.Message) error {
-	if strings.HasPrefix(msg.Text, "/") {
-		resp := poller.commandService.HandleMessage(msg.ChatID, msg.Text)
-		return poller.tgClient.SendMessage(msg.ChatID, resp)
-	}
-	return nil
+	resp := poller.commandService.HandleMessage(msg.ChatID, msg.Text)
+	return poller.tgClient.SendMessage(msg.ChatID, resp)
 }
