@@ -13,10 +13,9 @@ import (
 )
 
 type linkResponse struct {
-	Id      int64    `json:"id"`
-	Url     string   `json:"url"`
-	Tags    []string `json:"tags"`
-	Filters []string `json:"filters"`
+	Id   int64    `json:"id"`
+	Url  string   `json:"url"`
+	Tags []string `json:"tags"`
 }
 
 type apiErrorResponse struct {
@@ -209,10 +208,9 @@ func (handler *Handler) HandleGetLinks(w http.ResponseWriter, r *http.Request) {
 
 	for i, link := range links {
 		resp.Links[i] = linkResponse{
-			Id:      link.ID,
-			Url:     link.URL,
-			Tags:    link.Tags,
-			Filters: link.Filters,
+			Id:   link.ID,
+			Url:  link.URL,
+			Tags: link.Tags,
 		}
 	}
 
@@ -240,9 +238,8 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 	}
 
 	type addLinkRequest struct {
-		Link    string   `json:"link"`
-		Tags    []string `json:"tags"`
-		Filters []string `json:"filters"`
+		Link string   `json:"link"`
+		Tags []string `json:"tags"`
 	}
 
 	var req addLinkRequest
@@ -274,7 +271,7 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	link, err := handler.service.AddLink(chatId, req.Link, req.Tags, req.Filters)
+	link, err := handler.service.AddLink(chatId, req.Link, req.Tags)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			handler.writeError(w, http.StatusNotFound,
@@ -314,10 +311,9 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 	}
 
 	resp := linkResponse{
-		Id:      link.ID,
-		Url:     link.URL,
-		Tags:    link.Tags,
-		Filters: link.Filters,
+		Id:   link.ID,
+		Url:  link.URL,
+		Tags: link.Tags,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -416,10 +412,9 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 	}
 
 	resp := linkResponse{
-		Id:      link.ID,
-		Url:     link.URL,
-		Tags:    link.Tags,
-		Filters: link.Filters,
+		Id:   link.ID,
+		Url:  link.URL,
+		Tags: link.Tags,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

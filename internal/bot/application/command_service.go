@@ -16,20 +16,18 @@ const (
 	StateIdle TrackState = iota
 	StateWaitingForURL
 	StateWaitingForTags
-	StateWaitingForFilters
 )
 
 type TrackSession struct {
 	State TrackState
 	URL   string
-	Tags  []string
 }
 
 type Scrapper interface {
 	RegisterChat(chatId int64) error
 	DeleteChat(chatId int64) error
 	GetTrackedLinks(chatId int64) ([]scrapperdomain.TrackedLink, error)
-	AddLink(chatId int64, url string, tags, filters []string) (scrapperdomain.TrackedLink, error)
+	AddLink(chatId int64, url string, tags []string) (scrapperdomain.TrackedLink, error)
 	RemoveLink(chatId int64, url string) (scrapperdomain.TrackedLink, error)
 }
 
@@ -111,19 +109,16 @@ func (service *CommandService) processSM(chatID int64, text string, session *Tra
 			}
 		}
 
-		session.Tags = tags
-		session.State = StateWaitingForFilters
-		return "Tags saved! Now send filters separated by commas (e.g., work, bug). Or send 'skip' to add without filters."
-	case StateWaitingForFilters:
-		var filters []string
-
-		_, err := service.scrapper.AddLink(chatID, session.URL, session.Tags, filters)
+		_, err := service.scrapper.AddLink(chatID, session.URL, tags)
 
 		delete(service.sessions, chatID)
 
 		if err != nil {
 			if errors.Is(err, scrapperdomain.ErrAlreadySubscribed) {
 				return "You're already tracking this link."
+			}
+			if errors.Is(err, scrapperdomain.ErrChatNotRegistered) {
+				return "Please register before tracking any link. Just use /strat :)"
 			}
 			service.logger.Error("Scrapper AddLink failed", slog.String("error", err.Error()))
 			return "Something went wrong while saving the link in the scrapper."

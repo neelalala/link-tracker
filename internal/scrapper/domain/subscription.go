@@ -3,17 +3,15 @@ package domain
 import "errors"
 
 type Subscription struct {
-	ChatID  int64
-	LinkID  int64
-	Tags    []string
-	Filters []string
+	ChatID int64
+	LinkID int64
+	Tags   []string
 }
 
 type TrackedLink struct {
-	ID      int64
-	URL     string
-	Tags    []string
-	Filters []string
+	ID   int64
+	URL  string
+	Tags []string
 }
 
 var (

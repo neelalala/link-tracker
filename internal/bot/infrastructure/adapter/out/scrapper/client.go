@@ -100,10 +100,9 @@ func (client *Client) GetTrackedLinks(chatId int64) ([]scrapper_domain.TrackedLi
 	}
 
 	type linkJson struct {
-		Id      int64    `json:"id"`
-		Url     string   `json:"url"`
-		Tags    []string `json:"tags"`
-		Filters []string `json:"filters"`
+		Id   int64    `json:"id"`
+		Url  string   `json:"url"`
+		Tags []string `json:"tags"`
 	}
 
 	type responseJson struct {
@@ -126,29 +125,26 @@ func (client *Client) GetTrackedLinks(chatId int64) ([]scrapper_domain.TrackedLi
 	var links []scrapper_domain.TrackedLink
 	for _, link := range linksJson.Links {
 		links = append(links, scrapper_domain.TrackedLink{
-			ID:      link.Id,
-			URL:     link.Url,
-			Tags:    link.Tags,
-			Filters: link.Filters,
+			ID:   link.Id,
+			URL:  link.Url,
+			Tags: link.Tags,
 		})
 	}
 
 	return links, nil
 }
 
-func (client *Client) AddLink(chatId int64, url string, tags, filters []string) (scrapper_domain.TrackedLink, error) {
+func (client *Client) AddLink(chatId int64, url string, tags []string) (scrapper_domain.TrackedLink, error) {
 	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, trackLinksEndpoint)
 
 	type requestJson struct {
-		Link    string   `json:"link"`
-		Tags    []string `json:"tags"`
-		Filters []string `json:"filters"`
+		Link string   `json:"link"`
+		Tags []string `json:"tags"`
 	}
 
 	var reqJson = requestJson{
-		Link:    url,
-		Tags:    tags,
-		Filters: filters,
+		Link: url,
+		Tags: tags,
 	}
 
 	reqBody, err := json.Marshal(reqJson)
@@ -182,10 +178,9 @@ func (client *Client) AddLink(chatId int64, url string, tags, filters []string) 
 	}
 
 	type responseJson struct {
-		Id      int64    `json:"id"`
-		Url     string   `json:"url"`
-		Tags    []string `json:"tags"`
-		Filters []string `json:"filters"`
+		Id   int64    `json:"id"`
+		Url  string   `json:"url"`
+		Tags []string `json:"tags"`
 	}
 
 	var response responseJson
@@ -201,10 +196,9 @@ func (client *Client) AddLink(chatId int64, url string, tags, filters []string) 
 	}
 
 	return scrapper_domain.TrackedLink{
-		ID:      response.Id,
-		URL:     response.Url,
-		Tags:    response.Tags,
-		Filters: response.Filters,
+		ID:   response.Id,
+		URL:  response.Url,
+		Tags: response.Tags,
 	}, nil
 }
 
@@ -248,10 +242,9 @@ func (client *Client) RemoveLink(chatId int64, url string) (scrapper_domain.Trac
 	}
 
 	type responseJson struct {
-		Id      int64    `json:"id"`
-		Url     string   `json:"url"`
-		Tags    []string `json:"tags"`
-		Filters []string `json:"filters"`
+		Id   int64    `json:"id"`
+		Url  string   `json:"url"`
+		Tags []string `json:"tags"`
 	}
 
 	var response responseJson
@@ -267,9 +260,8 @@ func (client *Client) RemoveLink(chatId int64, url string) (scrapper_domain.Trac
 	}
 
 	return scrapper_domain.TrackedLink{
-		ID:      response.Id,
-		URL:     response.Url,
-		Tags:    response.Tags,
-		Filters: response.Filters,
+		ID:   response.Id,
+		URL:  response.Url,
+		Tags: response.Tags,
 	}, nil
 }

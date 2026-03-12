@@ -12,7 +12,7 @@ type SubscriptionService interface {
 	DeleteChat(chatID int64) error
 
 	GetTrackedLinks(chatID int64) ([]domain.TrackedLink, error)
-	AddLink(chatID int64, url string, tags, filters []string) (domain.TrackedLink, error)
+	AddLink(chatID int64, url string, tags []string) (domain.TrackedLink, error)
 	RemoveLink(chatID int64, url string) (domain.TrackedLink, error)
 }
 
@@ -65,16 +65,15 @@ func (service *Service) GetTrackedLinks(chatID int64) ([]domain.TrackedLink, err
 			return nil, err
 		}
 		trackedLinks[i] = domain.TrackedLink{
-			ID:      link.ID,
-			URL:     link.URL,
-			Tags:    sub.Tags,
-			Filters: sub.Filters,
+			ID:   link.ID,
+			URL:  link.URL,
+			Tags: sub.Tags,
 		}
 	}
 	return trackedLinks, nil
 }
 
-func (service *Service) AddLink(chatID int64, url string, tags, filters []string) (domain.TrackedLink, error) {
+func (service *Service) AddLink(chatID int64, url string, tags []string) (domain.TrackedLink, error) {
 	_, err := service.chatRepo.GetById(chatID)
 	if err != nil {
 		return domain.TrackedLink{}, err
@@ -102,10 +101,9 @@ func (service *Service) AddLink(chatID int64, url string, tags, filters []string
 	}
 
 	sub := domain.Subscription{
-		ChatID:  chatID,
-		LinkID:  link.ID,
-		Tags:    tags,
-		Filters: filters,
+		ChatID: chatID,
+		LinkID: link.ID,
+		Tags:   tags,
 	}
 
 	err = service.subRepo.Save(sub)
@@ -114,10 +112,9 @@ func (service *Service) AddLink(chatID int64, url string, tags, filters []string
 	}
 
 	return domain.TrackedLink{
-		ID:      link.ID,
-		URL:     link.URL,
-		Tags:    sub.Tags,
-		Filters: sub.Filters,
+		ID:   link.ID,
+		URL:  link.URL,
+		Tags: sub.Tags,
 	}, nil
 }
 
@@ -150,9 +147,8 @@ func (service *Service) RemoveLink(chatID int64, url string) (domain.TrackedLink
 	}
 
 	return domain.TrackedLink{
-		ID:      link.ID,
-		URL:     link.URL,
-		Tags:    sub.Tags,
-		Filters: sub.Filters,
+		ID:   link.ID,
+		URL:  link.URL,
+		Tags: sub.Tags,
 	}, nil
 }
