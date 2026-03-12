@@ -27,12 +27,12 @@ type apiErrorResponse struct {
 }
 
 type Handler struct {
-	service application.SubscriptionService
+	service *application.SubscriptionService
 
 	logger *slog.Logger
 }
 
-func NewHandler(service application.SubscriptionService, logger *slog.Logger) *Handler {
+func NewHandler(service *application.SubscriptionService, logger *slog.Logger) *Handler {
 	return &Handler{
 		service: service,
 		logger:  logger,

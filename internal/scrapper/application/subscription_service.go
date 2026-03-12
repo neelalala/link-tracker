@@ -7,16 +7,7 @@ import (
 	"time"
 )
 
-type SubscriptionService interface {
-	RegisterChat(chatID int64) error
-	DeleteChat(chatID int64) error
-
-	GetTrackedLinks(chatID int64) ([]domain.TrackedLink, error)
-	AddLink(chatID int64, url string, tags []string) (domain.TrackedLink, error)
-	RemoveLink(chatID int64, url string) (domain.TrackedLink, error)
-}
-
-type Service struct {
+type SubscriptionService struct {
 	chatRepo domain.ChatRepository
 	linkRepo domain.LinkRepository
 	subRepo  domain.SubscriptionRepository
@@ -29,8 +20,8 @@ func NewSubscriptionService(
 	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,
 	logger *slog.Logger,
-) *Service {
-	return &Service{
+) *SubscriptionService {
+	return &SubscriptionService{
 		chatRepo: chatRepo,
 		linkRepo: linkRepo,
 		subRepo:  subRepo,
@@ -38,17 +29,17 @@ func NewSubscriptionService(
 	}
 }
 
-func (service *Service) RegisterChat(chatID int64) error {
+func (service *SubscriptionService) RegisterChat(chatID int64) error {
 	chat := domain.Chat{ID: chatID}
 	return service.chatRepo.Create(chat)
 }
 
-func (service *Service) DeleteChat(chatID int64) error {
+func (service *SubscriptionService) DeleteChat(chatID int64) error {
 	chat := domain.Chat{ID: chatID}
 	return service.chatRepo.Delete(chat)
 }
 
-func (service *Service) GetTrackedLinks(chatID int64) ([]domain.TrackedLink, error) {
+func (service *SubscriptionService) GetTrackedLinks(chatID int64) ([]domain.TrackedLink, error) {
 	_, err := service.chatRepo.GetById(chatID)
 	if err != nil {
 		return nil, err
@@ -73,7 +64,7 @@ func (service *Service) GetTrackedLinks(chatID int64) ([]domain.TrackedLink, err
 	return trackedLinks, nil
 }
 
-func (service *Service) AddLink(chatID int64, url string, tags []string) (domain.TrackedLink, error) {
+func (service *SubscriptionService) AddLink(chatID int64, url string, tags []string) (domain.TrackedLink, error) {
 	_, err := service.chatRepo.GetById(chatID)
 	if err != nil {
 		return domain.TrackedLink{}, err
@@ -118,7 +109,7 @@ func (service *Service) AddLink(chatID int64, url string, tags []string) (domain
 	}, nil
 }
 
-func (service *Service) RemoveLink(chatID int64, url string) (domain.TrackedLink, error) {
+func (service *SubscriptionService) RemoveLink(chatID int64, url string) (domain.TrackedLink, error) {
 	_, err := service.chatRepo.GetById(chatID)
 	if err != nil {
 		return domain.TrackedLink{}, err

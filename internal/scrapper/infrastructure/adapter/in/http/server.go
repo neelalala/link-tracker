@@ -12,7 +12,7 @@ type Server struct {
 	mux  *http.ServeMux
 }
 
-func NewServer(port uint16, service application.SubscriptionService, logger *slog.Logger) *Server {
+func NewServer(port uint16, service *application.SubscriptionService, logger *slog.Logger) *Server {
 	handler := NewHandler(service, logger)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /tg-chat/{id}", handler.HandlePostTgChat)
