@@ -6,6 +6,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/scheduler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/github"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/stackoverflow"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/chat"
@@ -53,8 +54,10 @@ func main() {
 	var botNotifier application.UpdateNotifier = notifier.NewBot(cfg.BotUrl)
 
 	githubClient := github.NewClient()
+	stackoverflowClient := stackoverflow.NewClient()
 
-	scrapperService := application.NewScrapperService(linkRepo, subRepo, []application.LinkFetcher{githubClient}, botNotifier, slogger)
+	fetchers := []application.LinkFetcher{githubClient, stackoverflowClient}
+	scrapperService := application.NewScrapperService(linkRepo, subRepo, fetchers, botNotifier, slogger)
 
 	err = cron.Schedule(60*time.Second, func() {
 		err := scrapperService.GetUpdates()
