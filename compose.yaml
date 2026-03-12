@@ -20,3 +20,7 @@ services:
       - .env
     environment:
       - BOT_URL=http://bot:63342
+
+networks:
+  app-network:
+    driver: bridge
