@@ -26,7 +26,7 @@ func NewBot(url string) *Bot {
 	}
 }
 
-func (b *Bot) SendUpdate(update domain.LinkUpdate) error {
+func (bot *Bot) SendUpdate(update domain.LinkUpdate) error {
 	type request struct {
 		Id          int64   `json:"id"`
 		Url         string  `json:"url"`
@@ -46,14 +46,14 @@ func (b *Bot) SendUpdate(update domain.LinkUpdate) error {
 		return fmt.Errorf("failed to marshal update request: %w", err)
 	}
 
-	reqUrl := fmt.Sprintf("%s/%s", b.url, endpoint)
+	reqUrl := fmt.Sprintf("%s/%s", bot.url, endpoint)
 	req, err := http.NewRequest(http.MethodPost, reqUrl, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := b.httpClient.Do(req)
+	resp, err := bot.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request to bot: %w", err)
 	}
