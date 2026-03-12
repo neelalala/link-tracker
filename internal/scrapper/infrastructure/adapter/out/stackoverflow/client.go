@@ -17,20 +17,24 @@ const (
 
 type Client struct {
 	httpClient *http.Client
+	apiURL     string
+	baseURL    string
 }
 
 func NewClient() *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: timeout},
+		apiURL:     baseApiURL,
+		baseURL:    baseURL,
 	}
 }
 
 func (c *Client) CanHandle(url string) bool {
-	return strings.HasPrefix(url, baseURL)
+	return strings.HasPrefix(url, c.baseURL)
 }
 
 func (c *Client) Fetch(url string) (application.FetchResult, error) {
-	path := strings.TrimPrefix(url, baseURL)
+	path := strings.TrimPrefix(url, c.baseURL)
 	parts := strings.Split(path, "/")
 
 	if len(parts) == 0 || parts[0] == "" {
@@ -39,7 +43,7 @@ func (c *Client) Fetch(url string) (application.FetchResult, error) {
 
 	questionID := parts[0]
 
-	apiUrl := fmt.Sprintf("%s/questions/%s?site=stackoverflow.com", baseApiURL, questionID)
+	apiUrl := fmt.Sprintf("%s/questions/%s?site=stackoverflow.com", c.apiURL, questionID)
 
 	req, err := http.NewRequest(http.MethodGet, apiUrl, nil)
 	if err != nil {

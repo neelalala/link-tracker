@@ -17,11 +17,15 @@ const (
 
 type Client struct {
 	httpClient *http.Client
+	apiURL     string
+	baseURL    string
 }
 
 func NewClient() *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: timeout},
+		apiURL:     baseApiURL,
+		baseURL:    baseURL,
 	}
 }
 
