@@ -293,6 +293,16 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 			)
 			return
 		}
+		if errors.Is(err, application.ErrUrlNotSupported) {
+			handler.writeError(w, http.StatusUnprocessableEntity,
+				"Link not supported",
+				"unprocessable_entity",
+				"link_not_supported",
+				fmt.Sprintf("Link %s not yet supported", req.Link),
+				err,
+			)
+			return
+		}
 		handler.logger.Error(
 			"failed to add link",
 			slog.Int64("chat_id", chatId),

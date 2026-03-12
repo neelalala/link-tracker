@@ -124,6 +124,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: Ссылка не поддерживается
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
     delete:
       summary: Убрать отслеживание ссылки
       parameters:
