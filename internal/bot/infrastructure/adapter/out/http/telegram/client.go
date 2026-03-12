@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
@@ -55,7 +56,7 @@ func NewClient(token string) (*Client, error) {
 	return tgClient, nil
 }
 
-func (api *Client) SendMessage(chatID int64, text string) error {
+func (api *Client) SendMessage(ctx context.Context, chatID int64, text string) error {
 	query := fmt.Sprintf(`%s/sendMessage`, api.url)
 
 	type botMessage struct {
@@ -72,8 +73,13 @@ func (api *Client) SendMessage(chatID int64, text string) error {
 	if err != nil {
 		return err
 	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(bodyReq))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := api.client.Post(query, "application/json", bytes.NewReader(bodyReq))
+	resp, err := api.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -102,10 +108,15 @@ func (api *Client) SendMessage(chatID int64, text string) error {
 	return nil
 }
 
-func (api *Client) GetUpdates() ([]domain.Message, error) {
+func (api *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) {
 	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, api.url, timeout, api.offset)
 
-	resp, err := api.client.Get(query)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := api.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +172,7 @@ func (api *Client) GetUpdates() ([]domain.Message, error) {
 	return updates, nil
 }
 
-func (api *Client) SetMyCommands(cmds []domain.Command) error {
+func (api *Client) SetMyCommands(ctx context.Context, cmds []domain.Command) error {
 	query := fmt.Sprintf("%s/setMyCommands", api.url)
 
 	type botCommand struct {
@@ -186,7 +197,13 @@ func (api *Client) SetMyCommands(cmds []domain.Command) error {
 		return err
 	}
 
-	resp, err := api.client.Post(query, "application/json", bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := api.client.Do(req)
 	if err != nil {
 		return err
 	}

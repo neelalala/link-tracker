@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"errors"
 	"time"
 )
@@ -23,9 +24,9 @@ var (
 )
 
 type LinkRepository interface {
-	Save(link Link) (Link, error)
-	GetById(id int64) (Link, error)
-	GetByUrl(url string) (Link, error)
-	Delete(link Link) error
-	GetBatch(limit int, offset int) ([]Link, error)
+	Save(ctx context.Context, link Link) (Link, error)
+	GetById(ctx context.Context, id int64) (Link, error)
+	GetByUrl(ctx context.Context, url string) (Link, error)
+	Delete(ctx context.Context, link Link) error
+	GetBatch(ctx context.Context, limit int, offset int) ([]Link, error)
 }

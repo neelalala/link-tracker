@@ -74,7 +74,9 @@ func (handler *Handler) HandlePostTgChat(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = handler.service.RegisterChat(chatId)
+	ctx := r.Context()
+
+	err = handler.service.RegisterChat(ctx, chatId)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatAlreadyRegistered) {
 			handler.writeError(w, http.StatusConflict,
@@ -122,7 +124,10 @@ func (handler *Handler) HandleDeleteTgChat(w http.ResponseWriter, r *http.Reques
 		)
 		return
 	}
-	err = handler.service.DeleteChat(chatId)
+
+	ctx := r.Context()
+
+	err = handler.service.DeleteChat(ctx, chatId)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			handler.writeError(w, http.StatusNotFound,
@@ -169,7 +174,10 @@ func (handler *Handler) HandleGetLinks(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
-	links, err := handler.service.GetTrackedLinks(chatId)
+
+	ctx := r.Context()
+
+	links, err := handler.service.GetTrackedLinks(ctx, chatId)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			handler.writeError(w, http.StatusNotFound,
@@ -271,7 +279,9 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	link, err := handler.service.AddLink(chatId, req.Link, req.Tags)
+	ctx := r.Context()
+
+	link, err := handler.service.AddLink(ctx, chatId, req.Link, req.Tags)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			handler.writeError(w, http.StatusNotFound,
@@ -371,6 +381,7 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 		)
 		return
 	}
+
 	err = json.Unmarshal(body, &req)
 	if err != nil {
 		handler.writeError(w, http.StatusBadRequest,
@@ -382,7 +393,10 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 		)
 		return
 	}
-	link, err := handler.service.RemoveLink(chatId, req.Link)
+
+	ctx := r.Context()
+
+	link, err := handler.service.RemoveLink(ctx, chatId, req.Link)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			handler.writeError(w, http.StatusNotFound,

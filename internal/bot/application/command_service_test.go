@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"github.com/stretchr/testify/assert"
 	scrapperapplication "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
@@ -18,27 +19,27 @@ type MockScrapper struct {
 	DeleteChatFunc      func(chatID int64) error
 }
 
-func (scrapper *MockScrapper) GetTrackedLinks(chatID int64) ([]scrapperdomain.TrackedLink, error) {
+func (scrapper *MockScrapper) GetTrackedLinks(ctx context.Context, chatID int64) ([]scrapperdomain.TrackedLink, error) {
 	if scrapper.GetTrackedLinksFunc != nil {
 		return scrapper.GetTrackedLinksFunc(chatID)
 	}
 	return nil, nil
 }
 
-func (scrapper *MockScrapper) AddLink(chatID int64, url string, tags []string) (scrapperdomain.TrackedLink, error) {
+func (scrapper *MockScrapper) AddLink(ctx context.Context, chatID int64, url string, tags []string) (scrapperdomain.TrackedLink, error) {
 	if scrapper.AddLinkFunc != nil {
 		return scrapper.AddLinkFunc(chatID, url, tags)
 	}
 	return scrapperdomain.TrackedLink{}, nil
 }
 
-func (scrapper *MockScrapper) RemoveLink(int64, string) (scrapperdomain.TrackedLink, error) {
+func (scrapper *MockScrapper) RemoveLink(context.Context, int64, string) (scrapperdomain.TrackedLink, error) {
 	return scrapperdomain.TrackedLink{}, nil
 }
 
-func (scrapper *MockScrapper) RegisterChat(int64) error { return nil }
+func (scrapper *MockScrapper) RegisterChat(context.Context, int64) error { return nil }
 
-func (scrapper *MockScrapper) DeleteChat(int64) error { return nil }
+func (scrapper *MockScrapper) DeleteChat(context.Context, int64) error { return nil }
 
 func logger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -88,6 +89,8 @@ func TestCommandService_HandleList(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockScrapper := &MockScrapper{
@@ -98,7 +101,7 @@ func TestCommandService_HandleList(t *testing.T) {
 
 			service := NewCommandService(mockScrapper, logger())
 
-			result := service.HandleMessage(123, tt.message)
+			result := service.HandleMessage(ctx, 123, tt.message)
 
 			assert.Equalf(t, tt.expectedResult, result, "expected %q, got %q", tt.expectedResult, result)
 		})
@@ -206,6 +209,8 @@ func TestCommandService_TrackFlow(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockScrapper := &MockScrapper{
@@ -215,7 +220,7 @@ func TestCommandService_TrackFlow(t *testing.T) {
 			chatID := int64(47)
 
 			for i, step := range tt.dialog {
-				result := service.HandleMessage(chatID, step.userMessage)
+				result := service.HandleMessage(ctx, chatID, step.userMessage)
 				assert.Equalf(t, step.expectedBotMsg, result, "Step %d: sent %q\nexpected: %q\ngot: %q", i+1, step.userMessage, step.expectedBotMsg, result)
 			}
 		})

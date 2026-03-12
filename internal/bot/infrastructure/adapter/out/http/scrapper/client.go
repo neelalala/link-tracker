@@ -2,6 +2,7 @@ package scrapper
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	scrapperapplication "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
@@ -30,9 +31,9 @@ func NewClient(url string) *Client {
 	}
 }
 
-func (client *Client) RegisterChat(chatId int64) error {
+func (client *Client) RegisterChat(ctx context.Context, chatId int64) error {
 	reqUrl := fmt.Sprintf("%s/%s/%d", client.baseURL, registerTgChatEndpoint, chatId)
-	req, err := http.NewRequest(http.MethodPost, reqUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqUrl, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -54,9 +55,9 @@ func (client *Client) RegisterChat(chatId int64) error {
 	return nil
 }
 
-func (client *Client) DeleteChat(chatId int64) error {
+func (client *Client) DeleteChat(ctx context.Context, chatId int64) error {
 	reqUrl := fmt.Sprintf("%s/%s/%d", client.baseURL, deleteTgChatEndpoint, chatId)
-	req, err := http.NewRequest(http.MethodDelete, reqUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqUrl, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -78,9 +79,9 @@ func (client *Client) DeleteChat(chatId int64) error {
 	return nil
 }
 
-func (client *Client) GetTrackedLinks(chatId int64) ([]scrapperdomain.TrackedLink, error) {
+func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]scrapperdomain.TrackedLink, error) {
 	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, getLinksEndpoint)
-	req, err := http.NewRequest(http.MethodGet, reqUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqUrl, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -135,7 +136,7 @@ func (client *Client) GetTrackedLinks(chatId int64) ([]scrapperdomain.TrackedLin
 	return links, nil
 }
 
-func (client *Client) AddLink(chatId int64, url string, tags []string) (scrapperdomain.TrackedLink, error) {
+func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tags []string) (scrapperdomain.TrackedLink, error) {
 	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, trackLinksEndpoint)
 
 	type requestJson struct {
@@ -153,7 +154,7 @@ func (client *Client) AddLink(chatId int64, url string, tags []string) (scrapper
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, reqUrl, bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqUrl, bytes.NewReader(reqBody))
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -206,7 +207,7 @@ func (client *Client) AddLink(chatId int64, url string, tags []string) (scrapper
 	}, nil
 }
 
-func (client *Client) RemoveLink(chatId int64, url string) (scrapperdomain.TrackedLink, error) {
+func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) (scrapperdomain.TrackedLink, error) {
 	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, deleteLinksEndpoint)
 
 	type requestJson struct {
@@ -222,7 +223,7 @@ func (client *Client) RemoveLink(chatId int64, url string) (scrapperdomain.Track
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodDelete, reqUrl, bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqUrl, bytes.NewReader(reqBody))
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to create request: %w", err)
 	}

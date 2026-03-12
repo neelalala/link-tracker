@@ -2,6 +2,7 @@ package notifier
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
@@ -26,7 +27,7 @@ func NewBot(url string) *Bot {
 	}
 }
 
-func (bot *Bot) SendUpdate(update domain.LinkUpdate) error {
+func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
 	type request struct {
 		Id          int64   `json:"id"`
 		Url         string  `json:"url"`

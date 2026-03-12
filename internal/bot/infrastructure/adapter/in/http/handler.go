@@ -96,7 +96,9 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 		TgChatIDs:   req.TgChatIds,
 	}
 
-	err = handler.updateHandler.HandleUpdate(linkUpdate)
+	ctx := r.Context()
+
+	err = handler.updateHandler.HandleUpdate(ctx, linkUpdate)
 	if err != nil {
 		handler.logger.Warn(
 			"Error while handling update on link",

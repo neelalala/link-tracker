@@ -1,6 +1,9 @@
 package domain
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 type Chat struct {
 	ID int64
@@ -12,7 +15,7 @@ var (
 )
 
 type ChatRepository interface {
-	Create(Chat) error
-	GetById(int64) (Chat, error)
-	Delete(Chat) error
+	Create(context.Context, Chat) error
+	GetById(context.Context, int64) (Chat, error)
+	Delete(context.Context, Chat) error
 }

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
@@ -36,29 +37,29 @@ func NewSubscriptionService(
 	}
 }
 
-func (service *SubscriptionService) RegisterChat(chatID int64) error {
+func (service *SubscriptionService) RegisterChat(ctx context.Context, chatID int64) error {
 	chat := domain.Chat{ID: chatID}
-	return service.chatRepo.Create(chat)
+	return service.chatRepo.Create(ctx, chat)
 }
 
-func (service *SubscriptionService) DeleteChat(chatID int64) error {
+func (service *SubscriptionService) DeleteChat(ctx context.Context, chatID int64) error {
 	chat := domain.Chat{ID: chatID}
-	return service.chatRepo.Delete(chat)
+	return service.chatRepo.Delete(ctx, chat)
 }
 
-func (service *SubscriptionService) GetTrackedLinks(chatID int64) ([]domain.TrackedLink, error) {
-	_, err := service.chatRepo.GetById(chatID)
+func (service *SubscriptionService) GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error) {
+	_, err := service.chatRepo.GetById(ctx, chatID)
 	if err != nil {
 		return nil, err
 	}
 
-	subs, err := service.subRepo.GetByChatId(chatID)
+	subs, err := service.subRepo.GetByChatId(ctx, chatID)
 	if err != nil {
 		return nil, err
 	}
 	trackedLinks := make([]domain.TrackedLink, len(subs))
 	for i, sub := range subs {
-		link, err := service.linkRepo.GetById(sub.LinkID)
+		link, err := service.linkRepo.GetById(ctx, sub.LinkID)
 		if err != nil {
 			return nil, err
 		}
@@ -71,8 +72,8 @@ func (service *SubscriptionService) GetTrackedLinks(chatID int64) ([]domain.Trac
 	return trackedLinks, nil
 }
 
-func (service *SubscriptionService) AddLink(chatID int64, url string, tags []string) (domain.TrackedLink, error) {
-	_, err := service.chatRepo.GetById(chatID)
+func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error) {
+	_, err := service.chatRepo.GetById(ctx, chatID)
 	if err != nil {
 		return domain.TrackedLink{}, err
 	}
@@ -81,12 +82,12 @@ func (service *SubscriptionService) AddLink(chatID int64, url string, tags []str
 		return domain.TrackedLink{}, fmt.Errorf("%w: %s", ErrUrlNotSupported, url)
 	}
 
-	link, err := service.linkRepo.GetByUrl(url)
+	link, err := service.linkRepo.GetByUrl(ctx, url)
 	if err != nil {
 		if !errors.Is(err, domain.ErrLinkNotFound) {
 			return domain.TrackedLink{}, err
 		}
-		link, err = service.linkRepo.Save(domain.Link{
+		link, err = service.linkRepo.Save(ctx, domain.Link{
 			URL:         url,
 			LastUpdated: time.Now(),
 		})
@@ -94,7 +95,7 @@ func (service *SubscriptionService) AddLink(chatID int64, url string, tags []str
 			return domain.TrackedLink{}, err
 		}
 	} else {
-		existingSubs, _ := service.subRepo.GetByChatId(chatID)
+		existingSubs, _ := service.subRepo.GetByChatId(ctx, chatID)
 		for _, s := range existingSubs {
 			if s.LinkID == link.ID {
 				return domain.TrackedLink{}, domain.ErrAlreadySubscribed
@@ -108,7 +109,7 @@ func (service *SubscriptionService) AddLink(chatID int64, url string, tags []str
 		Tags:   tags,
 	}
 
-	err = service.subRepo.Save(sub)
+	err = service.subRepo.Save(ctx, sub)
 	if err != nil {
 		return domain.TrackedLink{}, err
 	}
@@ -120,13 +121,13 @@ func (service *SubscriptionService) AddLink(chatID int64, url string, tags []str
 	}, nil
 }
 
-func (service *SubscriptionService) RemoveLink(chatID int64, url string) (domain.TrackedLink, error) {
-	_, err := service.chatRepo.GetById(chatID)
+func (service *SubscriptionService) RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error) {
+	_, err := service.chatRepo.GetById(ctx, chatID)
 	if err != nil {
 		return domain.TrackedLink{}, err
 	}
 
-	link, err := service.linkRepo.GetByUrl(url)
+	link, err := service.linkRepo.GetByUrl(ctx, url)
 	if err != nil {
 		return domain.TrackedLink{}, err
 	}
@@ -136,16 +137,16 @@ func (service *SubscriptionService) RemoveLink(chatID int64, url string) (domain
 		LinkID: link.ID,
 	}
 
-	sub, err = service.subRepo.Delete(sub)
+	sub, err = service.subRepo.Delete(ctx, sub)
 	if err != nil {
 		return domain.TrackedLink{}, err
 	}
 
-	if _, err := service.subRepo.GetByLinkId(link.ID); err != nil {
+	if _, err := service.subRepo.GetByLinkId(ctx, link.ID); err != nil {
 		if !errors.Is(err, domain.ErrLinkNotFound) {
 			return domain.TrackedLink{}, err
 		}
-		_ = service.linkRepo.Delete(link)
+		_ = service.linkRepo.Delete(ctx, link)
 	}
 
 	return domain.TrackedLink{

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/scheduler"
@@ -16,6 +17,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -49,9 +52,12 @@ func main() {
 
 	subsService := application.NewSubscriptionService(chatRepo, linkRepo, subRepo, fetcher, slogger)
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	apiServer := http.NewServer(cfg.ScrapperApiPort, subsService, slogger)
 
-	cron, err := scheduler.NewCron()
+	cron, err := scheduler.NewCron(ctx)
 	if err != nil {
 		slogger.Error("failed to init cron", slog.String("error", err.Error()))
 		os.Exit(1)
@@ -61,8 +67,8 @@ func main() {
 
 	scrapperService := application.NewScrapperService(linkRepo, subRepo, fetcher, botNotifier, slogger)
 
-	err = cron.Schedule(60*time.Second, func() {
-		err := scrapperService.GetUpdates()
+	err = cron.Schedule(60*time.Second, 120*time.Second, func(jobCtx context.Context) {
+		err := scrapperService.GetUpdates(jobCtx)
 		if err != nil {
 			slogger.Error("scrapper iteration failed", slog.String("error", err.Error()))
 		}
@@ -75,5 +81,15 @@ func main() {
 	cron.Start()
 	slogger.Info("scheduler started")
 
-	apiServer.Start()
+	slogger.Info("starting scrapper api server...")
+	if err := apiServer.Start(ctx); err != nil {
+		slogger.Error("api server stopped with error", slog.String("error", err.Error()))
+	}
+
+	slogger.Info("shutting down scheduler...")
+	if err := cron.Shutdown(); err != nil {
+		slogger.Error("failed to shutdown cron gracefully", slog.String("error", err.Error()))
+	}
+
+	slogger.Info("scrapper successfully stopped")
 }

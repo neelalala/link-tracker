@@ -1,6 +1,7 @@
 package stackoverflow
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
@@ -33,7 +34,7 @@ func (c *Client) CanHandle(url string) bool {
 	return strings.HasPrefix(url, c.baseURL)
 }
 
-func (c *Client) Fetch(url string) (application.FetchResult, error) {
+func (c *Client) Fetch(ctx context.Context, url string) (application.FetchResult, error) {
 	path := strings.TrimPrefix(url, c.baseURL)
 	parts := strings.Split(path, "/")
 
@@ -45,7 +46,7 @@ func (c *Client) Fetch(url string) (application.FetchResult, error) {
 
 	apiUrl := fmt.Sprintf("%s/questions/%s?site=stackoverflow.com", c.apiURL, questionID)
 
-	req, err := http.NewRequest(http.MethodGet, apiUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiUrl, nil)
 	if err != nil {
 		return application.FetchResult{}, err
 	}

@@ -1,6 +1,7 @@
 package github
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -40,6 +41,8 @@ func TestClient_Fetch_Resilience(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +56,7 @@ func TestClient_Fetch_Resilience(t *testing.T) {
 				apiURL:     ts.URL,
 			}
 
-			_, err := client.Fetch("https://stackoverflow.com/questions/12345/test")
+			_, err := client.Fetch(ctx, "https://stackoverflow.com/questions/12345/test")
 
 			assert.Equalf(t, tt.expectErr, err != nil, "Fetch() expected error = %v, got err = %v", tt.expectErr, err)
 		})

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"time"
 )
@@ -16,7 +17,7 @@ type FetchResult struct {
 
 type LinkFetcher interface {
 	CanHandle(url string) bool
-	Fetch(url string) (FetchResult, error)
+	Fetch(ctx context.Context, url string) (FetchResult, error)
 }
 
 type FetcherService struct {
@@ -38,10 +39,10 @@ func (service *FetcherService) CanHandle(url string) bool {
 	return false
 }
 
-func (service *FetcherService) Fetch(url string) (FetchResult, error) {
+func (service *FetcherService) Fetch(ctx context.Context, url string) (FetchResult, error) {
 	for _, linkFetcher := range service.linkFetchers {
 		if linkFetcher.CanHandle(url) {
-			return linkFetcher.Fetch(url)
+			return linkFetcher.Fetch(ctx, url)
 		}
 	}
 	return FetchResult{}, ErrUrlNotSupported

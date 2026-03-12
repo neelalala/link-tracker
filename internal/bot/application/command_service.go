@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
@@ -25,11 +26,11 @@ type TrackSession struct {
 }
 
 type Scrapper interface {
-	RegisterChat(chatId int64) error
-	DeleteChat(chatId int64) error
-	GetTrackedLinks(chatId int64) ([]scrapperdomain.TrackedLink, error)
-	AddLink(chatId int64, url string, tags []string) (scrapperdomain.TrackedLink, error)
-	RemoveLink(chatId int64, url string) (scrapperdomain.TrackedLink, error)
+	RegisterChat(ctx context.Context, chatId int64) error
+	DeleteChat(ctx context.Context, chatId int64) error
+	GetTrackedLinks(ctx context.Context, chatId int64) ([]scrapperdomain.TrackedLink, error)
+	AddLink(ctx context.Context, chatId int64, url string, tags []string) (scrapperdomain.TrackedLink, error)
+	RemoveLink(ctx context.Context, chatId int64, url string) (scrapperdomain.TrackedLink, error)
 }
 
 type CommandService struct {
@@ -48,7 +49,7 @@ func NewCommandService(scrapper Scrapper, logger *slog.Logger) *CommandService {
 	}
 }
 
-func (service *CommandService) HandleMessage(chatID int64, text string) string {
+func (service *CommandService) HandleMessage(ctx context.Context, chatID int64, text string) string {
 	text = strings.TrimSpace(text)
 
 	sb := strings.Builder{}
@@ -64,7 +65,7 @@ func (service *CommandService) HandleMessage(chatID int64, text string) string {
 
 	// TODO can start /track even if not registered
 	if exists && session.State != StateIdle {
-		sb.WriteString(service.processSM(chatID, text, session))
+		sb.WriteString(service.processSM(ctx, chatID, text, session))
 		return sb.String()
 	}
 
@@ -77,7 +78,7 @@ func (service *CommandService) HandleMessage(chatID int64, text string) string {
 	commandName := strings.TrimPrefix(parts[0], "/")
 	args := parts[1:]
 
-	sb.WriteString(service.executeCommand(chatID, commandName, args))
+	sb.WriteString(service.executeCommand(ctx, chatID, commandName, args))
 	return strings.TrimSpace(sb.String())
 }
 
@@ -87,7 +88,7 @@ func (service *CommandService) clearSession(chatID int64) {
 	delete(service.sessions, chatID)
 }
 
-func (service *CommandService) processSM(chatID int64, text string, session *TrackSession) string {
+func (service *CommandService) processSM(ctx context.Context, chatID int64, text string, session *TrackSession) string {
 	service.mu.Lock()
 	defer service.mu.Unlock()
 
@@ -110,7 +111,7 @@ func (service *CommandService) processSM(chatID int64, text string, session *Tra
 			}
 		}
 
-		_, err := service.scrapper.AddLink(chatID, session.URL, tags)
+		_, err := service.scrapper.AddLink(ctx, chatID, session.URL, tags)
 
 		delete(service.sessions, chatID)
 
@@ -134,10 +135,10 @@ func (service *CommandService) processSM(chatID int64, text string, session *Tra
 	}
 }
 
-func (service *CommandService) executeCommand(chatID int64, cmd string, args []string) string {
+func (service *CommandService) executeCommand(ctx context.Context, chatID int64, cmd string, args []string) string {
 	switch cmd {
 	case "start":
-		return service.handleStart(chatID)
+		return service.handleStart(ctx, chatID)
 	case "help":
 		return service.handleHelp()
 	case "track":
@@ -146,9 +147,9 @@ func (service *CommandService) executeCommand(chatID int64, cmd string, args []s
 		service.mu.Unlock()
 		return "Please send the link you want to track. Send /cancel to abort."
 	case "untrack":
-		return service.handleUntrack(chatID, args)
+		return service.handleUntrack(ctx, chatID, args)
 	case "list":
-		return service.handleList(chatID, args)
+		return service.handleList(ctx, chatID, args)
 	case "cancel":
 		return ""
 	default:
@@ -156,13 +157,13 @@ func (service *CommandService) executeCommand(chatID int64, cmd string, args []s
 	}
 }
 
-func (service *CommandService) handleUntrack(chatID int64, args []string) string {
+func (service *CommandService) handleUntrack(ctx context.Context, chatID int64, args []string) string {
 	if len(args) == 0 {
 		return "Please provide a link to untrack. Usage: /untrack <link>"
 	}
 	url := args[0]
 
-	_, err := service.scrapper.RemoveLink(chatID, url)
+	_, err := service.scrapper.RemoveLink(ctx, chatID, url)
 	if err != nil {
 		if errors.Is(err, scrapperdomain.ErrLinkNotFound) || errors.Is(err, scrapperdomain.ErrNotSubscribed) {
 			return "You're not tracking this link."
@@ -174,8 +175,8 @@ func (service *CommandService) handleUntrack(chatID int64, args []string) string
 	return fmt.Sprintf("Link %s has been untracked.", url)
 }
 
-func (service *CommandService) handleList(chatID int64, args []string) string {
-	links, err := service.scrapper.GetTrackedLinks(chatID)
+func (service *CommandService) handleList(ctx context.Context, chatID int64, args []string) string {
+	links, err := service.scrapper.GetTrackedLinks(ctx, chatID)
 	if err != nil {
 		service.logger.Error("Scrapper GetTrackedLinks failed", slog.String("error", err.Error()))
 		return "Something went wrong while getting your links."
@@ -243,8 +244,8 @@ Outer:
 	return filteredLinks
 }
 
-func (service *CommandService) handleStart(chatID int64) string {
-	err := service.scrapper.RegisterChat(chatID)
+func (service *CommandService) handleStart(ctx context.Context, chatID int64) string {
+	err := service.scrapper.RegisterChat(ctx, chatID)
 	if err != nil {
 		if errors.Is(err, scrapperdomain.ErrChatAlreadyRegistered) {
 			return "Hi again! This bot can track updates on your links, so you won't miss on news! /help for list my commands"

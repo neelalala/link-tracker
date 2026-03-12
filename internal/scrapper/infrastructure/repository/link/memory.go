@@ -1,6 +1,7 @@
 package link
 
 import (
+	"context"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"sort"
 	"sync"
@@ -19,7 +20,7 @@ func NewMemoryRepository() *MemoryRepository {
 	}
 }
 
-func (linkRepo *MemoryRepository) Save(link domain.Link) (domain.Link, error) {
+func (linkRepo *MemoryRepository) Save(ctx context.Context, link domain.Link) (domain.Link, error) {
 	linkRepo.mu.Lock()
 	defer linkRepo.mu.Unlock()
 	if link.ID == 0 {
@@ -30,7 +31,7 @@ func (linkRepo *MemoryRepository) Save(link domain.Link) (domain.Link, error) {
 	return link, nil
 }
 
-func (linkRepo *MemoryRepository) GetById(id int64) (domain.Link, error) {
+func (linkRepo *MemoryRepository) GetById(ctx context.Context, id int64) (domain.Link, error) {
 	linkRepo.mu.RLock()
 	defer linkRepo.mu.RUnlock()
 	for _, link := range linkRepo.links {
@@ -41,7 +42,7 @@ func (linkRepo *MemoryRepository) GetById(id int64) (domain.Link, error) {
 	return domain.Link{}, domain.ErrLinkNotFound
 }
 
-func (linkRepo *MemoryRepository) GetByUrl(url string) (domain.Link, error) {
+func (linkRepo *MemoryRepository) GetByUrl(ctx context.Context, url string) (domain.Link, error) {
 	linkRepo.mu.RLock()
 	defer linkRepo.mu.RUnlock()
 	if link, ok := linkRepo.links[url]; ok {
@@ -50,7 +51,7 @@ func (linkRepo *MemoryRepository) GetByUrl(url string) (domain.Link, error) {
 	return domain.Link{}, domain.ErrLinkNotFound
 }
 
-func (linkRepo *MemoryRepository) Delete(link domain.Link) error {
+func (linkRepo *MemoryRepository) Delete(ctx context.Context, link domain.Link) error {
 	linkRepo.mu.Lock()
 	defer linkRepo.mu.Unlock()
 
@@ -62,7 +63,7 @@ func (linkRepo *MemoryRepository) Delete(link domain.Link) error {
 	return nil
 }
 
-func (linkRepo *MemoryRepository) GetBatch(limit int, offset int) ([]domain.Link, error) {
+func (linkRepo *MemoryRepository) GetBatch(ctx context.Context, limit int, offset int) ([]domain.Link, error) {
 	linkRepo.mu.RLock()
 	defer linkRepo.mu.RUnlock()
 

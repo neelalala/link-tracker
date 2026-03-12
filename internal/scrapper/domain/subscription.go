@@ -1,6 +1,9 @@
 package domain
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 type Subscription struct {
 	ChatID int64
@@ -20,8 +23,8 @@ var (
 )
 
 type SubscriptionRepository interface {
-	Save(Subscription) error
-	GetByChatId(int64) ([]Subscription, error)
-	GetByLinkId(int64) ([]Subscription, error)
-	Delete(Subscription) (Subscription, error)
+	Save(ctx context.Context, sub Subscription) error
+	GetByChatId(ctx context.Context, chatId int64) ([]Subscription, error)
+	GetByLinkId(ctx context.Context, linkId int64) ([]Subscription, error)
+	Delete(ctx context.Context, sub Subscription) (Subscription, error)
 }

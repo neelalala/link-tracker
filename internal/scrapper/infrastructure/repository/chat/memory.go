@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"context"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"sync"
 )
@@ -16,7 +17,7 @@ func NewMemoryRepository() *MemoryRepository {
 	}
 }
 
-func (chatRepo *MemoryRepository) Create(chat domain.Chat) error {
+func (chatRepo *MemoryRepository) Create(ctx context.Context, chat domain.Chat) error {
 	chatRepo.mu.Lock()
 	defer chatRepo.mu.Unlock()
 	if _, ok := chatRepo.chats[chat.ID]; ok {
@@ -26,7 +27,7 @@ func (chatRepo *MemoryRepository) Create(chat domain.Chat) error {
 	return nil
 }
 
-func (chatRepo *MemoryRepository) GetById(id int64) (domain.Chat, error) {
+func (chatRepo *MemoryRepository) GetById(ctx context.Context, id int64) (domain.Chat, error) {
 	chatRepo.mu.RLock()
 	defer chatRepo.mu.RUnlock()
 	if chat, ok := chatRepo.chats[id]; ok {
@@ -35,7 +36,7 @@ func (chatRepo *MemoryRepository) GetById(id int64) (domain.Chat, error) {
 	return domain.Chat{}, domain.ErrChatNotRegistered
 }
 
-func (chatRepo *MemoryRepository) Delete(chat domain.Chat) error {
+func (chatRepo *MemoryRepository) Delete(ctx context.Context, chat domain.Chat) error {
 	chatRepo.mu.Lock()
 	defer chatRepo.mu.Unlock()
 	if _, ok := chatRepo.chats[chat.ID]; !ok {

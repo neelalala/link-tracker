@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"context"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"sync"
 )
@@ -16,7 +17,7 @@ func NewMemoryRepository() *MemoryRepository {
 	}
 }
 
-func (subRepo *MemoryRepository) Save(subscription domain.Subscription) error {
+func (subRepo *MemoryRepository) Save(ctx context.Context, subscription domain.Subscription) error {
 	subRepo.mu.Lock()
 	defer subRepo.mu.Unlock()
 
@@ -32,7 +33,7 @@ func (subRepo *MemoryRepository) Save(subscription domain.Subscription) error {
 	return nil
 }
 
-func (subRepo *MemoryRepository) GetByChatId(id int64) ([]domain.Subscription, error) {
+func (subRepo *MemoryRepository) GetByChatId(ctx context.Context, id int64) ([]domain.Subscription, error) {
 	subRepo.mu.RLock()
 	defer subRepo.mu.RUnlock()
 	var subscriptions []domain.Subscription
@@ -44,7 +45,7 @@ func (subRepo *MemoryRepository) GetByChatId(id int64) ([]domain.Subscription, e
 	return subscriptions, nil
 }
 
-func (subRepo *MemoryRepository) GetByLinkId(id int64) ([]domain.Subscription, error) {
+func (subRepo *MemoryRepository) GetByLinkId(ctx context.Context, id int64) ([]domain.Subscription, error) {
 	subRepo.mu.RLock()
 	defer subRepo.mu.RUnlock()
 	var subscriptions []domain.Subscription
@@ -59,7 +60,7 @@ func (subRepo *MemoryRepository) GetByLinkId(id int64) ([]domain.Subscription, e
 	return subscriptions, nil
 }
 
-func (subRepo *MemoryRepository) Delete(subscription domain.Subscription) (domain.Subscription, error) {
+func (subRepo *MemoryRepository) Delete(ctx context.Context, subscription domain.Subscription) (domain.Subscription, error) {
 	subRepo.mu.Lock()
 	defer subRepo.mu.Unlock()
 	if _, ok := subRepo.links[subscription.LinkID]; !ok {

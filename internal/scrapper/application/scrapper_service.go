@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
 )
@@ -8,7 +9,7 @@ import (
 const batchSize = 100
 
 type UpdateNotifier interface {
-	SendUpdate(update domain.LinkUpdate) error
+	SendUpdate(ctx context.Context, update domain.LinkUpdate) error
 }
 
 type ScrapperService struct {
@@ -35,13 +36,13 @@ func NewScrapperService(
 	}
 }
 
-func (s *ScrapperService) GetUpdates() error {
+func (s *ScrapperService) GetUpdates(ctx context.Context) error {
 	s.logger.Info("started checking all links for updates")
 
 	offset := 0
 
 	for {
-		links, err := s.linkRepo.GetBatch(batchSize, offset)
+		links, err := s.linkRepo.GetBatch(ctx, batchSize, offset)
 		if err != nil {
 			s.logger.Error("failed to get batch of links", slog.String("error", err.Error()))
 			return err
@@ -52,7 +53,7 @@ func (s *ScrapperService) GetUpdates() error {
 		}
 
 		for _, link := range links {
-			s.processLink(link)
+			s.processLink(ctx, link)
 		}
 
 		offset += batchSize
@@ -62,8 +63,8 @@ func (s *ScrapperService) GetUpdates() error {
 	return nil
 }
 
-func (s *ScrapperService) processLink(link domain.Link) {
-	subs, err := s.subRepo.GetByLinkId(link.ID)
+func (s *ScrapperService) processLink(ctx context.Context, link domain.Link) {
+	subs, err := s.subRepo.GetByLinkId(ctx, link.ID)
 	if err != nil {
 		s.logger.Error("failed to get subscriptions", slog.Int64("link_id", link.ID))
 		return
@@ -82,14 +83,14 @@ func (s *ScrapperService) processLink(link domain.Link) {
 				Description: "no fetcher for this link yet",
 				TgChatIDs:   chatIDs,
 			}
-			s.notifier.SendUpdate(update)
+			s.notifier.SendUpdate(ctx, update)
 		} else {
 			s.logger.Warn("link with no subscribers still in DB", slog.String("url", link.URL))
 		}
 		return
 	}
 
-	result, err := s.fetcher.Fetch(link.URL)
+	result, err := s.fetcher.Fetch(ctx, link.URL)
 	if err != nil {
 		s.logger.Error("failed to fetch link", slog.String("url", link.URL), slog.String("error", err.Error()))
 		return
@@ -106,7 +107,7 @@ func (s *ScrapperService) processLink(link domain.Link) {
 				TgChatIDs:   chatIDs,
 			}
 
-			err = s.notifier.SendUpdate(update)
+			err = s.notifier.SendUpdate(ctx, update)
 			if err != nil {
 				s.logger.Error("failed to notify bot", slog.String("error", err.Error()))
 				return
@@ -114,7 +115,7 @@ func (s *ScrapperService) processLink(link domain.Link) {
 		}
 
 		link.LastUpdated = result.UpdatedAt
-		_, err = s.linkRepo.Save(link)
+		_, err = s.linkRepo.Save(ctx, link)
 		if err != nil {
 			s.logger.Error("failed to update link in DB", slog.Int64("link_id", link.ID))
 		}

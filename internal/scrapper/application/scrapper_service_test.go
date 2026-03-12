@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -19,35 +20,35 @@ type MockLinkRepo struct {
 	DeleteFunc   func(link domain.Link) error
 }
 
-func (m *MockLinkRepo) GetBatch(limit, offset int) ([]domain.Link, error) {
+func (m *MockLinkRepo) GetBatch(ctx context.Context, limit, offset int) ([]domain.Link, error) {
 	if m.GetBatchFunc != nil {
 		return m.GetBatchFunc(limit, offset)
 	}
 	return nil, nil
 }
 
-func (m *MockLinkRepo) GetById(id int64) (domain.Link, error) {
+func (m *MockLinkRepo) GetById(ctx context.Context, id int64) (domain.Link, error) {
 	if m.GetByIdFunc != nil {
 		return m.GetByIdFunc(id)
 	}
 	return domain.Link{}, nil
 }
 
-func (m *MockLinkRepo) GetByUrl(url string) (domain.Link, error) {
+func (m *MockLinkRepo) GetByUrl(ctx context.Context, url string) (domain.Link, error) {
 	if m.GetByUrlFunc != nil {
 		return m.GetByUrlFunc(url)
 	}
 	return domain.Link{}, nil
 }
 
-func (m *MockLinkRepo) Save(link domain.Link) (domain.Link, error) {
+func (m *MockLinkRepo) Save(ctx context.Context, link domain.Link) (domain.Link, error) {
 	if m.SaveFunc != nil {
 		return m.SaveFunc(link)
 	}
 	return link, nil
 }
 
-func (m *MockLinkRepo) Delete(link domain.Link) error {
+func (m *MockLinkRepo) Delete(ctx context.Context, link domain.Link) error {
 	if m.DeleteFunc != nil {
 		return m.DeleteFunc(link)
 	}
@@ -61,28 +62,28 @@ type MockSubRepo struct {
 	DeleteFunc      func(sub domain.Subscription) (domain.Subscription, error)
 }
 
-func (m *MockSubRepo) GetByLinkId(linkID int64) ([]domain.Subscription, error) {
+func (m *MockSubRepo) GetByLinkId(ctx context.Context, linkID int64) ([]domain.Subscription, error) {
 	if m.GetByLinkIdFunc != nil {
 		return m.GetByLinkIdFunc(linkID)
 	}
 	return nil, nil
 }
 
-func (m *MockSubRepo) GetByChatId(chatID int64) ([]domain.Subscription, error) {
+func (m *MockSubRepo) GetByChatId(ctx context.Context, chatID int64) ([]domain.Subscription, error) {
 	if m.GetByChatIdFunc != nil {
 		return m.GetByChatIdFunc(chatID)
 	}
 	return nil, nil
 }
 
-func (m *MockSubRepo) Save(sub domain.Subscription) error {
+func (m *MockSubRepo) Save(ctx context.Context, sub domain.Subscription) error {
 	if m.SaveFunc != nil {
 		return m.SaveFunc(sub)
 	}
 	return nil
 }
 
-func (m *MockSubRepo) Delete(sub domain.Subscription) (domain.Subscription, error) {
+func (m *MockSubRepo) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
 	if m.DeleteFunc != nil {
 		return m.DeleteFunc(sub)
 	}
@@ -93,7 +94,7 @@ type MockNotifier struct {
 	SentUpdates []domain.LinkUpdate
 }
 
-func (m *MockNotifier) SendUpdate(update domain.LinkUpdate) error {
+func (m *MockNotifier) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
 	m.SentUpdates = append(m.SentUpdates, update)
 	return nil
 }
@@ -102,7 +103,7 @@ type MockFetcher struct{}
 
 func (f *MockFetcher) CanHandle(string) bool { return true }
 
-func (f *MockFetcher) Fetch(string) (FetchResult, error) {
+func (f *MockFetcher) Fetch(context.Context, string) (FetchResult, error) {
 	return FetchResult{
 		UpdatedAt:   time.Now().Add(1 * time.Hour),
 		Description: "Mock update",
@@ -140,7 +141,7 @@ func TestScrapperService_ProcessLink_NotifiesOnlySubscribers(t *testing.T) {
 		LastUpdated: time.Now().Add(-1 * time.Hour),
 	}
 
-	service.processLink(testLink)
+	service.processLink(context.Background(), testLink)
 
 	require.Lenf(t, notifier.SentUpdates, 1, "Expected 1 update sent, got %d", len(notifier.SentUpdates))
 
