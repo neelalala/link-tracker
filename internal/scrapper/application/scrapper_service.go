@@ -3,20 +3,9 @@ package application
 import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
-	"time"
 )
 
 const batchSize = 100
-
-type FetchResult struct {
-	UpdatedAt   time.Time
-	Description string
-}
-
-type LinkFetcher interface {
-	CanHandle(url string) bool
-	Fetch(url string) (FetchResult, error)
-}
 
 type UpdateNotifier interface {
 	SendUpdate(update domain.LinkUpdate) error
@@ -25,7 +14,7 @@ type UpdateNotifier interface {
 type ScrapperService struct {
 	linkRepo domain.LinkRepository
 	subRepo  domain.SubscriptionRepository
-	fetchers []LinkFetcher
+	fetcher  *FetcherService
 	notifier UpdateNotifier
 	logger   *slog.Logger
 }
@@ -33,14 +22,14 @@ type ScrapperService struct {
 func NewScrapperService(
 	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,
-	fetchers []LinkFetcher,
+	fetcher *FetcherService,
 	notifier UpdateNotifier,
 	logger *slog.Logger,
 ) *ScrapperService {
 	return &ScrapperService{
 		linkRepo: linkRepo,
 		subRepo:  subRepo,
-		fetchers: fetchers,
+		fetcher:  fetcher,
 		notifier: notifier,
 		logger:   logger,
 	}
@@ -74,14 +63,6 @@ func (s *ScrapperService) GetUpdates() error {
 }
 
 func (s *ScrapperService) processLink(link domain.Link) {
-	var fetcher LinkFetcher
-	for _, f := range s.fetchers {
-		if f.CanHandle(link.URL) {
-			fetcher = f
-			break
-		}
-	}
-
 	subs, err := s.subRepo.GetByLinkId(link.ID)
 	if err != nil {
 		s.logger.Error("failed to get subscriptions", slog.Int64("link_id", link.ID))
@@ -93,7 +74,7 @@ func (s *ScrapperService) processLink(link domain.Link) {
 		chatIDs[i] = sub.ChatID
 	}
 
-	if fetcher == nil {
+	if !s.fetcher.CanHandle(link.URL) {
 		s.logger.Warn("no fetcher found for url", slog.String("url", link.URL))
 		if len(chatIDs) > 0 {
 			update := domain.LinkUpdate{
@@ -102,11 +83,13 @@ func (s *ScrapperService) processLink(link domain.Link) {
 				TgChatIDs:   chatIDs,
 			}
 			s.notifier.SendUpdate(update)
+		} else {
+			s.logger.Warn("link with no subscribers still in DB", slog.String("url", link.URL))
 		}
 		return
 	}
 
-	result, err := fetcher.Fetch(link.URL)
+	result, err := s.fetcher.Fetch(link.URL)
 	if err != nil {
 		s.logger.Error("failed to fetch link", slog.String("url", link.URL), slog.String("error", err.Error()))
 		return
