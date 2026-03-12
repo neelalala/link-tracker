@@ -7,19 +7,13 @@ services:
       - .env
     depends_on:
       - scrapper
-    environment:
-      - SCRAPPER_URL=http://scrapper:63343
 
   scrapper:
     build:
       context: .
       dockerfile: cmd/scrapper/Dockerfile
-    ports:
-      - "${API_SCRAPPER_SERVER_PORT:-63343}:63343"
     env_file:
       - .env
-    environment:
-      - BOT_URL=http://bot:63342
 
 networks:
   app-network:
