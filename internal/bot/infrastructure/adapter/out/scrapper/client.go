@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	scrapper_domain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	scrapperapplication "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
+	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"io"
 	"net/http"
 )
@@ -45,7 +46,7 @@ func (client *Client) RegisterChat(chatId int64) error {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusConflict {
-			return scrapper_domain.ErrChatAlreadyRegistered
+			return scrapperdomain.ErrChatAlreadyRegistered
 		}
 		return fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
@@ -69,7 +70,7 @@ func (client *Client) DeleteChat(chatId int64) error {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
-			return scrapper_domain.ErrChatNotRegistered
+			return scrapperdomain.ErrChatNotRegistered
 		}
 		return fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
@@ -77,7 +78,7 @@ func (client *Client) DeleteChat(chatId int64) error {
 	return nil
 }
 
-func (client *Client) GetTrackedLinks(chatId int64) ([]scrapper_domain.TrackedLink, error) {
+func (client *Client) GetTrackedLinks(chatId int64) ([]scrapperdomain.TrackedLink, error) {
 	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, getLinksEndpoint)
 	req, err := http.NewRequest(http.MethodGet, reqUrl, nil)
 	if err != nil {
@@ -94,7 +95,7 @@ func (client *Client) GetTrackedLinks(chatId int64) ([]scrapper_domain.TrackedLi
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
-			return nil, scrapper_domain.ErrChatNotRegistered
+			return nil, scrapperdomain.ErrChatNotRegistered
 		}
 		return nil, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
@@ -122,9 +123,9 @@ func (client *Client) GetTrackedLinks(chatId int64) ([]scrapper_domain.TrackedLi
 		return nil, fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
-	var links []scrapper_domain.TrackedLink
+	var links []scrapperdomain.TrackedLink
 	for _, link := range linksJson.Links {
-		links = append(links, scrapper_domain.TrackedLink{
+		links = append(links, scrapperdomain.TrackedLink{
 			ID:   link.Id,
 			URL:  link.Url,
 			Tags: link.Tags,
@@ -134,7 +135,7 @@ func (client *Client) GetTrackedLinks(chatId int64) ([]scrapper_domain.TrackedLi
 	return links, nil
 }
 
-func (client *Client) AddLink(chatId int64, url string, tags []string) (scrapper_domain.TrackedLink, error) {
+func (client *Client) AddLink(chatId int64, url string, tags []string) (scrapperdomain.TrackedLink, error) {
 	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, trackLinksEndpoint)
 
 	type requestJson struct {
@@ -149,12 +150,12 @@ func (client *Client) AddLink(chatId int64, url string, tags []string) (scrapper
 
 	reqBody, err := json.Marshal(reqJson)
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to marshal request body: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, reqUrl, bytes.NewReader(reqBody))
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to create request: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
@@ -162,19 +163,22 @@ func (client *Client) AddLink(chatId int64, url string, tags []string) (scrapper
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to send request to scrapper: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
-			return scrapper_domain.TrackedLink{}, scrapper_domain.ErrChatNotRegistered
+			return scrapperdomain.TrackedLink{}, scrapperdomain.ErrChatNotRegistered
 		}
 		if resp.StatusCode == http.StatusConflict {
-			return scrapper_domain.TrackedLink{}, scrapper_domain.ErrAlreadySubscribed
+			return scrapperdomain.TrackedLink{}, scrapperdomain.ErrAlreadySubscribed
 		}
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
+		if resp.StatusCode == http.StatusUnprocessableEntity {
+			return scrapperdomain.TrackedLink{}, scrapperapplication.ErrUrlNotSupported
+		}
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
 
 	type responseJson struct {
@@ -187,22 +191,22 @@ func (client *Client) AddLink(chatId int64, url string, tags []string) (scrapper
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to read response body: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	err = json.Unmarshal(data, &response)
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to unmarshal response body: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
-	return scrapper_domain.TrackedLink{
+	return scrapperdomain.TrackedLink{
 		ID:   response.Id,
 		URL:  response.Url,
 		Tags: response.Tags,
 	}, nil
 }
 
-func (client *Client) RemoveLink(chatId int64, url string) (scrapper_domain.TrackedLink, error) {
+func (client *Client) RemoveLink(chatId int64, url string) (scrapperdomain.TrackedLink, error) {
 	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, deleteLinksEndpoint)
 
 	type requestJson struct {
@@ -215,12 +219,12 @@ func (client *Client) RemoveLink(chatId int64, url string) (scrapper_domain.Trac
 
 	reqBody, err := json.Marshal(reqJson)
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to marshal request body: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, reqUrl, bytes.NewReader(reqBody))
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to create request: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
@@ -228,17 +232,17 @@ func (client *Client) RemoveLink(chatId int64, url string) (scrapper_domain.Trac
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to send request to scrapper: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
-			return scrapper_domain.TrackedLink{}, fmt.Errorf("chat not registered or link not found")
+			return scrapperdomain.TrackedLink{}, fmt.Errorf("chat not registered or link not found")
 		}
 
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
 
 	type responseJson struct {
@@ -251,15 +255,15 @@ func (client *Client) RemoveLink(chatId int64, url string) (scrapper_domain.Trac
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to read response body: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	err = json.Unmarshal(data, &response)
 	if err != nil {
-		return scrapper_domain.TrackedLink{}, fmt.Errorf("failed to unmarshal response body: %w", err)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
-	return scrapper_domain.TrackedLink{
+	return scrapperdomain.TrackedLink{
 		ID:   response.Id,
 		URL:  response.Url,
 		Tags: response.Tags,

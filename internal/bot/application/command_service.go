@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	scrapperapplication "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
 	"strings"
@@ -118,7 +119,10 @@ func (service *CommandService) processSM(chatID int64, text string, session *Tra
 				return "You're already tracking this link."
 			}
 			if errors.Is(err, scrapperdomain.ErrChatNotRegistered) {
-				return "Please register before tracking any link. Just use /strat :)"
+				return "Please register before tracking any link. Just use /start :)"
+			}
+			if errors.Is(err, scrapperapplication.ErrUrlNotSupported) {
+				return "This link is not supported yet."
 			}
 			service.logger.Error("Scrapper AddLink failed", slog.String("error", err.Error()))
 			return "Something went wrong while saving the link in the scrapper."
