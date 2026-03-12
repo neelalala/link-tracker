@@ -2,30 +2,37 @@ package application
 
 import (
 	"errors"
+	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
 	"time"
 )
 
-type SubscriptionService struct {
-	chatRepo domain.ChatRepository
-	linkRepo domain.LinkRepository
-	subRepo  domain.SubscriptionRepository
+type LinkValidator interface {
+	CanHandle(url string) bool
+}
 
-	logger *slog.Logger
+type SubscriptionService struct {
+	chatRepo      domain.ChatRepository
+	linkRepo      domain.LinkRepository
+	subRepo       domain.SubscriptionRepository
+	linkValidator LinkValidator
+	logger        *slog.Logger
 }
 
 func NewSubscriptionService(
 	chatRepo domain.ChatRepository,
 	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,
+	linkValidator LinkValidator,
 	logger *slog.Logger,
 ) *SubscriptionService {
 	return &SubscriptionService{
-		chatRepo: chatRepo,
-		linkRepo: linkRepo,
-		subRepo:  subRepo,
-		logger:   logger,
+		chatRepo:      chatRepo,
+		linkRepo:      linkRepo,
+		subRepo:       subRepo,
+		linkValidator: linkValidator,
+		logger:        logger,
 	}
 }
 
@@ -68,6 +75,10 @@ func (service *SubscriptionService) AddLink(chatID int64, url string, tags []str
 	_, err := service.chatRepo.GetById(chatID)
 	if err != nil {
 		return domain.TrackedLink{}, err
+	}
+
+	if !service.linkValidator.CanHandle(url) {
+		return domain.TrackedLink{}, fmt.Errorf("%w: %s", ErrUrlNotSupported, url)
 	}
 
 	link, err := service.linkRepo.GetByUrl(url)

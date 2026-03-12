@@ -41,7 +41,13 @@ func main() {
 	linkRepo := link.NewMemoryRepository()
 	subRepo := subscription.NewMemoryRepository()
 
-	subsService := application.NewSubscriptionService(chatRepo, linkRepo, subRepo, slogger)
+	githubClient := github.NewClient()
+	stackoverflowClient := stackoverflow.NewClient()
+
+	fetchers := []application.LinkFetcher{githubClient, stackoverflowClient}
+	fetcher := application.NewFetcherService(fetchers)
+
+	subsService := application.NewSubscriptionService(chatRepo, linkRepo, subRepo, fetcher, slogger)
 
 	apiServer := http.NewServer(cfg.ScrapperApiPort, subsService, slogger)
 
@@ -53,11 +59,7 @@ func main() {
 
 	var botNotifier application.UpdateNotifier = notifier.NewBot(cfg.BotUrl)
 
-	githubClient := github.NewClient()
-	stackoverflowClient := stackoverflow.NewClient()
-
-	fetchers := []application.LinkFetcher{githubClient, stackoverflowClient}
-	scrapperService := application.NewScrapperService(linkRepo, subRepo, fetchers, botNotifier, slogger)
+	scrapperService := application.NewScrapperService(linkRepo, subRepo, fetcher, botNotifier, slogger)
 
 	err = cron.Schedule(60*time.Second, func() {
 		err := scrapperService.GetUpdates()
