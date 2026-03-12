@@ -82,13 +82,27 @@ func (s *ScrapperService) processLink(link domain.Link) {
 		}
 	}
 
+	subs, err := s.subRepo.GetByLinkId(link.ID)
+	if err != nil {
+		s.logger.Error("failed to get subscriptions", slog.Int64("link_id", link.ID))
+		return
+	}
+
+	chatIDs := make([]int64, len(subs))
+	for i, sub := range subs {
+		chatIDs[i] = sub.ChatID
+	}
+
 	if fetcher == nil {
 		s.logger.Warn("no fetcher found for url", slog.String("url", link.URL))
-		update := domain.LinkUpdate{
-			URL:         link.URL,
-			Description: "no fetcher for this link yet",
+		if len(chatIDs) > 0 {
+			update := domain.LinkUpdate{
+				URL:         link.URL,
+				Description: "no fetcher for this link yet",
+				TgChatIDs:   chatIDs,
+			}
+			s.notifier.SendUpdate(update)
 		}
-		s.notifier.SendUpdate(update)
 		return
 	}
 
@@ -101,18 +115,7 @@ func (s *ScrapperService) processLink(link domain.Link) {
 	if result.UpdatedAt.After(link.LastUpdated) {
 		s.logger.Info("found update for link", slog.String("url", link.URL))
 
-		subs, err := s.subRepo.GetByLinkId(link.ID)
-		if err != nil {
-			s.logger.Error("failed to get subscriptions", slog.Int64("link_id", link.ID))
-			return
-		}
-
-		if len(subs) > 0 {
-			chatIDs := make([]int64, len(subs))
-			for i, sub := range subs {
-				chatIDs[i] = sub.ChatID
-			}
-
+		if len(chatIDs) > 0 {
 			update := domain.LinkUpdate{
 				ID:          link.ID,
 				URL:         link.URL,
