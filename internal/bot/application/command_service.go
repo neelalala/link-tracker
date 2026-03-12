@@ -78,7 +78,7 @@ func (service *CommandService) HandleMessage(chatID int64, text string) string {
 	args := parts[1:]
 
 	sb.WriteString(service.executeCommand(chatID, commandName, args))
-	return sb.String()
+	return strings.TrimSpace(sb.String())
 }
 
 func (service *CommandService) clearSession(chatID int64) {
