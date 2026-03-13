@@ -29,13 +29,6 @@ type updateRequest struct {
 	Description string  `json:"description"`
 	TgChatIds   []int64 `json:"tgChatIds"`
 }
-type apiErrorResponse struct {
-	Description      string   `json:"description"`
-	Code             string   `json:"code"`
-	ExceptionName    string   `json:"exceptionName"`
-	ExceptionMessage string   `json:"exceptionMessage"`
-	Stacktrace       []string `json:"stacktrace"`
-}
 
 func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, BodyBytesLimit))
@@ -52,16 +45,13 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 			slog.String("error", err.Error()),
 		)
 
-		resp := apiErrorResponse{
-			Description:      "Error reading request body",
-			Code:             "internal_error",
-			ExceptionName:    "body_request_reading_exception",
-			ExceptionMessage: "",
-			Stacktrace:       []string{"internal_error"},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(resp)
+		handler.writeError(w, http.StatusInternalServerError,
+			"Error reading request body",
+			"internal_error",
+			"body_request_reading_exception",
+			"Error while reading request body",
+			err,
+		)
 		return
 	}
 	defer r.Body.Close()
@@ -76,16 +66,13 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 			slog.String("request_body", string(body)),
 		)
 
-		resp := apiErrorResponse{
-			Description:      "Bad request parameters",
-			Code:             "bad_request",
-			ExceptionName:    "bad_request_parameters",
-			ExceptionMessage: "Could not parse request body. Body: " + string(body),
-			Stacktrace:       []string{err.Error()},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(resp)
+		handler.writeError(w, http.StatusBadRequest,
+			"Bad request parameters",
+			"bad_request",
+			"bad_request_parameters",
+			"Could not parse request body. Body: "+string(body),
+			err,
+		)
 		return
 	}
 
@@ -107,18 +94,37 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 			slog.String("link", req.Url),
 		)
 
-		resp := apiErrorResponse{
-			Description:      "Error handling update on link",
-			Code:             "internal_error",
-			ExceptionName:    "update_handler_exception",
-			ExceptionMessage: "Could not handle update on link",
-			Stacktrace:       []string{err.Error()},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(resp)
+		handler.writeError(w, http.StatusInternalServerError,
+			"Error handling update on link",
+			"internal_error",
+			"update_handler_exception",
+			"Could not handle update on link",
+			err,
+		)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (handler *Handler) writeError(w http.ResponseWriter, status int, desc, code, excName, excMessage string, err error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	type apiErrorResponse struct {
+		Description      string   `json:"description"`
+		Code             string   `json:"code"`
+		ExceptionName    string   `json:"exceptionName"`
+		ExceptionMessage string   `json:"exceptionMessage"`
+		Stacktrace       []string `json:"stacktrace"`
+	}
+
+	resp := apiErrorResponse{
+		Description:      desc,
+		Code:             code,
+		ExceptionName:    excName,
+		ExceptionMessage: excMessage,
+		Stacktrace:       []string{err.Error()},
+	}
+	_ = json.NewEncoder(w).Encode(resp)
 }
