@@ -67,13 +67,13 @@ func (subRepo *MemoryRepository) Delete(ctx context.Context, subscription domain
 		return domain.Subscription{}, domain.ErrLinkNotFound
 	}
 
-	subs := subRepo.links[subscription.LinkID]
-	if _, ok := subs[subscription.ChatID]; !ok {
+	subscriptions := subRepo.links[subscription.LinkID]
+	if _, ok := subscriptions[subscription.ChatID]; !ok {
 		return domain.Subscription{}, domain.ErrNotSubscribed
 	}
-	sub := subs[subscription.ChatID]
-	delete(subs, subscription.ChatID)
-	if len(subs) == 0 {
+	sub := subscriptions[subscription.ChatID]
+	delete(subscriptions, subscription.ChatID)
+	if len(subscriptions) == 0 {
 		delete(subRepo.links, subscription.LinkID)
 	}
 	return sub, nil

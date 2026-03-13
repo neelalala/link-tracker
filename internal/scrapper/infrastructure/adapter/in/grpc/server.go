@@ -26,28 +26,28 @@ type Server struct {
 func NewServer(port uint16, service *application.SubscriptionService, logger *slog.Logger) *Server {
 	grpcServer := grpc.NewServer()
 
-	srv := &Server{
+	server := &Server{
 		port:       port,
 		grpcServer: grpcServer,
 		service:    service,
 		logger:     logger,
 	}
 
-	pb.RegisterScrapperServiceServer(grpcServer, srv)
-	return srv
+	pb.RegisterScrapperServiceServer(grpcServer, server)
+	return server
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+func (server *Server) Start(ctx context.Context) error {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", server.port))
 	if err != nil {
-		return fmt.Errorf("failed to listen on port %d: %w", s.port, err)
+		return fmt.Errorf("failed to listen on port %d: %w", server.port, err)
 	}
 
 	errCh := make(chan error, 1)
 
 	go func() {
-		s.logger.Info("gRPC server is running", slog.Int("port", int(s.port)))
-		if err := s.grpcServer.Serve(lis); err != nil {
+		server.logger.Info("gRPC server is running", slog.Int("port", int(server.port)))
+		if err := server.grpcServer.Serve(listener); err != nil {
 			errCh <- err
 		}
 	}()
@@ -57,23 +57,23 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("grpc server failed: %w", err)
 
 	case <-ctx.Done():
-		s.logger.Info("shutting down gRPC server gracefully...")
-		s.grpcServer.GracefulStop()
+		server.logger.Info("shutting down gRPC server gracefully...")
+		server.grpcServer.GracefulStop()
 
 		return nil
 	}
 }
 
-func (s *Server) RegisterChat(ctx context.Context, req *pb.RegisterChatRequest) (*emptypb.Empty, error) {
-	err := s.service.RegisterChat(ctx, req.GetId())
+func (server *Server) RegisterChat(ctx context.Context, request *pb.RegisterChatRequest) (*emptypb.Empty, error) {
+	err := server.service.RegisterChat(ctx, request.GetId())
 	if err != nil {
 		if errors.Is(err, domain.ErrChatAlreadyRegistered) {
-			return nil, status.Errorf(codes.AlreadyExists, "chat with id %d already registered", req.GetId())
+			return nil, status.Errorf(codes.AlreadyExists, "chat with id %d already registered", request.GetId())
 		}
 
-		s.logger.Error(
+		server.logger.Error(
 			"failed to register chat",
-			slog.Int64("chat_id", req.GetId()),
+			slog.Int64("chat_id", request.GetId()),
 			slog.String("error", err.Error()),
 			slog.String("method", "RegisterChat"),
 		)
@@ -83,16 +83,16 @@ func (s *Server) RegisterChat(ctx context.Context, req *pb.RegisterChatRequest) 
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Server) DeleteChat(ctx context.Context, req *pb.DeleteChatRequest) (*emptypb.Empty, error) {
-	err := s.service.DeleteChat(ctx, req.GetId())
+func (server *Server) DeleteChat(ctx context.Context, request *pb.DeleteChatRequest) (*emptypb.Empty, error) {
+	err := server.service.DeleteChat(ctx, request.GetId())
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
-			return nil, status.Errorf(codes.NotFound, "chat with id %d not registered", req.GetId())
+			return nil, status.Errorf(codes.NotFound, "chat with id %d not registered", request.GetId())
 		}
 
-		s.logger.Error(
+		server.logger.Error(
 			"failed to delete chat",
-			slog.Int64("chat_id", req.GetId()),
+			slog.Int64("chat_id", request.GetId()),
 			slog.String("error", err.Error()),
 			slog.String("method", "DeleteChat"),
 		)
@@ -102,15 +102,15 @@ func (s *Server) DeleteChat(ctx context.Context, req *pb.DeleteChatRequest) (*em
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Server) GetLinks(ctx context.Context, req *pb.GetLinksRequest) (*pb.ListLinksResponse, error) {
-	chatId := req.GetTgChatId()
-	links, err := s.service.GetTrackedLinks(ctx, chatId)
+func (server *Server) GetLinks(ctx context.Context, request *pb.GetLinksRequest) (*pb.ListLinksResponse, error) {
+	chatId := request.GetTgChatId()
+	links, err := server.service.GetTrackedLinks(ctx, chatId)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			return nil, status.Errorf(codes.NotFound, "chat with id %d not registered", chatId)
 		}
 
-		s.logger.Error(
+		server.logger.Error(
 			"failed to get tracked links",
 			slog.Int64("chat_id", chatId),
 			slog.String("error", err.Error()),
@@ -134,12 +134,12 @@ func (s *Server) GetLinks(ctx context.Context, req *pb.GetLinksRequest) (*pb.Lis
 	}, nil
 }
 
-func (s *Server) AddLink(ctx context.Context, req *pb.AddLinkRequest) (*pb.LinkResponse, error) {
-	chatId := req.GetTgChatId()
-	linkUrl := req.GetLink()
-	tags := req.GetTags()
+func (server *Server) AddLink(ctx context.Context, request *pb.AddLinkRequest) (*pb.LinkResponse, error) {
+	chatId := request.GetTgChatId()
+	linkUrl := request.GetLink()
+	tags := request.GetTags()
 
-	link, err := s.service.AddLink(ctx, chatId, linkUrl, tags)
+	link, err := server.service.AddLink(ctx, chatId, linkUrl, tags)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			return nil, status.Errorf(codes.NotFound, "chat %d not registered yet", chatId)
@@ -151,7 +151,7 @@ func (s *Server) AddLink(ctx context.Context, req *pb.AddLinkRequest) (*pb.LinkR
 			return nil, status.Errorf(codes.Unimplemented, "link %s not supported", linkUrl)
 		}
 
-		s.logger.Error(
+		server.logger.Error(
 			"failed to add link",
 			slog.Int64("chat_id", chatId),
 			slog.String("link", linkUrl),
@@ -168,11 +168,11 @@ func (s *Server) AddLink(ctx context.Context, req *pb.AddLinkRequest) (*pb.LinkR
 	}, nil
 }
 
-func (s *Server) RemoveLink(ctx context.Context, req *pb.RemoveLinkRequest) (*pb.LinkResponse, error) {
+func (server *Server) RemoveLink(ctx context.Context, req *pb.RemoveLinkRequest) (*pb.LinkResponse, error) {
 	chatId := req.GetTgChatId()
 	linkUrl := req.GetLink()
 
-	link, err := s.service.RemoveLink(ctx, chatId, linkUrl)
+	link, err := server.service.RemoveLink(ctx, chatId, linkUrl)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			return nil, status.Errorf(codes.NotFound, "chat %d not registered", chatId)
@@ -181,7 +181,7 @@ func (s *Server) RemoveLink(ctx context.Context, req *pb.RemoveLinkRequest) (*pb
 			return nil, status.Errorf(codes.NotFound, "link %s not tracked in chat %d", linkUrl, chatId)
 		}
 
-		s.logger.Error(
+		server.logger.Error(
 			"failed to remove link",
 			slog.Int64("chat_id", chatId),
 			slog.String("link", linkUrl),

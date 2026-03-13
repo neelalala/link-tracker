@@ -32,73 +32,73 @@ func NewClient(url string) *Client {
 }
 
 func (client *Client) RegisterChat(ctx context.Context, chatId int64) error {
-	reqUrl := fmt.Sprintf("%s/%s/%d", client.baseURL, registerTgChatEndpoint, chatId)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqUrl, nil)
+	query := fmt.Sprintf("%s/%s/%d", client.baseURL, registerTgChatEndpoint, chatId)
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := client.httpClient.Do(req)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusConflict {
+	if response.StatusCode != http.StatusOK {
+		if response.StatusCode == http.StatusConflict {
 			return scrapperdomain.ErrChatAlreadyRegistered
 		}
-		return fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
+		return fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
 	}
 
 	return nil
 }
 
 func (client *Client) DeleteChat(ctx context.Context, chatId int64) error {
-	reqUrl := fmt.Sprintf("%s/%s/%d", client.baseURL, deleteTgChatEndpoint, chatId)
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqUrl, nil)
+	query := fmt.Sprintf("%s/%s/%d", client.baseURL, deleteTgChatEndpoint, chatId)
+	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, query, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := client.httpClient.Do(req)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusNotFound {
+	if response.StatusCode != http.StatusOK {
+		if response.StatusCode == http.StatusNotFound {
 			return scrapperdomain.ErrChatNotRegistered
 		}
-		return fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
+		return fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
 	}
 
 	return nil
 }
 
 func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]scrapperdomain.TrackedLink, error) {
-	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, getLinksEndpoint)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqUrl, nil)
+	query := fmt.Sprintf("%s/%s", client.baseURL, getLinksEndpoint)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	req.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
+	request.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
 
-	resp, err := client.httpClient.Do(req)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusNotFound {
+	if response.StatusCode != http.StatusOK {
+		if response.StatusCode == http.StatusNotFound {
 			return nil, scrapperdomain.ErrChatNotRegistered
 		}
-		return nil, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
 	}
 
 	type linkJson struct {
@@ -114,7 +114,7 @@ func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]scra
 
 	var linksJson responseJson
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -137,7 +137,7 @@ func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]scra
 }
 
 func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tags []string) (scrapperdomain.TrackedLink, error) {
-	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, trackLinksEndpoint)
+	query := fmt.Sprintf("%s/%s", client.baseURL, trackLinksEndpoint)
 
 	type requestJson struct {
 		Link string   `json:"link"`
@@ -154,32 +154,32 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqUrl, bytes.NewReader(reqBody))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
-	req.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
+	request.Header.Set("Content-Type", "application/json")
 
-	resp, err := client.httpClient.Do(req)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusNotFound {
+	if response.StatusCode != http.StatusOK {
+		if response.StatusCode == http.StatusNotFound {
 			return scrapperdomain.TrackedLink{}, scrapperdomain.ErrChatNotRegistered
 		}
-		if resp.StatusCode == http.StatusConflict {
+		if response.StatusCode == http.StatusConflict {
 			return scrapperdomain.TrackedLink{}, scrapperdomain.ErrAlreadySubscribed
 		}
-		if resp.StatusCode == http.StatusUnprocessableEntity {
+		if response.StatusCode == http.StatusUnprocessableEntity {
 			return scrapperdomain.TrackedLink{}, scrapperapplication.ErrUrlNotSupported
 		}
-		return scrapperdomain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
 	}
 
 	type responseJson struct {
@@ -188,27 +188,27 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 		Tags []string `json:"tags"`
 	}
 
-	var response responseJson
+	var respJson responseJson
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(response.Body)
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	err = json.Unmarshal(data, &response)
+	err = json.Unmarshal(data, &respJson)
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
 	return scrapperdomain.TrackedLink{
-		ID:   response.Id,
-		URL:  response.Url,
-		Tags: response.Tags,
+		ID:   respJson.Id,
+		URL:  respJson.Url,
+		Tags: respJson.Tags,
 	}, nil
 }
 
 func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) (scrapperdomain.TrackedLink, error) {
-	reqUrl := fmt.Sprintf("%s/%s", client.baseURL, deleteLinksEndpoint)
+	query := fmt.Sprintf("%s/%s", client.baseURL, deleteLinksEndpoint)
 
 	type requestJson struct {
 		Link string `json:"link"`
@@ -223,27 +223,27 @@ func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) 
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqUrl, bytes.NewReader(reqBody))
+	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, query, bytes.NewReader(reqBody))
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
-	req.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
+	request.Header.Set("Content-Type", "application/json")
 
-	resp, err := client.httpClient.Do(req)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusNotFound {
+	if response.StatusCode != http.StatusOK {
+		if response.StatusCode == http.StatusNotFound {
 			return scrapperdomain.TrackedLink{}, fmt.Errorf("chat not registered or link not found")
 		}
 
-		return scrapperdomain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
+		return scrapperdomain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
 	}
 
 	type responseJson struct {
@@ -252,21 +252,21 @@ func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) 
 		Tags []string `json:"tags"`
 	}
 
-	var response responseJson
+	var respJson responseJson
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(response.Body)
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	err = json.Unmarshal(data, &response)
+	err = json.Unmarshal(data, &respJson)
 	if err != nil {
 		return scrapperdomain.TrackedLink{}, fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
 	return scrapperdomain.TrackedLink{
-		ID:   response.Id,
-		URL:  response.Url,
-		Tags: response.Tags,
+		ID:   respJson.Id,
+		URL:  respJson.Url,
+		Tags: respJson.Tags,
 	}, nil
 }

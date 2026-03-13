@@ -23,8 +23,8 @@ func NewPoller(tgClient *telegram.Client, scrapper application.Scrapper, logger 
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmds := commandService.GetCommands()
-	err := tgClient.SetMyCommands(ctx, cmds)
+	commands := commandService.GetCommands()
+	err := tgClient.SetMyCommands(ctx, commands)
 	if err != nil {
 		return nil, err
 	}
@@ -47,9 +47,9 @@ func (poller *Poller) Start(ctx context.Context) {
 		default:
 		}
 
-		reqCtx, cancel := context.WithTimeout(ctx, timeout)
+		requestCtx, cancel := context.WithTimeout(ctx, timeout)
 
-		updates, err := poller.tgClient.GetUpdates(reqCtx)
+		updates, err := poller.tgClient.GetUpdates(requestCtx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				cancel()
@@ -62,7 +62,7 @@ func (poller *Poller) Start(ctx context.Context) {
 		}
 
 		for _, update := range updates {
-			err := poller.handleMessage(reqCtx, update)
+			err := poller.handleMessage(requestCtx, update)
 			if err != nil {
 				poller.logger.Error("Failed to handle update", slog.String("error", err.Error()), slog.String("context", "poller.handleMessage"))
 			}
@@ -72,6 +72,6 @@ func (poller *Poller) Start(ctx context.Context) {
 }
 
 func (poller *Poller) handleMessage(ctx context.Context, msg domain.Message) error {
-	resp := poller.commandService.HandleMessage(ctx, msg.ChatID, msg.Text)
-	return poller.tgClient.SendMessage(ctx, msg.ChatID, resp)
+	response := poller.commandService.HandleMessage(ctx, msg.ChatID, msg.Text)
+	return poller.tgClient.SendMessage(ctx, msg.ChatID, response)
 }

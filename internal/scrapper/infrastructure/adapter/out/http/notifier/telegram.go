@@ -28,41 +28,41 @@ func NewBot(url string) *Bot {
 }
 
 func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
-	type request struct {
+	type requestJson struct {
 		Id          int64   `json:"id"`
 		Url         string  `json:"url"`
 		Description string  `json:"description"`
 		TgChatIds   []int64 `json:"tgChatIds"`
 	}
 
-	var reqData = request{
+	var reqJson = requestJson{
 		Id:          update.ID,
 		Url:         update.URL,
 		Description: update.Description,
 		TgChatIds:   update.TgChatIDs,
 	}
 
-	body, err := json.Marshal(reqData)
+	body, err := json.Marshal(reqJson)
 	if err != nil {
 		return fmt.Errorf("failed to marshal update request: %w", err)
 	}
 
-	reqUrl := fmt.Sprintf("%s/%s", bot.url, endpoint)
-	req, err := http.NewRequest(http.MethodPost, reqUrl, bytes.NewReader(body))
+	query := fmt.Sprintf("%s/%s", bot.url, endpoint)
+	request, err := http.NewRequest(http.MethodPost, query, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/json")
 
-	resp, err := bot.httpClient.Do(req)
+	response, err := bot.httpClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("failed to send request to bot: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bot api returned unexpected status: %d", resp.StatusCode)
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("bot api returned unexpected status: %d", response.StatusCode)
 	}
 
 	return nil

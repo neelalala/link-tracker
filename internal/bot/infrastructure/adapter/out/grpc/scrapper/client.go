@@ -13,25 +13,25 @@ import (
 )
 
 type Client struct {
-	conn       *grpc.ClientConn
+	connection *grpc.ClientConn
 	grpcClient pb.ScrapperServiceClient
 }
 
 func NewClient(url string) (*Client, error) {
-	conn, err := grpc.NewClient(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connection, err := grpc.NewClient(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		conn:       conn,
-		grpcClient: pb.NewScrapperServiceClient(conn),
+		connection: connection,
+		grpcClient: pb.NewScrapperServiceClient(connection),
 	}, nil
 }
 
 func (client *Client) Close() error {
-	if client.conn != nil {
-		return client.conn.Close()
+	if client.connection != nil {
+		return client.connection.Close()
 	}
 	return nil
 }
@@ -82,13 +82,13 @@ func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]scra
 }
 
 func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tags []string) (scrapperdomain.TrackedLink, error) {
-	req := &pb.AddLinkRequest{
+	request := &pb.AddLinkRequest{
 		TgChatId: chatId,
 		Link:     url,
 		Tags:     tags,
 	}
 
-	resp, err := client.grpcClient.AddLink(ctx, req)
+	resp, err := client.grpcClient.AddLink(ctx, request)
 	if err != nil {
 		code := status.Code(err)
 		switch code {

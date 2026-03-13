@@ -23,21 +23,21 @@ func NewServer(port uint16, service *application.SubscriptionService, logger *sl
 	mux.HandleFunc("POST /links", handler.HandlePostLinks)
 	mux.HandleFunc("DELETE /links", handler.HandleDeleteLinks)
 
-	srv := &http.Server{
+	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: mux,
 	}
 
 	return &Server{
-		httpServer: srv,
+		httpServer: server,
 	}
 }
 
-func (s *Server) Start(ctx context.Context) error {
+func (server *Server) Start(ctx context.Context) error {
 	errCh := make(chan error, 1)
 
 	go func() {
-		if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := server.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
 	}()
@@ -50,7 +50,7 @@ func (s *Server) Start(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if err := s.httpServer.Shutdown(shutdownCtx); err != nil {
+		if err := server.httpServer.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("http server shutdown failed: %w", err)
 		}
 
