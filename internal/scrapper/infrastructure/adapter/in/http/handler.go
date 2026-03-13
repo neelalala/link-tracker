@@ -39,24 +39,24 @@ func NewHandler(service *application.SubscriptionService, logger *slog.Logger) *
 	}
 }
 
-func (handler *Handler) getChatIDFromHeader(r *http.Request) (int64, error) {
-	chatIdStr := r.Header.Get("Tg-Chat-Id")
+func (handler *Handler) getChatIDFromHeader(request *http.Request) (int64, error) {
+	chatIdStr := request.Header.Get("Tg-Chat-Id")
 	if chatIdStr == "" {
 		return 0, errors.New("Tg-Chat-Id header is missing")
 	}
 	return strconv.ParseInt(chatIdStr, 10, 64)
 }
 
-func (handler *Handler) getChatIdFromPath(r *http.Request) (int64, error) {
-	chatIdStr := r.PathValue("id")
+func (handler *Handler) getChatIdFromPath(request *http.Request) (int64, error) {
+	chatIdStr := request.PathValue("id")
 	if chatIdStr == "" {
 		return 0, errors.New("id path param is missing")
 	}
 	return strconv.ParseInt(chatIdStr, 10, 64)
 }
 
-func (handler *Handler) HandlePostTgChat(w http.ResponseWriter, r *http.Request) {
-	chatId, err := handler.getChatIdFromPath(r)
+func (handler *Handler) HandlePostTgChat(w http.ResponseWriter, request *http.Request) {
+	chatId, err := handler.getChatIdFromPath(request)
 	if err != nil {
 		handler.logger.Warn(
 			"failed to parse chat id from query string",
@@ -74,7 +74,7 @@ func (handler *Handler) HandlePostTgChat(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	ctx := r.Context()
+	ctx := request.Context()
 
 	err = handler.service.RegisterChat(ctx, chatId)
 	if err != nil {
@@ -107,8 +107,8 @@ func (handler *Handler) HandlePostTgChat(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (handler *Handler) HandleDeleteTgChat(w http.ResponseWriter, r *http.Request) {
-	chatId, err := handler.getChatIdFromPath(r)
+func (handler *Handler) HandleDeleteTgChat(w http.ResponseWriter, request *http.Request) {
+	chatId, err := handler.getChatIdFromPath(request)
 	if err != nil {
 		handler.logger.Warn(
 			"failed to parse chat id from query string",
@@ -125,7 +125,7 @@ func (handler *Handler) HandleDeleteTgChat(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	ctx := r.Context()
+	ctx := request.Context()
 
 	err = handler.service.DeleteChat(ctx, chatId)
 	if err != nil {
@@ -157,8 +157,8 @@ func (handler *Handler) HandleDeleteTgChat(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusOK)
 }
 
-func (handler *Handler) HandleGetLinks(w http.ResponseWriter, r *http.Request) {
-	chatId, err := handler.getChatIDFromHeader(r)
+func (handler *Handler) HandleGetLinks(w http.ResponseWriter, request *http.Request) {
+	chatId, err := handler.getChatIDFromHeader(request)
 	if err != nil {
 		handler.logger.Warn(
 			"failed to parse chat id from header",
@@ -175,7 +175,7 @@ func (handler *Handler) HandleGetLinks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
+	ctx := request.Context()
 
 	links, err := handler.service.GetTrackedLinks(ctx, chatId)
 	if err != nil {
@@ -227,8 +227,8 @@ func (handler *Handler) HandleGetLinks(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) {
-	chatId, err := handler.getChatIDFromHeader(r)
+func (handler *Handler) HandlePostLinks(w http.ResponseWriter, request *http.Request) {
+	chatId, err := handler.getChatIDFromHeader(request)
 	if err != nil {
 		handler.logger.Warn(
 			"failed to parse chat id from header",
@@ -250,8 +250,8 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 		Tags []string `json:"tags"`
 	}
 
-	var req addLinkRequest
-	body, err := io.ReadAll(r.Body)
+	var reqJson addLinkRequest
+	body, err := io.ReadAll(request.Body)
 	if err != nil {
 		handler.logger.Error(
 			"failed to read request body",
@@ -267,7 +267,8 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 		)
 		return
 	}
-	err = json.Unmarshal(body, &req)
+
+	err = json.Unmarshal(body, &reqJson)
 	if err != nil {
 		handler.writeError(w, http.StatusBadRequest,
 			"Error unmarshalling request body",
@@ -279,9 +280,9 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	ctx := r.Context()
+	ctx := request.Context()
 
-	link, err := handler.service.AddLink(ctx, chatId, req.Link, req.Tags)
+	link, err := handler.service.AddLink(ctx, chatId, reqJson.Link, reqJson.Tags)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			handler.writeError(w, http.StatusNotFound,
@@ -298,7 +299,7 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 				"Link already tracked",
 				"conflict",
 				"link_conflict_exception",
-				fmt.Sprintf("Link %s already tracked", req.Link),
+				fmt.Sprintf("Link %s already tracked", reqJson.Link),
 				err,
 			)
 			return
@@ -308,7 +309,7 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 				"Link not supported",
 				"unprocessable_entity",
 				"link_not_supported",
-				fmt.Sprintf("Link %s not yet supported", req.Link),
+				fmt.Sprintf("Link %s not yet supported", reqJson.Link),
 				err,
 			)
 			return
@@ -318,30 +319,30 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, r *http.Request) 
 			slog.Int64("chat_id", chatId),
 			slog.String("error", err.Error()),
 			slog.String("context", "handler.HandlePostLinks"),
-			slog.String("link", req.Link),
+			slog.String("link", reqJson.Link),
 		)
 		handler.writeError(w, http.StatusInternalServerError,
 			"Error while adding link",
 			"internal_server_error",
 			"add_link_exception",
-			fmt.Sprintf("Could not add link %s to chat %d", req.Link, chatId),
+			fmt.Sprintf("Could not add link %s to chat %d", reqJson.Link, chatId),
 			err,
 		)
 		return
 	}
 
-	resp := linkResponse{
+	response := linkResponse{
 		Id:   link.ID,
 		Url:  link.URL,
 		Tags: link.Tags,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
-func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request) {
-	chatId, err := handler.getChatIDFromHeader(r)
+func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, request *http.Request) {
+	chatId, err := handler.getChatIDFromHeader(request)
 	if err != nil {
 		handler.logger.Warn(
 			"failed to parse chat id from header",
@@ -358,13 +359,13 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	type request struct {
+	type requestJson struct {
 		Link string `json:"link"`
 	}
 
-	var req request
+	var reqJson requestJson
 
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(request.Body)
 	if err != nil {
 		handler.logger.Error(
 			"failed to read request body",
@@ -382,7 +383,7 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = json.Unmarshal(body, &req)
+	err = json.Unmarshal(body, &reqJson)
 	if err != nil {
 		handler.writeError(w, http.StatusBadRequest,
 			"Error unmarshalling request body",
@@ -394,9 +395,9 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ctx := r.Context()
+	ctx := request.Context()
 
-	link, err := handler.service.RemoveLink(ctx, chatId, req.Link)
+	link, err := handler.service.RemoveLink(ctx, chatId, reqJson.Link)
 	if err != nil {
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			handler.writeError(w, http.StatusNotFound,
@@ -413,7 +414,7 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 				"Link not tracked",
 				"not_found",
 				"link_not_tracked_exception",
-				fmt.Sprintf("Link %s not tracked", req.Link),
+				fmt.Sprintf("Link %s not tracked", reqJson.Link),
 				err,
 			)
 			return
@@ -423,19 +424,19 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 			slog.Int64("chat_id", chatId),
 			slog.String("error", err.Error()),
 			slog.String("context", "handler.HandleDeleteLinks"),
-			slog.String("link", req.Link),
+			slog.String("link", reqJson.Link),
 		)
 		handler.writeError(w, http.StatusInternalServerError,
 			"Error while deleting link",
 			"internal_server_error",
 			"delete_link_exception",
-			fmt.Sprintf("Could not delete link %s in chat %d", req.Link, chatId),
+			fmt.Sprintf("Could not delete link %s in chat %d", reqJson.Link, chatId),
 			err,
 		)
 		return
 	}
 
-	resp := linkResponse{
+	response := linkResponse{
 		Id:   link.ID,
 		Url:  link.URL,
 		Tags: link.Tags,
@@ -443,7 +444,7 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func (handler *Handler) writeError(w http.ResponseWriter, status int, desc, code, excName, excMessage string, err error) {

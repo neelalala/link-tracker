@@ -30,11 +30,11 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) CanHandle(url string) bool {
+func (client *Client) CanHandle(url string) bool {
 	return strings.HasPrefix(url, baseURL)
 }
 
-func (c *Client) Fetch(ctx context.Context, url string) (application.FetchResult, error) {
+func (client *Client) Fetch(ctx context.Context, url string) (application.FetchResult, error) {
 	path := strings.TrimPrefix(url, baseURL)
 	path = strings.Trim(path, "/")
 	parts := strings.Split(path, "/")
@@ -46,22 +46,22 @@ func (c *Client) Fetch(ctx context.Context, url string) (application.FetchResult
 
 	apiUrl := fmt.Sprintf("%s/repos/%s/%s", baseApiURL, owner, repo)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiUrl, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiUrl, nil)
 	if err != nil {
 		return application.FetchResult{}, err
 	}
 
-	req.Header.Set("Accept", "application/vnd.github+json")
+	request.Header.Set("Accept", "application/vnd.github+json")
 
-	resp, err := c.httpClient.Do(req)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return application.FetchResult{}, err
 	}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return application.FetchResult{}, fmt.Errorf("github api returned status: %d for %s", resp.StatusCode, apiUrl)
+	if response.StatusCode != http.StatusOK {
+		return application.FetchResult{}, fmt.Errorf("github api returned status: %d for %s", response.StatusCode, apiUrl)
 	}
 
 	var repoData struct {
@@ -69,7 +69,7 @@ func (c *Client) Fetch(ctx context.Context, url string) (application.FetchResult
 		FullName string    `json:"full_name"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&repoData); err != nil {
+	if err := json.NewDecoder(response.Body).Decode(&repoData); err != nil {
 		return application.FetchResult{}, err
 	}
 

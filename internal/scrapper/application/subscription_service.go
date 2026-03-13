@@ -53,12 +53,12 @@ func (service *SubscriptionService) GetTrackedLinks(ctx context.Context, chatID 
 		return nil, err
 	}
 
-	subs, err := service.subRepo.GetByChatId(ctx, chatID)
+	subscriptions, err := service.subRepo.GetByChatId(ctx, chatID)
 	if err != nil {
 		return nil, err
 	}
-	trackedLinks := make([]domain.TrackedLink, len(subs))
-	for i, sub := range subs {
+	trackedLinks := make([]domain.TrackedLink, len(subscriptions))
+	for i, sub := range subscriptions {
 		link, err := service.linkRepo.GetById(ctx, sub.LinkID)
 		if err != nil {
 			return nil, err
@@ -103,13 +103,13 @@ func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, u
 		}
 	}
 
-	sub := domain.Subscription{
+	subscription := domain.Subscription{
 		ChatID: chatID,
 		LinkID: link.ID,
 		Tags:   tags,
 	}
 
-	err = service.subRepo.Save(ctx, sub)
+	err = service.subRepo.Save(ctx, subscription)
 	if err != nil {
 		return domain.TrackedLink{}, err
 	}
@@ -117,7 +117,7 @@ func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, u
 	return domain.TrackedLink{
 		ID:   link.ID,
 		URL:  link.URL,
-		Tags: sub.Tags,
+		Tags: subscription.Tags,
 	}, nil
 }
 
@@ -132,12 +132,12 @@ func (service *SubscriptionService) RemoveLink(ctx context.Context, chatID int64
 		return domain.TrackedLink{}, err
 	}
 
-	sub := domain.Subscription{
+	subscription := domain.Subscription{
 		ChatID: chatID,
 		LinkID: link.ID,
 	}
 
-	sub, err = service.subRepo.Delete(ctx, sub)
+	subscription, err = service.subRepo.Delete(ctx, subscription)
 	if err != nil {
 		return domain.TrackedLink{}, err
 	}
@@ -152,6 +152,6 @@ func (service *SubscriptionService) RemoveLink(ctx context.Context, chatID int64
 	return domain.TrackedLink{
 		ID:   link.ID,
 		URL:  link.URL,
-		Tags: sub.Tags,
+		Tags: subscription.Tags,
 	}, nil
 }

@@ -39,17 +39,17 @@ func NewServer(port uint16, updateHandler LinkUpdateHandler, logger *slog.Logger
 	return srv
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+func (server *Server) Start(ctx context.Context) error {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", server.port))
 	if err != nil {
-		return fmt.Errorf("failed to listen on port %d: %w", s.port, err)
+		return fmt.Errorf("failed to listen on port %d: %w", server.port, err)
 	}
 
 	errCh := make(chan error, 1)
 
 	go func() {
-		s.logger.Info("gRPC server is running", slog.Int("port", int(s.port)))
-		if err := s.grpcServer.Serve(lis); err != nil {
+		server.logger.Info("gRPC server is running", slog.Int("port", int(server.port)))
+		if err := server.grpcServer.Serve(listener); err != nil {
 			errCh <- err
 		}
 	}()
@@ -59,32 +59,32 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("grpc server failed: %w", err)
 
 	case <-ctx.Done():
-		s.logger.Info("shutting down gRPC server gracefully...")
-		s.grpcServer.GracefulStop()
+		server.logger.Info("shutting down gRPC server gracefully...")
+		server.grpcServer.GracefulStop()
 
 		return nil
 	}
 }
 
-func (s *Server) SendUpdate(ctx context.Context, req *pb.LinkUpdate) (*emptypb.Empty, error) {
+func (server *Server) SendUpdate(ctx context.Context, request *pb.LinkUpdate) (*emptypb.Empty, error) {
 	linkUpdate := scrapperdomain.LinkUpdate{
-		ID:          req.GetId(),
-		URL:         req.GetUrl(),
-		Description: req.GetDescription(),
-		TgChatIDs:   req.GetTgChatIds(),
+		ID:          request.GetId(),
+		URL:         request.GetUrl(),
+		Description: request.GetDescription(),
+		TgChatIDs:   request.GetTgChatIds(),
 	}
 
-	err := s.updateHandler.HandleUpdate(ctx, linkUpdate)
+	err := server.updateHandler.HandleUpdate(ctx, linkUpdate)
 	if err != nil {
-		s.logger.Error(
+		server.logger.Error(
 			"failed to handle link update",
-			slog.Int64("link_id", req.GetId()),
-			slog.String("link_url", req.GetUrl()),
+			slog.Int64("link_id", request.GetId()),
+			slog.String("link_url", request.GetUrl()),
 			slog.String("error", err.Error()),
 			slog.String("method", "SendUpdate"),
 		)
 
-		return nil, status.Errorf(codes.Internal, "failed to handle update for link %s: %v", req.GetUrl(), err)
+		return nil, status.Errorf(codes.Internal, "failed to handle update for link %server: %v", request.GetUrl(), err)
 	}
 
 	return &emptypb.Empty{}, nil

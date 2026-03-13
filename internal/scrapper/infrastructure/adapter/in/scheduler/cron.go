@@ -14,7 +14,7 @@ type Cron struct {
 }
 
 func NewCron(ctx context.Context) (*Cron, error) {
-	s, err := gocron.NewScheduler()
+	scheduler, err := gocron.NewScheduler()
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func NewCron(ctx context.Context) (*Cron, error) {
 	cronCtx, cancel := context.WithCancel(ctx)
 
 	cron := &Cron{
-		scheduler: s,
+		scheduler: scheduler,
 		baseCtx:   cronCtx,
 		cancel:    cancel,
 	}
@@ -30,7 +30,7 @@ func NewCron(ctx context.Context) (*Cron, error) {
 	return cron, nil
 }
 
-func (cron *Cron) Schedule(dur time.Duration, jobTimeout time.Duration, jobFunc func(ctx context.Context)) error {
+func (cron *Cron) Schedule(interval time.Duration, jobTimeout time.Duration, jobFunc func(ctx context.Context)) error {
 	wrapperFunc := func() {
 		ctx, cancel := context.WithTimeout(cron.baseCtx, jobTimeout)
 		defer cancel()
@@ -38,7 +38,7 @@ func (cron *Cron) Schedule(dur time.Duration, jobTimeout time.Duration, jobFunc 
 	}
 
 	_, err := cron.scheduler.NewJob(
-		gocron.DurationJob(dur),
+		gocron.DurationJob(interval),
 		gocron.NewTask(wrapperFunc),
 	)
 	if err != nil {

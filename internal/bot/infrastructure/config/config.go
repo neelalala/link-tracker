@@ -12,12 +12,12 @@ const (
 	GRPC Protocol = "grpc"
 )
 
-func (p Protocol) Validate() error {
-	switch p {
+func (protocol Protocol) Validate() error {
+	switch protocol {
 	case HTTP, GRPC:
 		return nil
 	default:
-		return fmt.Errorf("invalid protocol: %q. Allowed values are 'http' or 'grpc'", p)
+		return fmt.Errorf("invalid protocol: %q. Allowed values are 'http' or 'grpc'", protocol)
 	}
 }
 

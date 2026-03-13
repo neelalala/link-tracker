@@ -30,12 +30,12 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) CanHandle(url string) bool {
-	return strings.HasPrefix(url, c.baseURL)
+func (client *Client) CanHandle(url string) bool {
+	return strings.HasPrefix(url, client.baseURL)
 }
 
-func (c *Client) Fetch(ctx context.Context, url string) (application.FetchResult, error) {
-	path := strings.TrimPrefix(url, c.baseURL)
+func (client *Client) Fetch(ctx context.Context, url string) (application.FetchResult, error) {
+	path := strings.TrimPrefix(url, client.baseURL)
 	parts := strings.Split(path, "/")
 
 	if len(parts) == 0 || parts[0] == "" {
@@ -44,40 +44,40 @@ func (c *Client) Fetch(ctx context.Context, url string) (application.FetchResult
 
 	questionID := parts[0]
 
-	apiUrl := fmt.Sprintf("%s/questions/%s?site=stackoverflow.com", c.apiURL, questionID)
+	query := fmt.Sprintf("%s/questions/%s?site=stackoverflow.com", client.apiURL, questionID)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiUrl, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
 	if err != nil {
 		return application.FetchResult{}, err
 	}
 
-	resp, err := c.httpClient.Do(req)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return application.FetchResult{}, err
 	}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return application.FetchResult{}, fmt.Errorf("stackoverflow api returned status: %d for %s", resp.StatusCode, apiUrl)
+	if response.StatusCode != http.StatusOK {
+		return application.FetchResult{}, fmt.Errorf("stackoverflow api returned status: %d for %s", response.StatusCode, query)
 	}
 
-	var apiResponse struct {
+	var responseJson struct {
 		Items []struct {
 			LastActivityDate int64  `json:"last_activity_date"`
 			Title            string `json:"title"`
 		} `json:"items"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
+	if err := json.NewDecoder(response.Body).Decode(&responseJson); err != nil {
 		return application.FetchResult{}, err
 	}
 
-	if len(apiResponse.Items) == 0 {
+	if len(responseJson.Items) == 0 {
 		return application.FetchResult{}, fmt.Errorf("question not found for url: %s", url)
 	}
 
-	questionData := apiResponse.Items[0]
+	questionData := responseJson.Items[0]
 
 	return application.FetchResult{
 		UpdatedAt:   time.Unix(questionData.LastActivityDate, 0),

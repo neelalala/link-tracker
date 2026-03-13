@@ -21,14 +21,14 @@ type Client struct {
 }
 
 func NewClient(token string) (*Client, error) {
-	tgClient := &Client{
+	client := &Client{
 		offset: 0,
 		url:    baseUrl + token,
 		client: &http.Client{Timeout: timeout*time.Second + 10*time.Second},
 	}
 
-	query := fmt.Sprintf("%s/getMe", tgClient.url)
-	resp, err := tgClient.client.Get(query)
+	query := fmt.Sprintf("%s/getMe", client.url)
+	response, err := client.client.Get(query)
 	if err != nil {
 		return nil, err
 	}
@@ -38,9 +38,9 @@ func NewClient(token string) (*Client, error) {
 		Description string `json:"description"`
 	}{}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -53,40 +53,42 @@ func NewClient(token string) (*Client, error) {
 		return nil, fmt.Errorf("%s", result.Description)
 	}
 
-	return tgClient, nil
+	return client, nil
 }
 
-func (api *Client) SendMessage(ctx context.Context, chatID int64, text string) error {
-	query := fmt.Sprintf(`%s/sendMessage`, api.url)
+func (client *Client) SendMessage(ctx context.Context, chatID int64, text string) error {
+	query := fmt.Sprintf(`%s/sendMessage`, client.url)
 
-	type botMessage struct {
+	type requestJson struct {
 		ChatID int64  `json:"chat_id"`
 		Text   string `json:"text"`
 	}
 
-	payload := botMessage{
+	reqJson := requestJson{
 		ChatID: chatID,
 		Text:   text,
 	}
 
-	bodyReq, err := json.Marshal(&payload)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(bodyReq))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := api.client.Do(req)
+	reqBody, err := json.Marshal(&reqJson)
 	if err != nil {
 		return err
 	}
 
-	defer resp.Body.Close()
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
+	if err != nil {
+		return err
+	}
 
-	bodyResp, err := io.ReadAll(resp.Body)
+	request.Header.Set("Content-Type", "application/json")
+
+	response, err := client.client.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	bodyResp, err := io.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}
@@ -108,22 +110,22 @@ func (api *Client) SendMessage(ctx context.Context, chatID int64, text string) e
 	return nil
 }
 
-func (api *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) {
-	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, api.url, timeout, api.offset)
+func (client *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) {
+	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, client.url, timeout, client.offset)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := api.client.Do(req)
+	response, err := client.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
 
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -165,49 +167,49 @@ func (api *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) {
 			Text:   res.Message.Text,
 		}
 
-		api.offset = max(api.offset, res.UpdateID)
+		client.offset = max(client.offset, res.UpdateID)
 	}
-	api.offset++
+	client.offset++
 
 	return updates, nil
 }
 
-func (api *Client) SetMyCommands(ctx context.Context, cmds []domain.Command) error {
-	query := fmt.Sprintf("%s/setMyCommands", api.url)
+func (client *Client) SetMyCommands(ctx context.Context, cmds []domain.Command) error {
+	query := fmt.Sprintf("%s/setMyCommands", client.url)
 
-	type botCommand struct {
+	type botCommandJson struct {
 		Command     string `json:"command"`
 		Description string `json:"description"`
 	}
 
-	var botCommands []botCommand
+	var botCommands []botCommandJson
 	for _, cmd := range cmds {
-		botCommands = append(botCommands, botCommand{
+		botCommands = append(botCommands, botCommandJson{
 			Command:     cmd.Name,
 			Description: cmd.Description,
 		})
 	}
 
-	payload := map[string]any{
+	body := map[string]any{
 		"commands": botCommands,
 	}
 
-	body, err := json.Marshal(payload)
+	reqBody, err := json.Marshal(body)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/json")
 
-	resp, err := api.client.Do(req)
+	response, err := client.client.Do(request)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
 	return nil
 }

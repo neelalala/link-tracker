@@ -56,8 +56,8 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	var req updateRequest
-	err = json.Unmarshal(body, &req)
+	var request updateRequest
+	err = json.Unmarshal(body, &request)
 	if err != nil {
 		handler.logger.Warn(
 			"Bad request body",
@@ -77,10 +77,10 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	linkUpdate := scrapperdomain.LinkUpdate{
-		ID:          req.Id,
-		URL:         req.Url,
-		Description: req.Description,
-		TgChatIDs:   req.TgChatIds,
+		ID:          request.Id,
+		URL:         request.Url,
+		Description: request.Description,
+		TgChatIDs:   request.TgChatIds,
 	}
 
 	ctx := r.Context()
@@ -91,7 +91,7 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 			"Error while handling update on link",
 			slog.String("context", "handler.updateHandler.HandleUpdate"),
 			slog.String("error", err.Error()),
-			slog.String("link", req.Url),
+			slog.String("link", request.Url),
 		)
 
 		handler.writeError(w, http.StatusInternalServerError,
