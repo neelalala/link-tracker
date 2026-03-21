@@ -40,7 +40,7 @@ func main() {
 		out = file
 	}
 
-	slogger := logger.NewLogger(cfg.Environment, out)
+	slogger := logger.NewLogger(cfg.LogLevel, cfg.Environment, out)
 
 	tgClient, err := telegramout.NewClient(cfg.TelegramToken)
 	if err != nil {
