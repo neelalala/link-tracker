@@ -113,7 +113,7 @@ func (service *CommandService) processSM(ctx context.Context, chatID int64, text
 
 		_, err := service.scrapper.AddLink(ctx, chatID, session.URL, tags)
 
-		delete(service.sessions, chatID)
+		defer delete(service.sessions, chatID)
 
 		if err != nil {
 			if errors.Is(err, scrapperdomain.ErrAlreadySubscribed) {
@@ -125,7 +125,12 @@ func (service *CommandService) processSM(ctx context.Context, chatID int64, text
 			if errors.Is(err, scrapperapplication.ErrUrlNotSupported) {
 				return "This link is not supported yet."
 			}
-			service.logger.Error("Scrapper AddLink failed", slog.String("error", err.Error()))
+			service.logger.Error("Scrapper AddLink failed",
+				slog.String("context", "commandService.processSM case StateWaitingForTags"),
+				slog.String("url", session.URL),
+				slog.Int64("chat-id", chatID),
+				slog.String("error", err.Error()),
+			)
 			return "Something went wrong while saving the link in the scrapper."
 		}
 
@@ -168,7 +173,12 @@ func (service *CommandService) handleUntrack(ctx context.Context, chatID int64, 
 		if errors.Is(err, scrapperdomain.ErrLinkNotFound) || errors.Is(err, scrapperdomain.ErrNotSubscribed) {
 			return "You're not tracking this link."
 		}
-		service.logger.Error("Scrapper RemoveLink failed", slog.String("error", err.Error()))
+		service.logger.Error("Scrapper RemoveLink failed",
+			slog.String("context", "commandService.handleUntrack"),
+			slog.String("url", url),
+			slog.Int64("chat-id", chatID),
+			slog.String("error", err.Error()),
+		)
 		return "Something went wrong while untracking the link."
 	}
 
@@ -178,7 +188,14 @@ func (service *CommandService) handleUntrack(ctx context.Context, chatID int64, 
 func (service *CommandService) handleList(ctx context.Context, chatID int64, args []string) string {
 	links, err := service.scrapper.GetTrackedLinks(ctx, chatID)
 	if err != nil {
-		service.logger.Error("Scrapper GetTrackedLinks failed", slog.String("error", err.Error()))
+		if errors.Is(err, scrapperdomain.ErrChatNotRegistered) {
+			return "You're not registered yet. Just use /start :)"
+		}
+		service.logger.Error("Scrapper GetTrackedLinks failed",
+			slog.String("context", "commandService.handleList"),
+			slog.Int64("chat-id", chatID),
+			slog.String("error", err.Error()),
+		)
 		return "Something went wrong while getting your links."
 	}
 
@@ -250,6 +267,11 @@ func (service *CommandService) handleStart(ctx context.Context, chatID int64) st
 		if errors.Is(err, scrapperdomain.ErrChatAlreadyRegistered) {
 			return "Hi again! This bot can track updates on your links, so you won't miss on news! /help for list my commands"
 		}
+		service.logger.Error("Scrapper RegisterChat failed",
+			slog.String("context", "commandService.handleStart"),
+			slog.Int64("chat-id", chatID),
+			slog.String("error", err.Error()),
+		)
 		return "Something went wrong while registering you."
 	}
 	return "Hi! This bot can track updates on your links, so you won't miss on news! /help for list my commands"

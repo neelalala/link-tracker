@@ -26,9 +26,18 @@ func NewNotifierService(logger *slog.Logger, sender MessageSender) *NotifierServ
 
 func (service *NotifierService) HandleUpdate(ctx context.Context, update scrapperdomain.LinkUpdate) error {
 	if update.URL == "" {
+		service.logger.Warn("No URL provided",
+			slog.Int64("link-id", update.ID),
+			slog.String("error", "No url provided in link update"),
+		)
 		return errors.New("no url provided")
 	}
 	if len(update.TgChatIDs) == 0 {
+		service.logger.Warn("No Telegram chat IDs provided",
+			slog.Int64("link-id", update.ID),
+			slog.String("error", "No Telegram chat IDs provided"),
+			slog.String("url", update.URL),
+		)
 		return errors.New("no telegram chat ids provided")
 	}
 
