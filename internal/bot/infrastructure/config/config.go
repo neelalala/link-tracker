@@ -25,6 +25,7 @@ type Config struct {
 	TelegramToken string   `config:"telegram-token"`
 	Environment   string   `config:"environment,local"`
 	LogsFile      string   `config:"logs-file,"`
+	LogLevel      string   `config:"log-level,error"`
 	ScrapperUrl   string   `config:"scrapper-url"`
 	BotApiPort    uint16   `config:"bot-api-port"`
 	ApiProtocol   Protocol `config:"api-protocol"`
