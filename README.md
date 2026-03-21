@@ -24,6 +24,7 @@ docker compose up -d
 - bot-api-port – порт, на котором будет слушать бот api запросы
 - scrapper-api-port – порт, на котором будет слушать скраппер api запросы
 - api-protocol – протокол, по которому будут общаться микросервисы
+- log-level – уровень логгирования, строка в формате, ожидаемом пакетом `slog`
 
 
 Пример .env файла для работы:
@@ -33,4 +34,5 @@ BOT_API_PORT=63342
 SCRAPPER_API_PORT=63343
 BOT_URL="http://bot:${BOT_API_PORT}"
 SCRAPPER_URL="http://scrapper:${SCRAPPER_API_PORT}"
+LOG_LEVEL="ERROR+2"
 ```
