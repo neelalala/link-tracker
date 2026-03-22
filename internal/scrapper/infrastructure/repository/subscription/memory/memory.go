@@ -1,4 +1,4 @@
-package subscription
+package memory
 
 import (
 	"context"
