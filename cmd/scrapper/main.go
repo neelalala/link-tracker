@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/grpc"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/scheduler"
@@ -14,9 +15,8 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/logger"
-	chatpgx "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/chat/pgx"
-	linkpgx "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/link/pgx"
-	subscriptionpgx "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/subscription/pgx"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sql"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sqlbuilder"
 	"io"
 	"log"
 	"log/slog"
@@ -61,9 +61,20 @@ func main() {
 	}
 	defer dbPool.Close()
 
-	chatRepo := chatpgx.NewChatRepository(dbPool)
-	linkRepo := linkpgx.NewLinkRepository(dbPool)
-	subRepo := subscriptionpgx.NewSubscriptionRepository(dbPool)
+	var chatRepo domain.ChatRepository
+	var linkRepo domain.LinkRepository
+	var subRepo domain.SubscriptionRepository
+
+	switch cfg.AccessType {
+	case config.SQL:
+		chatRepo = sql.NewChatRepository(dbPool)
+		linkRepo = sql.NewLinkRepository(dbPool)
+		subRepo = sql.NewSubscriptionRepository(dbPool)
+	case config.Builder:
+		chatRepo = sqlbuilder.NewChatRepository(dbPool)
+		linkRepo = sqlbuilder.NewLinkRepository(dbPool)
+		subRepo = sqlbuilder.NewSubscriptionRepository(dbPool)
+	}
 
 	githubClient := github.NewClient()
 	stackoverflowClient := stackoverflow.NewClient()
