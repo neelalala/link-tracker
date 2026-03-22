@@ -60,11 +60,11 @@ func main() {
 		apiServer = grpc.NewServer(cfg.BotApiPort, notifyService, slogger)
 		scrapperApi, err = grpcscrapper.NewClient(cfg.ScrapperUrl)
 		if err != nil {
-			slogger.Error("error creating grpc scrapper: %v", err)
+			slogger.Error("error creating grpc scrapper", "error", err)
 			os.Exit(1)
 		}
 	} else {
-		slogger.Error("unsupported protocol:", cfg.ApiProtocol)
+		slogger.Error("unsupported protocol", "protocol", cfg.ApiProtocol)
 		os.Exit(1)
 	}
 
