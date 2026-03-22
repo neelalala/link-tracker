@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/grpc"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/http"
@@ -11,10 +12,11 @@ import (
 	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/notifier"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/stackoverflow"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/logger"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/chat"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/link"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/subscription"
+	chatpgx "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/chat/pgx"
+	linkpgx "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/link/pgx"
+	subscriptionpgx "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/subscription/pgx"
 	"io"
 	"log"
 	"log/slog"
@@ -46,9 +48,22 @@ func main() {
 
 	slogger := logger.NewLogger(cfg.LogLevel, cfg.Environment, out)
 
-	chatRepo := chat.NewMemoryRepository()
-	linkRepo := link.NewMemoryRepository()
-	subRepo := subscription.NewMemoryRepository()
+	err = database.RunMigrationsFromFile(cfg.DatabaseUrl, cfg.MigrationsDir, slogger)
+	if err != nil {
+		slogger.Error("migration failed", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	dbPool, err := pgxpool.New(context.Background(), cfg.DatabaseUrl)
+	if err != nil {
+		slogger.Error("unable to connect to database", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	defer dbPool.Close()
+
+	chatRepo := chatpgx.NewChatRepository(dbPool)
+	linkRepo := linkpgx.NewLinkRepository(dbPool)
+	subRepo := subscriptionpgx.NewSubscriptionRepository(dbPool)
 
 	githubClient := github.NewClient()
 	stackoverflowClient := stackoverflow.NewClient()

@@ -22,13 +22,15 @@ func (protocol Protocol) Validate() error {
 }
 
 type Config struct {
-	UpdateIntervalSeconds int      `yaml:"update-interval-seconds"`
-	Environment           string   `config:"environment,local"`
-	LogsFile              string   `config:"logs-file,"`
-	LogLevel              string   `config:"log-level,error"`
-	BotUrl                string   `config:"bot-url"`
-	ScrapperApiPort       uint16   `config:"scrapper-api-port"`
-	ApiProtocol           Protocol `config:"api-protocol"`
+	UpdatesIntervalSeconds int      `yaml:"updates-interval-seconds"`
+	Environment            string   `config:"environment,local"`
+	LogsFile               string   `config:"logs-file,"`
+	LogLevel               string   `config:"log-level,error"`
+	BotUrl                 string   `config:"bot-url"`
+	ScrapperApiPort        uint16   `config:"scrapper-api-port"`
+	ApiProtocol            Protocol `config:"api-protocol"`
+	MigrationsDir          string   `config:"migrations-dir"`
+	DatabaseUrl            string   `config:"database-url"`
 }
 
 func Load(configPath string) (*Config, error) {
