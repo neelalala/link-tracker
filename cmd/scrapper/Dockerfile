@@ -7,15 +7,15 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o /bin/bot ./cmd/bot/main.go
+RUN go build -o /bin/scrapper ./cmd/scrapper/main.go
 
 FROM alpine:latest
 
 WORKDIR /app
 
 COPY --from=builder /app/application.conf .
-COPY --from=builder /bin/bot /app/bot
+COPY --from=builder /bin/scrapper /app/scrapper
 
 EXPOSE 63342
 
-ENTRYPOINT ["/app/bot"]
+ENTRYPOINT ["/app/scrapper"]

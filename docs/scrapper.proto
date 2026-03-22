@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+option go_package = "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/scrapper";
+
+package scrapper;
+
+import "google/protobuf/empty.proto";
+
+service ScrapperService {
+  rpc RegisterChat (RegisterChatRequest) returns (google.protobuf.Empty);
+  rpc DeleteChat (DeleteChatRequest) returns (google.protobuf.Empty);
+
+  rpc GetLinks (GetLinksRequest) returns (ListLinksResponse);
+  rpc AddLink (AddLinkRequest) returns (LinkResponse);
+  rpc RemoveLink (RemoveLinkRequest) returns (LinkResponse);
+}
+
+message RegisterChatRequest {
+  int64 id = 1;
+}
+
+message DeleteChatRequest {
+  int64 id = 1;
+}
+
+message GetLinksRequest {
+  int64 tg_chat_id = 1;
+}
+
+message AddLinkRequest {
+  int64 tg_chat_id = 1;
+  string link = 2;
+  repeated string tags = 3;
+  repeated string filters = 4;
+}
+
+message RemoveLinkRequest {
+  int64 tg_chat_id = 1;
+  string link = 2;
+}
+
+message LinkResponse {
+  int64 id = 1;
+  string url = 2;
+  repeated string tags = 3;
+  repeated string filters = 4;
+}
+
+message ListLinksResponse {
+  repeated LinkResponse links = 1;
+  int32 size = 2;
+}

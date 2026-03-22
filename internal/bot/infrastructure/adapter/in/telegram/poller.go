@@ -1,0 +1,77 @@
+package telegram
+
+import (
+	"context"
+	"errors"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/telegram"
+	"log/slog"
+	"time"
+)
+
+const timeout = 60 * time.Second
+
+type Poller struct {
+	tgClient       *telegram.Client
+	commandService *application.CommandService
+	logger         *slog.Logger
+}
+
+func NewPoller(tgClient *telegram.Client, scrapper application.Scrapper, logger *slog.Logger) (*Poller, error) {
+	commandService := application.NewCommandService(scrapper, logger)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	commands := commandService.GetCommands()
+	err := tgClient.SetMyCommands(ctx, commands)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Poller{
+		tgClient:       tgClient,
+		commandService: commandService,
+		logger:         logger,
+	}, nil
+}
+
+func (poller *Poller) Start(ctx context.Context) {
+	poller.logger.Info("Poller started listening for telegram updates", slog.String("context", "poller.Start"))
+
+	for {
+		select {
+		case <-ctx.Done():
+			poller.logger.Info("Poller gracefully stopped")
+			return
+		default:
+		}
+
+		requestCtx, cancel := context.WithTimeout(ctx, timeout)
+
+		updates, err := poller.tgClient.GetUpdates(requestCtx)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				cancel()
+				return
+			}
+			poller.logger.Error("Failed to get updates", slog.String("error", err.Error()), slog.String("context", "tgClient.GetUpdates"))
+			cancel()
+			//time.Sleep(1 * time.Second)
+			continue
+		}
+
+		for _, update := range updates {
+			err := poller.handleMessage(requestCtx, update)
+			if err != nil {
+				poller.logger.Error("Failed to handle update", slog.String("error", err.Error()), slog.String("context", "poller.handleMessage"))
+			}
+		}
+		cancel()
+	}
+}
+
+func (poller *Poller) handleMessage(ctx context.Context, msg domain.Message) error {
+	response := poller.commandService.HandleMessage(ctx, msg.ChatID, msg.Text)
+	return poller.tgClient.SendMessage(ctx, msg.ChatID, response)
+}
