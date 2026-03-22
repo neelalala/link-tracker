@@ -1,4 +1,4 @@
-package pgx
+package sql
 
 import (
 	"context"

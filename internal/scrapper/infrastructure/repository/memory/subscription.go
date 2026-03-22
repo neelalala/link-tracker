@@ -6,18 +6,18 @@ import (
 	"sync"
 )
 
-type MemoryRepository struct {
+type SubscriptionRepository struct {
 	mu    sync.RWMutex
 	links map[int64]map[int64]domain.Subscription // link id -> chat id -> subscription
 }
 
-func NewMemoryRepository() *MemoryRepository {
-	return &MemoryRepository{
+func NewSubscriptionRepository() *SubscriptionRepository {
+	return &SubscriptionRepository{
 		links: make(map[int64]map[int64]domain.Subscription),
 	}
 }
 
-func (subRepo *MemoryRepository) Save(ctx context.Context, subscription domain.Subscription) error {
+func (subRepo *SubscriptionRepository) Save(ctx context.Context, subscription domain.Subscription) error {
 	subRepo.mu.Lock()
 	defer subRepo.mu.Unlock()
 
@@ -33,7 +33,7 @@ func (subRepo *MemoryRepository) Save(ctx context.Context, subscription domain.S
 	return nil
 }
 
-func (subRepo *MemoryRepository) GetByChatId(ctx context.Context, id int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, id int64) ([]domain.Subscription, error) {
 	subRepo.mu.RLock()
 	defer subRepo.mu.RUnlock()
 	var subscriptions []domain.Subscription
@@ -45,7 +45,7 @@ func (subRepo *MemoryRepository) GetByChatId(ctx context.Context, id int64) ([]d
 	return subscriptions, nil
 }
 
-func (subRepo *MemoryRepository) GetByLinkId(ctx context.Context, id int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, id int64) ([]domain.Subscription, error) {
 	subRepo.mu.RLock()
 	defer subRepo.mu.RUnlock()
 	var subscriptions []domain.Subscription
@@ -60,7 +60,7 @@ func (subRepo *MemoryRepository) GetByLinkId(ctx context.Context, id int64) ([]d
 	return subscriptions, nil
 }
 
-func (subRepo *MemoryRepository) Delete(ctx context.Context, subscription domain.Subscription) (domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) Delete(ctx context.Context, subscription domain.Subscription) (domain.Subscription, error) {
 	subRepo.mu.Lock()
 	defer subRepo.mu.Unlock()
 	if _, ok := subRepo.links[subscription.LinkID]; !ok {

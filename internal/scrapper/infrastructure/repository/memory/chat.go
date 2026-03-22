@@ -6,18 +6,18 @@ import (
 	"sync"
 )
 
-type MemoryRepository struct {
+type ChatRepository struct {
 	mu    sync.RWMutex
 	chats map[int64]domain.Chat
 }
 
-func NewMemoryRepository() *MemoryRepository {
-	return &MemoryRepository{
+func NewChatRepository() *ChatRepository {
+	return &ChatRepository{
 		chats: make(map[int64]domain.Chat),
 	}
 }
 
-func (chatRepo *MemoryRepository) Create(ctx context.Context, chat domain.Chat) error {
+func (chatRepo *ChatRepository) Create(ctx context.Context, chat domain.Chat) error {
 	chatRepo.mu.Lock()
 	defer chatRepo.mu.Unlock()
 	if _, ok := chatRepo.chats[chat.ID]; ok {
@@ -27,7 +27,7 @@ func (chatRepo *MemoryRepository) Create(ctx context.Context, chat domain.Chat) 
 	return nil
 }
 
-func (chatRepo *MemoryRepository) GetById(ctx context.Context, id int64) (domain.Chat, error) {
+func (chatRepo *ChatRepository) GetById(ctx context.Context, id int64) (domain.Chat, error) {
 	chatRepo.mu.RLock()
 	defer chatRepo.mu.RUnlock()
 	if chat, ok := chatRepo.chats[id]; ok {
@@ -36,7 +36,7 @@ func (chatRepo *MemoryRepository) GetById(ctx context.Context, id int64) (domain
 	return domain.Chat{}, domain.ErrChatNotRegistered
 }
 
-func (chatRepo *MemoryRepository) Delete(ctx context.Context, chat domain.Chat) error {
+func (chatRepo *ChatRepository) Delete(ctx context.Context, chat domain.Chat) error {
 	chatRepo.mu.Lock()
 	defer chatRepo.mu.Unlock()
 	if _, ok := chatRepo.chats[chat.ID]; !ok {

@@ -10,7 +10,7 @@ import (
 )
 
 func TestMemoryLinkRepository(t *testing.T) {
-	repo := NewMemoryRepository()
+	repo := NewLinkRepository()
 	link := domain.Link{ID: 1, URL: "https://example.com/"}
 	ctx := context.Background()
 

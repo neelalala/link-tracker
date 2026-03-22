@@ -9,7 +9,7 @@ import (
 )
 
 func TestMemoryChatRepository(t *testing.T) {
-	repo := NewMemoryRepository()
+	repo := NewChatRepository()
 	chat := domain.Chat{ID: 123}
 	ctx := context.Background()
 

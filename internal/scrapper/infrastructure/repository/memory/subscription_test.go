@@ -10,7 +10,7 @@ import (
 )
 
 func TestMemorySubscriptionRepository(t *testing.T) {
-	repo := NewMemoryRepository()
+	repo := NewSubscriptionRepository()
 	sub1 := domain.Subscription{ChatID: 10, LinkID: 100, Tags: []string{"go"}}
 	sub2 := domain.Subscription{ChatID: 20, LinkID: 100, Tags: []string{"golang"}}
 	sub3 := domain.Subscription{ChatID: 10, LinkID: 200, Tags: []string{"java"}}
