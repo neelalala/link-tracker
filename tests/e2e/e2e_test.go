@@ -54,6 +54,38 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 
 	defer newNetwork.Remove(ctx)
 
+	const (
+		dbUser = "testuser"
+		dbPass = "testpass"
+		dbName = "scrapper_test"
+	)
+
+	pgReq := testcontainers.ContainerRequest{
+		Image:        "postgres:15-alpine",
+		ExposedPorts: []string{"5432/tcp"},
+		Networks:     []string{newNetwork.Name},
+		NetworkAliases: map[string][]string{
+			newNetwork.Name: {"postgres_db"},
+		},
+		Env: map[string]string{
+			"POSTGRES_USER":     dbUser,
+			"POSTGRES_PASSWORD": dbPass,
+			"POSTGRES_DB":       dbName,
+		},
+		WaitingFor: wait.ForLog("database system is ready to accept connections").
+			WithOccurrence(2).
+			WithStartupTimeout(30 * time.Second),
+	}
+
+	pgContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: pgReq,
+		Started:          true,
+	})
+	require.NoErrorf(t, err, "Failed to start PostgreSQL container: %v", err)
+	defer pgContainer.Terminate(ctx)
+
+	dbURL := fmt.Sprintf("postgres://%s:%s@postgres_db:5432/%s?sslmode=disable", dbUser, dbPass, dbName)
+
 	botReq := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
 			Context:    "../../",
@@ -68,6 +100,7 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 			"APP_TELEGRAM_TOKEN": cfg.TelegramToken,
 			"BOT_API_PORT":       strconv.Itoa(int(cfg.BotApiPort)),
 			"SCRAPPER_URL":       cfg.ScrapperUrl,
+			"API_PROTOCOL":       "http",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", cfg.BotApiPort))).WithStartupTimeout(30 * time.Second),
 	}
@@ -94,6 +127,8 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 		Env: map[string]string{
 			"SCRAPPER_API_PORT": strconv.Itoa(int(cfg.ScrapperApiPort)),
 			"BOT_URL":           cfg.BotUrl,
+			"DATABASE_URL":      dbURL,
+			"API_PROTOCOL":      "http",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", cfg.ScrapperApiPort))).WithStartupTimeout(30 * time.Second),
 	}
