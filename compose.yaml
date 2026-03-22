@@ -14,11 +14,36 @@ services:
     build:
       context: .
       dockerfile: cmd/scrapper/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
     env_file:
       - .env
     environment:
       - API_PROTOCOL="grpc"
 
+  postgres:
+    image: postgres:latest
+    container_name: postgres_container
+    env_file:
+      - .env
+    ports:
+      - "5430:5432"
+    volumes:
+      - ./pgdata:${PGDATA}
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  pgdata:
+    driver: local
