@@ -30,7 +30,7 @@ func TestLinkRepository_Integration(t *testing.T) {
 	)
 
 	req := testcontainers.ContainerRequest{
-		Image:        "postgres:15-alpine",
+		Image:        "postgres:17-alpine",
 		ExposedPorts: []string{"5432/tcp"},
 		Env: map[string]string{
 			"POSTGRES_USER":     username,
