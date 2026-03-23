@@ -230,16 +230,25 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Su
 }
 
 func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	batch := &pgx.Batch{}
+
 	query := `
 		INSERT INTO subscription_tags (chat_id, link_id, tag)
 		VALUES ($1, $2, $3)
-		ON CONFLICT DO NOTHING;
+		ON CONFLICT (chat_id, link_id, tag) DO NOTHING;
 	`
 	for _, tag := range tags {
-		_, err := subRepo.pool.Exec(ctx, query, chatId, linkId, tag)
-		if err != nil {
-			return fmt.Errorf("failed to add tag: %w", err)
-		}
+		batch.Queue(query, chatId, linkId, tag)
+	}
+
+	br := subRepo.pool.SendBatch(ctx, batch)
+	err := br.Close()
+	if err != nil {
+		return fmt.Errorf("failed to execute tags batch: %w", err)
 	}
 
 	return nil
@@ -274,16 +283,24 @@ func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkId, chat
 }
 
 func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	batch := &pgx.Batch{}
 	query := `
 		DELETE FROM subscription_tags
 		WHERE chat_id = $1 AND link_id = $2 AND tag = $3;
 	`
 
 	for _, tag := range tags {
-		_, err := subRepo.pool.Exec(ctx, query, chatId, linkId, tag)
-		if err != nil {
-			return fmt.Errorf("failed to delete tags for link %d: %w", linkId, err)
-		}
+		batch.Queue(query, chatId, linkId, tag)
+	}
+
+	br := subRepo.pool.SendBatch(ctx, batch)
+	err := br.Close()
+	if err != nil {
+		return fmt.Errorf("failed to execute tags batch: %w", err)
 	}
 
 	return nil
