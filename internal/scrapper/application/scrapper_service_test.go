@@ -90,6 +90,18 @@ func (m *MockSubRepo) Delete(ctx context.Context, sub domain.Subscription) (doma
 	return sub, nil
 }
 
+func (m *MockSubRepo) AddTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+	return nil
+}
+
+func (m *MockSubRepo) GetTags(ctx context.Context, linkId, chatId int64) ([]string, error) {
+	return []string{}, nil
+}
+
+func (m *MockSubRepo) DeleteTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+	return nil
+}
+
 type MockNotifier struct {
 	SentUpdates []domain.LinkUpdate
 }
