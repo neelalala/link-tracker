@@ -27,4 +27,7 @@ type SubscriptionRepository interface {
 	GetByChatId(ctx context.Context, chatId int64) ([]Subscription, error)
 	GetByLinkId(ctx context.Context, linkId int64) ([]Subscription, error)
 	Delete(ctx context.Context, sub Subscription) (Subscription, error)
+	AddTags(ctx context.Context, linkId, chatId int64, tags []string) error
+	GetTags(ctx context.Context, linkId, chatId int64) ([]string, error)
+	DeleteTags(ctx context.Context, linkId, chatId int64, tags []string) error
 }
