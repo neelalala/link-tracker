@@ -418,7 +418,7 @@ func TestSubscriptionRepository_Integration(t *testing.T) {
 
 			t.Run("Delete subscription", func(t *testing.T) {
 				chatID := int64(5)
-				linkID := createTestDeps(chatID, "https://github.com/user/repo6")
+				linkID := createTestDeps(chatID, "https://github.com/user/repo5")
 				sub := domain.Subscription{ChatID: chatID, LinkID: linkID, Tags: []string{"deleted"}}
 
 				err := repo.Save(ctx, sub)
@@ -436,6 +436,67 @@ func TestSubscriptionRepository_Integration(t *testing.T) {
 				err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM subscription_tags WHERE chat_id = $1 AND link_id = $2", chatID, linkID).Scan(&count)
 				require.NoError(t, err)
 				assert.Equal(t, 0, count, "Expected subscription_tags to be cascade deleted")
+			})
+
+			t.Run("Add and Get Tags", func(t *testing.T) {
+				chatID := int64(6)
+				linkID := createTestDeps(chatID, "https://github.com/user/repo6")
+
+				err := repo.Save(ctx, domain.Subscription{ChatID: chatID, LinkID: linkID})
+				require.NoError(t, err)
+
+				tags := []string{"backend", "go"}
+				err = repo.AddTags(ctx, linkID, chatID, tags)
+				require.NoError(t, err)
+
+				savedTags, err := repo.GetTags(ctx, linkID, chatID)
+				require.NoError(t, err)
+				assert.ElementsMatch(t, tags, savedTags)
+
+				additionalTags := []string{"go", "postgres"}
+				err = repo.AddTags(ctx, linkID, chatID, additionalTags)
+				require.NoError(t, err)
+
+				savedTags, err = repo.GetTags(ctx, linkID, chatID)
+				require.NoError(t, err)
+				assert.ElementsMatch(t, []string{"backend", "go", "postgres"}, savedTags)
+			})
+
+			t.Run("Delete Tags", func(t *testing.T) {
+				chatID := int64(7)
+				linkID := createTestDeps(chatID, "https://github.com/user/repo7")
+
+				err := repo.Save(ctx, domain.Subscription{ChatID: chatID, LinkID: linkID})
+				require.NoError(t, err)
+
+				err = repo.AddTags(ctx, linkID, chatID, []string{"t1", "t2", "t3"})
+				require.NoError(t, err)
+
+				err = repo.DeleteTags(ctx, linkID, chatID, []string{"t2", "t3", "t4"})
+				require.NoError(t, err)
+
+				tags, err := repo.GetTags(ctx, linkID, chatID)
+				require.NoError(t, err)
+				assert.ElementsMatch(t, []string{"t1"}, tags)
+			})
+
+			t.Run("Tags Empty Edge Cases", func(t *testing.T) {
+				chatID := int64(8)
+				linkID := createTestDeps(chatID, "https://github.com/user/repo8")
+
+				err := repo.Save(ctx, domain.Subscription{ChatID: chatID, LinkID: linkID})
+				require.NoError(t, err)
+
+				err = repo.AddTags(ctx, linkID, chatID, []string{})
+				require.NoError(t, err)
+
+				tags, err := repo.GetTags(ctx, linkID, chatID)
+				require.NoError(t, err)
+				assert.NotNil(t, tags)
+				assert.Empty(t, tags)
+
+				err = repo.DeleteTags(ctx, linkID, chatID, []string{})
+				require.NoError(t, err)
 			})
 		})
 	}
