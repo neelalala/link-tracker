@@ -112,7 +112,7 @@ func (linkRepo *LinkRepository) GetBatch(ctx context.Context, limit int, offset 
 
 	defer rows.Close()
 
-	var links []domain.Link
+	links := make([]domain.Link, 0, limit)
 
 	for rows.Next() {
 		var link domain.Link
