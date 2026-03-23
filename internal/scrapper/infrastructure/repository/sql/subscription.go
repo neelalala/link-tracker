@@ -21,8 +21,8 @@ func NewSubscriptionRepository(pool *pgxpool.Pool) *SubscriptionRepository {
 	}
 }
 
-func (s *SubscriptionRepository) Save(ctx context.Context, sub domain.Subscription) error {
-	tx, err := s.pool.Begin(ctx)
+func (subRepo *SubscriptionRepository) Save(ctx context.Context, sub domain.Subscription) error {
+	tx, err := subRepo.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -55,9 +55,9 @@ func (s *SubscriptionRepository) Save(ctx context.Context, sub domain.Subscripti
 			if err != nil {
 				var pgErr *pgconn.PgError
 				if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-					return fmt.Errorf("%w: tag '%s' already exists for chat id = %d, link id = %d", domain.ErrAlreadySubscribed, tag, sub.ChatID, sub.LinkID)
+					return fmt.Errorf("%w: tag '%subRepo' already exists for chat id = %d, link id = %d", domain.ErrAlreadySubscribed, tag, sub.ChatID, sub.LinkID)
 				}
-				return fmt.Errorf("failed to insert tag %s: %w", tag, err)
+				return fmt.Errorf("failed to insert tag %subRepo: %w", tag, err)
 			}
 		}
 	}
@@ -69,19 +69,19 @@ func (s *SubscriptionRepository) Save(ctx context.Context, sub domain.Subscripti
 	return nil
 }
 
-func (s *SubscriptionRepository) GetByChatId(ctx context.Context, chatId int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, chatId int64) ([]domain.Subscription, error) {
 	query := `
 		SELECT 
-			s.chat_id, 
+			subRepo.chat_id, 
 			l.id,
 			st.tag
-		FROM subscriptions s
-		JOIN links l ON s.link_id = l.id
-		LEFT JOIN subscription_tags st ON s.chat_id = st.chat_id AND s.link_id = st.link_id
-		WHERE s.chat_id = $1
+		FROM subscriptions subRepo
+		JOIN links l ON subRepo.link_id = l.id
+		LEFT JOIN subscription_tags st ON subRepo.chat_id = st.chat_id AND subRepo.link_id = st.link_id
+		WHERE subRepo.chat_id = $1
 	`
 
-	rows, err := s.pool.Query(ctx, query, chatId)
+	rows, err := subRepo.pool.Query(ctx, query, chatId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query subscriptions for chat %d: %w", chatId, err)
 	}
@@ -129,19 +129,19 @@ func (s *SubscriptionRepository) GetByChatId(ctx context.Context, chatId int64) 
 	return result, nil
 }
 
-func (s *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId int64) ([]domain.Subscription, error) {
 	query := `
 		SELECT 
-			s.chat_id, 
+			subRepo.chat_id, 
 			l.id, 
 			st.tag
-		FROM subscriptions s
-		JOIN links l ON s.link_id = l.id
-		LEFT JOIN subscription_tags st ON s.chat_id = st.chat_id AND s.link_id = st.link_id
-		WHERE s.link_id = $1
+		FROM subscriptions subRepo
+		JOIN links l ON subRepo.link_id = l.id
+		LEFT JOIN subscription_tags st ON subRepo.chat_id = st.chat_id AND subRepo.link_id = st.link_id
+		WHERE subRepo.link_id = $1
 	`
 
-	rows, err := s.pool.Query(ctx, query, linkId)
+	rows, err := subRepo.pool.Query(ctx, query, linkId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query subscriptions for link %d: %w", linkId, err)
 	}
@@ -189,8 +189,8 @@ func (s *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId int64) 
 	return result, nil
 }
 
-func (s *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
-	tx, err := s.pool.Begin(ctx)
+func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
+	tx, err := subRepo.pool.Begin(ctx)
 	if err != nil {
 		return domain.Subscription{}, fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -203,7 +203,7 @@ func (s *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscrip
 	`
 
 	var deletedChatId int64
-	err = s.pool.QueryRow(ctx, deleteSubQuery, sub.ChatID, sub.LinkID).Scan(&deletedChatId)
+	err = subRepo.pool.QueryRow(ctx, deleteSubQuery, sub.ChatID, sub.LinkID).Scan(&deletedChatId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Subscription{}, fmt.Errorf("subscription not found for chat %d and link %d", sub.ChatID, sub.LinkID)

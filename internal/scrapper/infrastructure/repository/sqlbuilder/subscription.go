@@ -22,8 +22,8 @@ func NewSubscriptionRepository(pool *pgxpool.Pool) *SubscriptionRepository {
 	}
 }
 
-func (s *SubscriptionRepository) Save(ctx context.Context, sub domain.Subscription) error {
-	tx, err := s.pool.Begin(ctx)
+func (subRepo *SubscriptionRepository) Save(ctx context.Context, sub domain.Subscription) error {
+	tx, err := subRepo.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -67,9 +67,9 @@ func (s *SubscriptionRepository) Save(ctx context.Context, sub domain.Subscripti
 			if err != nil {
 				var pgErr *pgconn.PgError
 				if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-					return fmt.Errorf("%w: tag '%s' already exists for chat id = %d, link id = %d", domain.ErrAlreadySubscribed, tag, sub.ChatID, sub.LinkID)
+					return fmt.Errorf("%w: tag '%subRepo' already exists for chat id = %d, link id = %d", domain.ErrAlreadySubscribed, tag, sub.ChatID, sub.LinkID)
 				}
-				return fmt.Errorf("failed to insert tag %s: %w", tag, err)
+				return fmt.Errorf("failed to insert tag %subRepo: %w", tag, err)
 			}
 		}
 	}
@@ -81,31 +81,31 @@ func (s *SubscriptionRepository) Save(ctx context.Context, sub domain.Subscripti
 	return nil
 }
 
-func (s *SubscriptionRepository) GetByChatId(ctx context.Context, chatId int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, chatId int64) ([]domain.Subscription, error) {
 	query, args, err := psql.Select(
-		goqu.I("s.chat_id"),
+		goqu.I("subRepo.chat_id"),
 		goqu.I("l.id"),
 		goqu.I("st.tag"),
-	).From(goqu.T("subscriptions").As("s")).
+	).From(goqu.T("subscriptions").As("subRepo")).
 		Join(
 			goqu.T("links").As("l"),
-			goqu.On(goqu.I("s.link_id").Eq(goqu.I("l.id"))),
+			goqu.On(goqu.I("subRepo.link_id").Eq(goqu.I("l.id"))),
 		).
 		LeftJoin(
 			goqu.T("subscription_tags").As("st"),
 			goqu.On(
-				goqu.I("s.chat_id").Eq(goqu.I("st.chat_id")),
-				goqu.I("s.link_id").Eq(goqu.I("st.link_id")),
+				goqu.I("subRepo.chat_id").Eq(goqu.I("st.chat_id")),
+				goqu.I("subRepo.link_id").Eq(goqu.I("st.link_id")),
 			),
 		).
-		Where(goqu.Ex{"s.chat_id": chatId}).
+		Where(goqu.Ex{"subRepo.chat_id": chatId}).
 		ToSQL()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
 
-	rows, err := s.pool.Query(ctx, query, args...)
+	rows, err := subRepo.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query subscriptions for chat %d: %w", chatId, err)
 	}
@@ -147,31 +147,31 @@ func (s *SubscriptionRepository) GetByChatId(ctx context.Context, chatId int64) 
 	return result, nil
 }
 
-func (s *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId int64) ([]domain.Subscription, error) {
 	query, args, err := psql.Select(
-		goqu.I("s.chat_id"),
+		goqu.I("subRepo.chat_id"),
 		goqu.I("l.id"),
 		goqu.I("st.tag"),
-	).From(goqu.T("subscriptions").As("s")).
+	).From(goqu.T("subscriptions").As("subRepo")).
 		Join(
 			goqu.T("links").As("l"),
-			goqu.On(goqu.I("s.link_id").Eq(goqu.I("l.id"))),
+			goqu.On(goqu.I("subRepo.link_id").Eq(goqu.I("l.id"))),
 		).
 		LeftJoin(
 			goqu.T("subscription_tags").As("st"),
 			goqu.On(
-				goqu.I("s.chat_id").Eq(goqu.I("st.chat_id")),
-				goqu.I("s.link_id").Eq(goqu.I("st.link_id")),
+				goqu.I("subRepo.chat_id").Eq(goqu.I("st.chat_id")),
+				goqu.I("subRepo.link_id").Eq(goqu.I("st.link_id")),
 			),
 		).
-		Where(goqu.Ex{"s.link_id": linkId}).
+		Where(goqu.Ex{"subRepo.link_id": linkId}).
 		ToSQL()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
 
-	rows, err := s.pool.Query(ctx, query, args...)
+	rows, err := subRepo.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query subscriptions for link %d: %w", linkId, err)
 	}
@@ -213,8 +213,8 @@ func (s *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId int64) 
 	return result, nil
 }
 
-func (s *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
-	tx, err := s.pool.Begin(ctx)
+func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
+	tx, err := subRepo.pool.Begin(ctx)
 	if err != nil {
 		return domain.Subscription{}, fmt.Errorf("failed to begin transaction: %w", err)
 	}
