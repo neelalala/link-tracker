@@ -30,7 +30,7 @@ func (subRepo *SubscriptionRepository) Save(ctx context.Context, sub domain.Subs
 
 	subQuery := `
 		INSERT INTO subscriptions (chat_id, link_id)
-		VALUES ($1, $2)
+		VALUES ($1, $2);
 	`
 
 	_, err = tx.Exec(ctx, subQuery, sub.ChatID, sub.LinkID)
@@ -47,7 +47,7 @@ func (subRepo *SubscriptionRepository) Save(ctx context.Context, sub domain.Subs
 	if len(sub.Tags) > 0 {
 		tagQuery := `
 			INSERT INTO subscription_tags (chat_id, link_id, tag)
-			VALUES ($1, $2, $3)
+			VALUES ($1, $2, $3);
 		`
 
 		for _, tag := range sub.Tags {
@@ -78,7 +78,7 @@ func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, chatId i
 		FROM subscriptions subRepo
 		JOIN links l ON subRepo.link_id = l.id
 		LEFT JOIN subscription_tags st ON subRepo.chat_id = st.chat_id AND subRepo.link_id = st.link_id
-		WHERE subRepo.chat_id = $1
+		WHERE subRepo.chat_id = $1;
 	`
 
 	rows, err := subRepo.pool.Query(ctx, query, chatId)
@@ -138,7 +138,7 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId i
 		FROM subscriptions subRepo
 		JOIN links l ON subRepo.link_id = l.id
 		LEFT JOIN subscription_tags st ON subRepo.chat_id = st.chat_id AND subRepo.link_id = st.link_id
-		WHERE subRepo.link_id = $1
+		WHERE subRepo.link_id = $1;
 	`
 
 	rows, err := subRepo.pool.Query(ctx, query, linkId)
@@ -199,7 +199,7 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Su
 	deleteSubQuery := `
 		DELETE FROM subscriptions 
 		WHERE chat_id = $1 AND link_id = $2
-		RETURNING chat_id
+		RETURNING chat_id;
 	`
 
 	var deletedChatId int64
@@ -215,7 +215,7 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Su
 		DELETE FROM links 
 		WHERE id = $1 AND NOT EXISTS (
 			SELECT 1 FROM subscriptions WHERE link_id = $1
-		)
+		);
 	`
 	_, err = tx.Exec(ctx, deleteLinkQuery, sub.LinkID)
 	if err != nil {
@@ -227,4 +227,64 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Su
 	}
 
 	return sub, nil
+}
+
+func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+	query := `
+		INSERT INTO subscription_tags (chat_id, link_id, tag)
+		VALUES ($1, $2, $3)
+		ON CONFLICT DO NOTHING;
+	`
+	for _, tag := range tags {
+		_, err := subRepo.pool.Exec(ctx, query, chatId, linkId, tag)
+		if err != nil {
+			return fmt.Errorf("failed to add tag: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkId, chatId int64) ([]string, error) {
+	query := `
+		SELECT tag
+		FROM subscription_tags
+		WHERE chat_id = $1 AND link_id = $2;
+	`
+	rows, err := subRepo.pool.Query(ctx, query, chatId, linkId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tags for link %d: %w", linkId, err)
+	}
+	defer rows.Close()
+
+	tags := make([]string, 0)
+	for rows.Next() {
+		var tag string
+		err := rows.Scan(&tag)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan tags for link %d: %w", linkId, err)
+		}
+		tags = append(tags, tag)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return tags, nil
+}
+
+func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+	query := `
+		DELETE FROM subscription_tags
+		WHERE chat_id = $1 AND link_id = $2 AND tag = $3;
+	`
+
+	for _, tag := range tags {
+		_, err := subRepo.pool.Exec(ctx, query, chatId, linkId, tag)
+		if err != nil {
+			return fmt.Errorf("failed to delete tags for link %d: %w", linkId, err)
+		}
+	}
+
+	return nil
 }
