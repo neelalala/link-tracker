@@ -220,7 +220,6 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Su
 	}
 	defer tx.Rollback(ctx)
 
-	// 1. Удаляем подписку (используем tx.QueryRow!)
 	deleteSubQuery, subArgs, err := psql.Delete("subscriptions").
 		Where(goqu.Ex{"chat_id": sub.ChatID, "link_id": sub.LinkID}).
 		Returning("chat_id").
@@ -256,4 +255,85 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Su
 	}
 
 	return sub, nil
+}
+
+func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	var records []goqu.Record
+	for _, tag := range tags {
+		records = append(records, goqu.Record{"link_id": linkId, "chat_id": chatId, "tag": tag})
+	}
+
+	query, args, err := psql.Insert("subscription_tags").
+		Rows(records).
+		OnConflict(goqu.DoNothing()).
+		ToSQL()
+	if err != nil {
+		return fmt.Errorf("failed to build insert sub tags SQL: %w", err)
+	}
+
+	_, err = subRepo.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute insert sub tags: %w", err)
+	}
+
+	return nil
+}
+
+func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkId, chatId int64) ([]string, error) {
+	query, args, err := psql.Select(goqu.I("tag")).
+		From(goqu.T("subscription_tags")).
+		Where(goqu.Ex{"link_id": linkId, "chat_id": chatId}).
+		ToSQL()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build get tags SQL for link %d: %w", linkId, err)
+	}
+
+	rows, err := subRepo.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tags for link %d: %w", linkId, err)
+	}
+	defer rows.Close()
+
+	tags := make([]string, 0)
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, fmt.Errorf("failed to scan tag row: %w", err)
+		}
+		tags = append(tags, tag)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return tags, nil
+}
+
+func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	query, args, err := psql.Delete("subscription_tags").
+		Where(goqu.Ex{
+			"link_id": linkId,
+			"chat_id": chatId,
+			"tag":     tags,
+		}).
+		ToSQL()
+	if err != nil {
+		return fmt.Errorf("failed to build delete tags SQL for link %d: %w", linkId, err)
+	}
+
+	_, err = subRepo.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute delete tags for link %d: %w", linkId, err)
+	}
+
+	return nil
 }
