@@ -48,7 +48,7 @@ func main() {
 
 	slogger := logger.NewLogger(cfg.LogLevel, cfg.Environment, out)
 
-	err = database.RunMigrationsFromFile(cfg.DatabaseUrl, cfg.MigrationsDir, slogger)
+	err = database.RunMigrationsFromFile(cfg.DatabaseUrl, cfg.MigrationsDirUrl, slogger)
 	if err != nil {
 		slogger.Error("migration failed", slog.String("error", err.Error()))
 		os.Exit(1)

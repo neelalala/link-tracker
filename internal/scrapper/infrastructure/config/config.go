@@ -42,7 +42,7 @@ type Config struct {
 	BotUrl                 string     `config:"bot-url"`
 	ScrapperApiPort        uint16     `config:"scrapper-api-port"`
 	ApiProtocol            Protocol   `config:"api-protocol"`
-	MigrationsDir          string     `config:"migrations-dir"`
+	MigrationsDirUrl       string     `config:"migrations-dir-url"`
 	DatabaseUrl            string     `config:"database-url"`
 	AccessType             AccessType `config:"access-type,builder"`
 }

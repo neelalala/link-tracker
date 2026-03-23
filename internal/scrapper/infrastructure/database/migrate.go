@@ -9,10 +9,10 @@ import (
 	"log/slog"
 )
 
-func RunMigrationsFromFile(databaseUrl, migrationsPath string, logger *slog.Logger) error {
+func RunMigrationsFromFile(databaseUrl, migrationsUrl string, logger *slog.Logger) error {
 	logger.Info("running database migrations")
 
-	m, err := migrate.New(migrationsPath, databaseUrl)
+	m, err := migrate.New(migrationsUrl, databaseUrl)
 	if err != nil {
 		return fmt.Errorf("failed to init migrate instance: %w", err)
 	}
