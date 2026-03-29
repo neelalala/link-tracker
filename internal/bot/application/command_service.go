@@ -48,9 +48,8 @@ func (service *CommandService) HandleMessage(ctx context.Context, chatID int64, 
 		exists = false
 	}
 
-	// TODO can start /track even if not registered
 	if exists && session.State != domain.StateIdle {
-		sb.WriteString(service.processSM(ctx, chatID, text, session))
+		sb.WriteString(service.processStateMachine(ctx, chatID, text, session))
 		return sb.String()
 	}
 
@@ -73,7 +72,7 @@ func (service *CommandService) clearSession(chatID int64) {
 	delete(service.sessions, chatID)
 }
 
-func (service *CommandService) processSM(ctx context.Context, chatID int64, text string, session *domain.TrackSession) string {
+func (service *CommandService) processStateMachine(ctx context.Context, chatID int64, text string, session *domain.TrackSession) string {
 	service.mu.Lock()
 	defer service.mu.Unlock()
 
