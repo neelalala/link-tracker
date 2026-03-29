@@ -65,17 +65,18 @@ func main() {
 
 	var apiServer ApiServer
 	var botNotifier application.UpdateNotifier
-	if cfg.ApiProtocol == "http" {
+	switch cfg.ApiProtocol {
+	case config.HTTP:
 		apiServer = http.NewServer(scrapperCfg.ApiPort, subsService, slogger)
 		botNotifier = httpnotifier.NewBot(scrapperCfg.BotUrl)
-	} else if cfg.ApiProtocol == "grpc" {
+	case config.GRPC:
 		apiServer = grpc.NewServer(scrapperCfg.ApiPort, subsService, slogger)
 		botNotifier, err = grpcnotifier.NewBot(scrapperCfg.BotUrl)
 		if err != nil {
 			slogger.Error("error creating grpc notifier: %v", err)
 			os.Exit(1)
 		}
-	} else {
+	default:
 		slogger.Error("unsupported protocol:", cfg.ApiProtocol)
 		os.Exit(1)
 	}
