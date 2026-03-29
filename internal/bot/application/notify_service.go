@@ -37,7 +37,11 @@ func (service *NotifierService) HandleUpdate(ctx context.Context, update domain.
 	for _, chatID := range update.TgChatIDs {
 		err := service.sender.SendMessage(ctx, chatID, text)
 		if err != nil {
-			service.logger.Error("Failed to send notification", slog.String("context", "NotifyService.sender.SendMessage"), slog.Int64("chatID", chatID), slog.String("error", err.Error()))
+			service.logger.Error("Failed to send notification",
+				slog.String("context", "NotifyService.sender.SendMessage"),
+				slog.Int64("chatID", chatID),
+				slog.String("error", err.Error()),
+			)
 		}
 	}
 
