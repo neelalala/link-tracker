@@ -78,7 +78,7 @@ func main() {
 			os.Exit(1)
 		}
 	default:
-		slogger.Error("unsupported protocol:", cfg.ApiProtocol)
+		slogger.Error("unsupported protocol", "protocol", cfg.ApiProtocol)
 		os.Exit(1)
 	}
 
