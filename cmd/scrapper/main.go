@@ -50,8 +50,8 @@ func main() {
 	linkRepo := link.NewMemoryRepository()
 	subRepo := subscription.NewMemoryRepository()
 
-	githubClient := github.NewClient()
-	stackoverflowClient := stackoverflow.NewClient()
+	githubClient := github.NewClient(github.BaseURL, github.BaseApiURL, github.Timeout)
+	stackoverflowClient := stackoverflow.NewClient(stackoverflow.BaseURL, stackoverflow.BaseApiURL, stackoverflow.Timeout)
 
 	fetchers := []application.LinkFetcher{githubClient, stackoverflowClient}
 	fetcher := application.NewFetcherService(fetchers)

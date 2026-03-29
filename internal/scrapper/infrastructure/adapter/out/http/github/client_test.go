@@ -51,10 +51,7 @@ func TestClient_Fetch_Resilience(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			client := &Client{
-				httpClient: &http.Client{},
-				apiURL:     ts.URL,
-			}
+			client := NewClient(BaseURL, ts.URL, Timeout)
 
 			_, err := client.Fetch(ctx, "https://stackoverflow.com/questions/12345/test")
 

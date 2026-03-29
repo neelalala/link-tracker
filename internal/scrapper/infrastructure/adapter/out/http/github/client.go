@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	baseURL    = "https://github.com/"
-	baseApiURL = "https://api.github.com"
-	timeout    = 10 * time.Second
+	BaseURL    = "https://github.com/"
+	BaseApiURL = "https://api.github.com"
+	Timeout    = 10 * time.Second
 )
 
 type Client struct {
@@ -22,20 +22,20 @@ type Client struct {
 	baseURL    string
 }
 
-func NewClient() *Client {
+func NewClient(baseUrl, baseApiUrl string, timeout time.Duration) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: timeout},
-		apiURL:     baseApiURL,
-		baseURL:    baseURL,
+		apiURL:     baseApiUrl,
+		baseURL:    baseUrl,
 	}
 }
 
 func (client *Client) CanHandle(url string) bool {
-	return strings.HasPrefix(url, baseURL)
+	return strings.HasPrefix(url, client.baseURL)
 }
 
 func (client *Client) Fetch(ctx context.Context, url string) (application.FetchResult, error) {
-	path := strings.TrimPrefix(url, baseURL)
+	path := strings.TrimPrefix(url, client.baseURL)
 	path = strings.Trim(path, "/")
 	parts := strings.Split(path, "/")
 
@@ -44,7 +44,7 @@ func (client *Client) Fetch(ctx context.Context, url string) (application.FetchR
 	}
 	owner, repo := parts[0], parts[1]
 
-	apiUrl := fmt.Sprintf("%s/repos/%s/%s", baseApiURL, owner, repo)
+	apiUrl := fmt.Sprintf("%s/repos/%s/%s", client.apiURL, owner, repo)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiUrl, nil)
 	if err != nil {
