@@ -46,6 +46,7 @@ func main() {
 	tgClient, err := telegramout.NewClient(botCfg.TelegramToken)
 	if err != nil {
 		slogger.Error("Error creating telegram client", slog.String("context", "main"), slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
