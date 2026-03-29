@@ -78,6 +78,12 @@ func (client *Client) DeleteChat(ctx context.Context, chatId int64) error {
 	return nil
 }
 
+type linkJson struct {
+	Id   int64    `json:"id"`
+	Url  string   `json:"url"`
+	Tags []string `json:"tags"`
+}
+
 func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]domain.TrackedLink, error) {
 	query := fmt.Sprintf("%s/%s", client.baseURL, linksEndpoint)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
@@ -98,12 +104,6 @@ func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]doma
 			return nil, domain.ErrChatNotRegistered
 		}
 		return nil, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
-	}
-
-	type linkJson struct {
-		Id   int64    `json:"id"`
-		Url  string   `json:"url"`
-		Tags []string `json:"tags"`
 	}
 
 	type responseJson struct {
@@ -181,13 +181,7 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
 	}
 
-	type responseJson struct {
-		Id   int64    `json:"id"`
-		Url  string   `json:"url"`
-		Tags []string `json:"tags"`
-	}
-
-	var respJson responseJson
+	var respJson linkJson
 
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
@@ -245,13 +239,7 @@ func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) 
 		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
 	}
 
-	type responseJson struct {
-		Id   int64    `json:"id"`
-		Url  string   `json:"url"`
-		Tags []string `json:"tags"`
-	}
-
-	var respJson responseJson
+	var respJson linkJson
 
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
