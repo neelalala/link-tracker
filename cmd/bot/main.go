@@ -68,7 +68,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	poller, err := telegramin.NewPoller(tgClient, scrapperApi, slogger)
+	commandSerice := application.NewCommandService(scrapperApi, slogger)
+	poller, err := telegramin.NewPoller(commandSerice, tgClient, slogger)
 	if err != nil {
 		slogger.Error("Failed to create bot", slog.String("context", "main"), slog.String("error", err.Error()))
 		os.Exit(1)

@@ -18,9 +18,11 @@ type Poller struct {
 	logger         *slog.Logger
 }
 
-func NewPoller(tgClient *telegram.Client, scrapper application.Scrapper, logger *slog.Logger) (*Poller, error) {
-	commandService := application.NewCommandService(scrapper, logger)
-
+func NewPoller(
+	commandService *application.CommandService,
+	tgClient *telegram.Client,
+	logger *slog.Logger,
+) (*Poller, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	commands := commandService.GetCommands()
