@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/grpc"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/http"
 	telegramin "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/telegram"
@@ -10,7 +11,6 @@ import (
 	httpscrapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/scrapper"
 	telegramout "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/telegram"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/logger"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/config"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"log"
@@ -29,21 +29,20 @@ func main() {
 	if err != nil {
 		log.Fatalf("error loading config: %v", err)
 	}
-	botCfg := cfg.BotConfig
 
 	var out io.Writer = os.Stdout
 
-	if botCfg.LogsFile != "" {
-		file, err := os.OpenFile(botCfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if cfg.LogsFile != "" {
+		file, err := os.OpenFile(cfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatalf("error opening file: %v", err)
 		}
 		out = file
 	}
 
-	slogger := logger.NewLogger(botCfg.LogLevel, out)
+	slogger := logger.NewLogger(cfg.LogLevel, out)
 
-	tgClient, err := telegramout.NewClient(botCfg.TelegramToken)
+	tgClient, err := telegramout.NewClient(cfg.TelegramToken)
 	if err != nil {
 		slogger.Error("Error creating telegram client",
 			slog.String("context", "main"),
@@ -60,11 +59,11 @@ func main() {
 	var scrapperApi application.Scrapper
 	switch cfg.ApiProtocol {
 	case config.HTTP:
-		apiServer = http.NewServer(botCfg.ApiPort, notifyService, slogger)
-		scrapperApi = httpscrapper.NewClient(botCfg.ScrapperUrl, botCfg.ScrapperTimeout)
+		apiServer = http.NewServer(cfg.ApiPort, notifyService, slogger)
+		scrapperApi = httpscrapper.NewClient(cfg.ScrapperUrl, cfg.ScrapperTimeout)
 	case config.GRPC:
-		apiServer = grpc.NewServer(botCfg.ApiPort, notifyService, slogger)
-		scrapperApi, err = grpcscrapper.NewClient(botCfg.ScrapperUrl)
+		apiServer = grpc.NewServer(cfg.ApiPort, notifyService, slogger)
+		scrapperApi, err = grpcscrapper.NewClient(cfg.ScrapperUrl)
 		if err != nil {
 			slogger.Error("error creating grpc scrapper",
 				slog.String("context", "main"),
