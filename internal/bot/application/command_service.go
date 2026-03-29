@@ -244,7 +244,7 @@ func (service *CommandService) handleHelp() string {
 /start – what this bot can do
 /help – list all available commands
 /track – track your links
-/untrack ling – stop tracking your link
+/untrack link – stop tracking your link
 /list – list all your tracked links`
 }
 
