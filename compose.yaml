@@ -8,7 +8,10 @@ services:
     depends_on:
       - scrapper
     environment:
-      - API_PROTOCOL="grpc"
+      - BOT_API_PORT=63342
+      - SCRAPPER_URL="scrapper:63343"
+      - BOT_API_PROTOCOL="grpc"
+      - SCRAPPER_API_PROTOCOL="grpc"
 
   scrapper:
     build:
@@ -17,7 +20,10 @@ services:
     env_file:
       - .env
     environment:
-      - API_PROTOCOL="grpc"
+      - BOT_URL="bot:63342"
+      - SCRAPPER_API_PORT=63343
+      - BOT_API_PROTOCOL="grpc"
+      - SCRAPPER_API_PROTOCOL="grpc"
 
 networks:
   app-network:

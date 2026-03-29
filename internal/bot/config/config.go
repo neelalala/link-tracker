@@ -22,14 +22,32 @@ func (protocol Protocol) Validate() error {
 	}
 }
 
+type TelegramConfig struct {
+	Token   string        `config:"token"`
+	ApiUrl  string        `config:"api-url"`
+	Timeout time.Duration `config:"timeout"`
+}
+
+type LoggerConfig struct {
+	File  string `config:"file,"`
+	Level string `config:"level,ERROR"`
+}
+
+type ScrapperServiceConfig struct {
+	URL      string   `config:"url"`
+	Protocol Protocol `config:"protocol"`
+}
+
+type ServerConfig struct {
+	Port     uint16   `config:"port"`
+	Protocol Protocol `config:"protocol"`
+}
+
 type Config struct {
-	TelegramToken   string        `config:"telegram-token"`
-	LogsFile        string        `config:"logs-file,"`
-	LogLevel        string        `config:"log-level,error"`
-	ScrapperUrl     string        `config:"scrapper-url"`
-	ApiPort         uint16        `config:"api-port"`
-	ScrapperTimeout time.Duration `config:"scrapper-timeout,30s"`
-	ApiProtocol     Protocol      `config:"api-protocol"`
+	Telegram        TelegramConfig        `config:"telegram"`
+	Logger          LoggerConfig          `config:"logger"`
+	ScrapperService ScrapperServiceConfig `config:"scrapper-service"`
+	Server          ServerConfig          `config:"server"`
 }
 
 func Load(configPath string) (*Config, error) {

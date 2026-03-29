@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/byrnedo/typesafe-config/parse"
+	"time"
 )
 
 type Protocol string
@@ -21,13 +22,31 @@ func (protocol Protocol) Validate() error {
 	}
 }
 
+type LoggerConfig struct {
+	File  string `config:"file,"`
+	Level string `config:"level,ERROR"`
+}
+
+type SchedulerConfig struct {
+	FetchInterval time.Duration `config:"fetch-interval"`
+	FetchTimeout  time.Duration `config:"fetch-timeout"`
+}
+
+type BotServiceConfig struct {
+	URL      string   `config:"url"`
+	Protocol Protocol `config:"protocol"`
+}
+
+type ServerConfig struct {
+	Port     uint16   `config:"port"`
+	Protocol Protocol `config:"protocol"`
+}
+
 type Config struct {
-	UpdateIntervalSeconds int      `yaml:"update-interval-seconds"`
-	LogsFile              string   `config:"logs-file,"`
-	LogLevel              string   `config:"log-level,error"`
-	BotUrl                string   `config:"bot-url"`
-	ApiPort               uint16   `config:"scrapper-api-port"`
-	ApiProtocol           Protocol `config:"api-protocol"`
+	Logger     LoggerConfig     `config:"logger"`
+	Scheduler  SchedulerConfig  `config:"scheduler"`
+	BotService BotServiceConfig `config:"bot-service"`
+	Server     ServerConfig     `config:"server"`
 }
 
 func Load(configPath string) (*Config, error) {

@@ -11,20 +11,19 @@ import (
 	"time"
 )
 
-const baseUrl = "https://api.telegram.org/bot"
-const timeout = 60
-
 type Client struct {
-	offset int64
-	url    string
-	client *http.Client
+	offset  int64
+	url     string
+	client  *http.Client
+	timeout time.Duration
 }
 
-func NewClient(token string) (*Client, error) {
+func NewClient(apiUrl, token string, timeout time.Duration) (*Client, error) {
 	client := &Client{
-		offset: 0,
-		url:    baseUrl + token,
-		client: &http.Client{Timeout: timeout*time.Second + 10*time.Second},
+		offset:  0,
+		url:     apiUrl + token,
+		client:  &http.Client{Timeout: timeout*time.Second + 10*time.Second},
+		timeout: timeout,
 	}
 
 	query := fmt.Sprintf("%s/getMe", client.url)
@@ -111,7 +110,7 @@ func (client *Client) SendMessage(ctx context.Context, chatID int64, text string
 }
 
 func (client *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) {
-	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, client.url, timeout, client.offset)
+	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, client.url, int(client.timeout.Seconds()), client.offset)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
 	if err != nil {

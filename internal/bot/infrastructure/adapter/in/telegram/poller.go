@@ -10,18 +10,18 @@ import (
 	"time"
 )
 
-const timeout = 60 * time.Second
-
 type Poller struct {
 	tgClient       *telegram.Client
 	commandService *application.CommandService
 	logger         *slog.Logger
+	timeout        time.Duration
 }
 
 func NewPoller(
 	commandService *application.CommandService,
 	tgClient *telegram.Client,
 	logger *slog.Logger,
+	timeout time.Duration,
 ) (*Poller, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -35,6 +35,7 @@ func NewPoller(
 		tgClient:       tgClient,
 		commandService: commandService,
 		logger:         logger,
+		timeout:        timeout,
 	}, nil
 }
 
@@ -49,7 +50,7 @@ func (poller *Poller) Start(ctx context.Context) {
 		default:
 		}
 
-		requestCtx, cancel := context.WithTimeout(ctx, timeout)
+		requestCtx, cancel := context.WithTimeout(ctx, poller.timeout)
 
 		updates, err := poller.tgClient.GetUpdates(requestCtx)
 		if err != nil {

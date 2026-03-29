@@ -8,7 +8,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"io"
 	"net/http"
-	"time"
 )
 
 const (
@@ -21,12 +20,10 @@ type Client struct {
 	baseURL    string
 }
 
-func NewClient(url string, timeout time.Duration) *Client {
+func NewClient(url string) *Client {
 	return &Client{
-		httpClient: &http.Client{
-			Timeout: timeout,
-		},
-		baseURL: url,
+		httpClient: &http.Client{},
+		baseURL:    url,
 	}
 }
 

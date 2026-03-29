@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/grpc"
@@ -21,7 +22,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 type ApiServer interface {
@@ -29,22 +29,23 @@ type ApiServer interface {
 }
 
 func main() {
-	cfg, err := config.Load("application.conf")
+	cfg, err := config.Load("scrapper.conf")
 	if err != nil {
 		log.Fatalf("error loading config: %v", err)
 	}
+	fmt.Println(cfg)
 
 	var out io.Writer = os.Stdout
 
-	if cfg.LogsFile != "" {
-		file, err := os.OpenFile(cfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if cfg.Logger.File != "" {
+		file, err := os.OpenFile(cfg.Logger.File, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatalf("error opening file: %v", err)
 		}
 		out = file
 	}
 
-	slogger := logger.NewLogger(cfg.LogLevel, out)
+	slogger := logger.NewLogger(cfg.Logger.Level, out)
 
 	chatRepo := chat.NewMemoryRepository()
 	linkRepo := link.NewMemoryRepository()
@@ -63,13 +64,21 @@ func main() {
 
 	var apiServer ApiServer
 	var botNotifier application.UpdateNotifier
-	switch cfg.ApiProtocol {
+	switch cfg.Server.Protocol {
 	case config.HTTP:
-		apiServer = http.NewServer(cfg.ApiPort, subsService, slogger)
-		botNotifier = httpnotifier.NewBot(cfg.BotUrl)
+		apiServer = http.NewServer(cfg.Server.Port, subsService, slogger)
 	case config.GRPC:
-		apiServer = grpc.NewServer(cfg.ApiPort, subsService, slogger)
-		botNotifier, err = grpcnotifier.NewBot(cfg.BotUrl)
+		apiServer = grpc.NewServer(cfg.Server.Port, subsService, slogger)
+	default:
+		slogger.Error("unsupported protocol", "protocol", cfg.Server.Protocol)
+		os.Exit(1)
+	}
+
+	switch cfg.BotService.Protocol {
+	case config.HTTP:
+		botNotifier = httpnotifier.NewBot(cfg.BotService.URL)
+	case config.GRPC:
+		botNotifier, err = grpcnotifier.NewBot(cfg.BotService.URL)
 		if err != nil {
 			slogger.Error("error creating grpc notifier",
 				slog.String("context", "main"),
@@ -78,7 +87,7 @@ func main() {
 			os.Exit(1)
 		}
 	default:
-		slogger.Error("unsupported protocol", "protocol", cfg.ApiProtocol)
+		slogger.Error("unsupported protocol", "protocol", cfg.BotService.Protocol)
 		os.Exit(1)
 	}
 
@@ -93,7 +102,7 @@ func main() {
 
 	scrapperService := application.NewScrapperService(linkRepo, subRepo, fetcher, botNotifier, slogger)
 
-	err = cron.Schedule(60*time.Second, 120*time.Second, func(jobCtx context.Context) {
+	err = cron.Schedule(cfg.Scheduler.FetchInterval, cfg.Scheduler.FetchTimeout, func(jobCtx context.Context) {
 		err := scrapperService.GetUpdates(jobCtx)
 		if err != nil {
 			slogger.Error("scrapper iteration failed",
