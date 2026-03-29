@@ -9,8 +9,8 @@ import (
 	grpcscrapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/grpc/scrapper"
 	httpscrapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/scrapper"
 	telegramout "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/telegram"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/logger"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/config"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"log"
@@ -25,10 +25,11 @@ type ApiServer interface {
 }
 
 func main() {
-	cfg, err := config.Load("application.conf")
+	allCfgs, err := config.Load("application.conf")
 	if err != nil {
 		log.Fatalf("error loading config: %v", err)
 	}
+	cfg := allCfgs.BotConfig
 
 	var out io.Writer = os.Stdout
 
@@ -40,7 +41,7 @@ func main() {
 		out = file
 	}
 
-	slogger := logger.NewLogger(cfg.LogLevel, cfg.Environment, out)
+	slogger := logger.NewLogger(cfg.LogLevel, out)
 
 	tgClient, err := telegramout.NewClient(cfg.TelegramToken)
 	if err != nil {
@@ -55,7 +56,7 @@ func main() {
 	var scrapperApi application.Scrapper
 	if cfg.ApiProtocol == "http" {
 		apiServer = http.NewServer(cfg.BotApiPort, notifyService, slogger)
-		scrapperApi = httpscrapper.NewClient(cfg.ScrapperUrl)
+		scrapperApi = httpscrapper.NewClient(cfg.ScrapperUrl, cfg.ScrapperTimeout)
 	} else if cfg.ApiProtocol == "grpc" {
 		apiServer = grpc.NewServer(cfg.BotApiPort, notifyService, slogger)
 		scrapperApi, err = grpcscrapper.NewClient(cfg.ScrapperUrl)

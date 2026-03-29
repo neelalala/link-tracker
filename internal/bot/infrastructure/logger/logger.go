@@ -5,7 +5,7 @@ import (
 	"log/slog"
 )
 
-func NewLogger(logLevel, env string, w io.Writer) *slog.Logger {
+func NewLogger(logLevel string, w io.Writer) *slog.Logger {
 	var handler slog.Handler
 	var level slog.Level
 
@@ -18,11 +18,7 @@ func NewLogger(logLevel, env string, w io.Writer) *slog.Logger {
 		Level: level,
 	}
 
-	if env == "local" {
-		handler = slog.NewTextHandler(w, opts)
-	} else {
-		handler = slog.NewJSONHandler(w, opts)
-	}
+	handler = slog.NewTextHandler(w, opts)
 
 	return slog.New(handler).With(
 		slog.String("service", "link-tracker-bot"),
