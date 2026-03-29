@@ -21,17 +21,13 @@ func (protocol Protocol) Validate() error {
 	}
 }
 
-type ScrapperConfig struct {
-	UpdateIntervalSeconds int    `yaml:"update-interval-seconds"`
-	LogsFile              string `config:"logs-file,"`
-	LogLevel              string `config:"log-level,error"`
-	BotUrl                string `config:"bot-url"`
-	ApiPort               uint16 `config:"scrapper-api-port"`
-}
-
 type Config struct {
-	ScrapperConfig ScrapperConfig
-	ApiProtocol    Protocol `config:"api-protocol"`
+	UpdateIntervalSeconds int      `yaml:"update-interval-seconds"`
+	LogsFile              string   `config:"logs-file,"`
+	LogLevel              string   `config:"log-level,error"`
+	BotUrl                string   `config:"bot-url"`
+	ApiPort               uint16   `config:"scrapper-api-port"`
+	ApiProtocol           Protocol `config:"api-protocol"`
 }
 
 func Load(configPath string) (*Config, error) {

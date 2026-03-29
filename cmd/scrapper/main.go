@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/grpc"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/scheduler"
@@ -34,19 +34,17 @@ func main() {
 		log.Fatalf("error loading config: %v", err)
 	}
 
-	scrapperCfg := cfg.ScrapperConfig
-
 	var out io.Writer = os.Stdout
 
-	if scrapperCfg.LogsFile != "" {
-		file, err := os.OpenFile(scrapperCfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if cfg.LogsFile != "" {
+		file, err := os.OpenFile(cfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatalf("error opening file: %v", err)
 		}
 		out = file
 	}
 
-	slogger := logger.NewLogger(scrapperCfg.LogLevel, out)
+	slogger := logger.NewLogger(cfg.LogLevel, out)
 
 	chatRepo := chat.NewMemoryRepository()
 	linkRepo := link.NewMemoryRepository()
@@ -67,11 +65,11 @@ func main() {
 	var botNotifier application.UpdateNotifier
 	switch cfg.ApiProtocol {
 	case config.HTTP:
-		apiServer = http.NewServer(scrapperCfg.ApiPort, subsService, slogger)
-		botNotifier = httpnotifier.NewBot(scrapperCfg.BotUrl)
+		apiServer = http.NewServer(cfg.ApiPort, subsService, slogger)
+		botNotifier = httpnotifier.NewBot(cfg.BotUrl)
 	case config.GRPC:
-		apiServer = grpc.NewServer(scrapperCfg.ApiPort, subsService, slogger)
-		botNotifier, err = grpcnotifier.NewBot(scrapperCfg.BotUrl)
+		apiServer = grpc.NewServer(cfg.ApiPort, subsService, slogger)
+		botNotifier, err = grpcnotifier.NewBot(cfg.BotUrl)
 		if err != nil {
 			slogger.Error("error creating grpc notifier",
 				slog.String("context", "main"),
