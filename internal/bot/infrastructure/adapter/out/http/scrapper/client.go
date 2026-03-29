@@ -11,11 +11,8 @@ import (
 )
 
 const (
-	registerTgChatEndpoint = "tg-chat"
-	deleteTgChatEndpoint   = "tg-chat"
-	getLinksEndpoint       = "links"
-	trackLinksEndpoint     = "links"
-	deleteLinksEndpoint    = "links"
+	tgChatEndpoint = "tg-chat"
+	linksEndpoint  = "links"
 )
 
 type Client struct {
@@ -31,7 +28,7 @@ func NewClient(url string) *Client {
 }
 
 func (client *Client) RegisterChat(ctx context.Context, chatId int64) error {
-	query := fmt.Sprintf("%s/%s/%d", client.baseURL, registerTgChatEndpoint, chatId)
+	query := fmt.Sprintf("%s/%s/%d", client.baseURL, tgChatEndpoint, chatId)
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -55,7 +52,7 @@ func (client *Client) RegisterChat(ctx context.Context, chatId int64) error {
 }
 
 func (client *Client) DeleteChat(ctx context.Context, chatId int64) error {
-	query := fmt.Sprintf("%s/%s/%d", client.baseURL, deleteTgChatEndpoint, chatId)
+	query := fmt.Sprintf("%s/%s/%d", client.baseURL, tgChatEndpoint, chatId)
 	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, query, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -79,7 +76,7 @@ func (client *Client) DeleteChat(ctx context.Context, chatId int64) error {
 }
 
 func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]domain.TrackedLink, error) {
-	query := fmt.Sprintf("%s/%s", client.baseURL, getLinksEndpoint)
+	query := fmt.Sprintf("%s/%s", client.baseURL, linksEndpoint)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -136,7 +133,7 @@ func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]doma
 }
 
 func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tags []string) (domain.TrackedLink, error) {
-	query := fmt.Sprintf("%s/%s", client.baseURL, trackLinksEndpoint)
+	query := fmt.Sprintf("%s/%s", client.baseURL, linksEndpoint)
 
 	type requestJson struct {
 		Link string   `json:"link"`
@@ -207,7 +204,7 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 }
 
 func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) (domain.TrackedLink, error) {
-	query := fmt.Sprintf("%s/%s", client.baseURL, deleteLinksEndpoint)
+	query := fmt.Sprintf("%s/%s", client.baseURL, linksEndpoint)
 
 	type requestJson struct {
 		Link string `json:"link"`
