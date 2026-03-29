@@ -94,13 +94,9 @@ func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, u
 		if err != nil {
 			return domain.TrackedLink{}, err
 		}
-	} else {
-		existingSubs, _ := service.subRepo.GetByChatId(ctx, chatID)
-		for _, s := range existingSubs {
-			if s.LinkID == link.ID {
-				return domain.TrackedLink{}, domain.ErrAlreadySubscribed
-			}
-		}
+	}
+	if exists, _ := service.subRepo.Exists(ctx, chatID, link.ID); exists {
+		return domain.TrackedLink{}, domain.ErrAlreadySubscribed
 	}
 
 	subscription := domain.Subscription{
