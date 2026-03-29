@@ -10,19 +10,6 @@ import (
 	"sync"
 )
 
-type TrackState int
-
-const (
-	StateIdle TrackState = iota
-	StateWaitingForURL
-	StateWaitingForTags
-)
-
-type TrackSession struct {
-	State TrackState
-	URL   string
-}
-
 type Scrapper interface {
 	RegisterChat(ctx context.Context, chatId int64) error
 	DeleteChat(ctx context.Context, chatId int64) error
@@ -36,14 +23,14 @@ type CommandService struct {
 	logger   *slog.Logger
 
 	mu       sync.RWMutex
-	sessions map[int64]*TrackSession
+	sessions map[int64]*domain.TrackSession
 }
 
 func NewCommandService(scrapper Scrapper, logger *slog.Logger) *CommandService {
 	return &CommandService{
 		scrapper: scrapper,
 		logger:   logger,
-		sessions: make(map[int64]*TrackSession),
+		sessions: make(map[int64]*domain.TrackSession),
 	}
 }
 
@@ -62,7 +49,7 @@ func (service *CommandService) HandleMessage(ctx context.Context, chatID int64, 
 	}
 
 	// TODO can start /track even if not registered
-	if exists && session.State != StateIdle {
+	if exists && session.State != domain.StateIdle {
 		sb.WriteString(service.processSM(ctx, chatID, text, session))
 		return sb.String()
 	}
@@ -86,18 +73,18 @@ func (service *CommandService) clearSession(chatID int64) {
 	delete(service.sessions, chatID)
 }
 
-func (service *CommandService) processSM(ctx context.Context, chatID int64, text string, session *TrackSession) string {
+func (service *CommandService) processSM(ctx context.Context, chatID int64, text string, session *domain.TrackSession) string {
 	service.mu.Lock()
 	defer service.mu.Unlock()
 
 	switch session.State {
 
-	case StateWaitingForURL:
+	case domain.StateWaitingForURL:
 		session.URL = text
-		session.State = StateWaitingForTags
+		session.State = domain.StateWaitingForTags
 		return "Link saved! Now send tags separated by commas (e.g., work, bug). Or send 'skip' to add without tags."
 
-	case StateWaitingForTags:
+	case domain.StateWaitingForTags:
 		var tags []string
 		if strings.ToLower(text) != "skip" {
 			rawTags := strings.Split(text, ",")
@@ -141,7 +128,7 @@ func (service *CommandService) executeCommand(ctx context.Context, chatID int64,
 		return service.handleHelp()
 	case "track":
 		service.mu.Lock()
-		service.sessions[chatID] = &TrackSession{State: StateWaitingForURL}
+		service.sessions[chatID] = &domain.TrackSession{State: domain.StateWaitingForURL}
 		service.mu.Unlock()
 		return "Please send the link you want to track. Send /cancel to abort."
 	case "untrack":

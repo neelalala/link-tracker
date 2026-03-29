@@ -23,3 +23,16 @@ type LinkUpdate struct {
 	Description string
 	TgChatIDs   []int64
 }
+
+type TrackState int
+
+const (
+	StateIdle TrackState = iota
+	StateWaitingForURL
+	StateWaitingForTags
+)
+
+type TrackSession struct {
+	State TrackState
+	URL   string
+}
