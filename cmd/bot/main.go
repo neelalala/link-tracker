@@ -25,25 +25,25 @@ type ApiServer interface {
 }
 
 func main() {
-	allCfgs, err := config.Load("application.conf")
+	cfg, err := config.Load("application.conf")
 	if err != nil {
 		log.Fatalf("error loading config: %v", err)
 	}
-	cfg := allCfgs.BotConfig
+	botCfg := cfg.BotConfig
 
 	var out io.Writer = os.Stdout
 
-	if cfg.LogsFile != "" {
-		file, err := os.OpenFile(cfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if botCfg.LogsFile != "" {
+		file, err := os.OpenFile(botCfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatalf("error opening file: %v", err)
 		}
 		out = file
 	}
 
-	slogger := logger.NewLogger(cfg.LogLevel, out)
+	slogger := logger.NewLogger(botCfg.LogLevel, out)
 
-	tgClient, err := telegramout.NewClient(cfg.TelegramToken)
+	tgClient, err := telegramout.NewClient(botCfg.TelegramToken)
 	if err != nil {
 		slogger.Error("Error creating telegram client", slog.String("context", "main"), slog.String("error", err.Error()))
 	}
@@ -54,17 +54,18 @@ func main() {
 	notifyService := application.NewNotifierService(slogger, tgClient)
 	var apiServer ApiServer
 	var scrapperApi application.Scrapper
-	if cfg.ApiProtocol == "http" {
-		apiServer = http.NewServer(cfg.BotApiPort, notifyService, slogger)
-		scrapperApi = httpscrapper.NewClient(cfg.ScrapperUrl, cfg.ScrapperTimeout)
-	} else if cfg.ApiProtocol == "grpc" {
-		apiServer = grpc.NewServer(cfg.BotApiPort, notifyService, slogger)
-		scrapperApi, err = grpcscrapper.NewClient(cfg.ScrapperUrl)
+	switch cfg.ApiProtocol {
+	case config.HTTP:
+		apiServer = http.NewServer(botCfg.ApiPort, notifyService, slogger)
+		scrapperApi = httpscrapper.NewClient(botCfg.ScrapperUrl, botCfg.ScrapperTimeout)
+	case config.GRPC:
+		apiServer = grpc.NewServer(botCfg.ApiPort, notifyService, slogger)
+		scrapperApi, err = grpcscrapper.NewClient(botCfg.ScrapperUrl)
 		if err != nil {
 			slogger.Error("error creating grpc scrapper: %v", err)
 			os.Exit(1)
 		}
-	} else {
+	default:
 		slogger.Error("unsupported protocol:", cfg.ApiProtocol)
 		os.Exit(1)
 	}

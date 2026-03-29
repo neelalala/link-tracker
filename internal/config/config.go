@@ -27,13 +27,22 @@ type BotConfig struct {
 	LogsFile        string        `config:"logs-file,"`
 	LogLevel        string        `config:"log-level,error"`
 	ScrapperUrl     string        `config:"scrapper-url"`
-	BotApiPort      uint16        `config:"bot-api-port"`
-	ApiProtocol     Protocol      `config:"api-protocol"`
+	ApiPort         uint16        `config:"api-port"`
 	ScrapperTimeout time.Duration `config:"scrapper-timeout,30s"`
 }
 
+type ScrapperConfig struct {
+	UpdateIntervalSeconds int    `yaml:"update-interval-seconds"`
+	LogsFile              string `config:"logs-file,"`
+	LogLevel              string `config:"log-level,error"`
+	BotUrl                string `config:"bot-url"`
+	ApiPort               uint16 `config:"scrapper-api-port"`
+}
+
 type Config struct {
-	BotConfig BotConfig
+	BotConfig      BotConfig
+	ScrapperConfig ScrapperConfig
+	ApiProtocol    Protocol `config:"api-protocol"`
 }
 
 func Load(configPath string) (*Config, error) {
