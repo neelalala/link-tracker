@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"log/slog"
 )
 
@@ -24,7 +24,7 @@ func NewNotifierService(logger *slog.Logger, sender MessageSender) *NotifierServ
 	}
 }
 
-func (service *NotifierService) HandleUpdate(ctx context.Context, update scrapperdomain.LinkUpdate) error {
+func (service *NotifierService) HandleUpdate(ctx context.Context, update domain.LinkUpdate) error {
 	if update.URL == "" {
 		return errors.New("no url provided")
 	}

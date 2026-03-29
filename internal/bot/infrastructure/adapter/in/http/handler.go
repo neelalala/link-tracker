@@ -3,7 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
-	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"io"
 	"log/slog"
 	"net/http"
@@ -76,7 +76,7 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	linkUpdate := scrapperdomain.LinkUpdate{
+	linkUpdate := domain.LinkUpdate{
 		ID:          request.Id,
 		URL:         request.Url,
 		Description: request.Description,

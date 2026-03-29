@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
-	scrapperapplication "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
-	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
 	"strings"
 	"sync"
@@ -28,9 +26,9 @@ type TrackSession struct {
 type Scrapper interface {
 	RegisterChat(ctx context.Context, chatId int64) error
 	DeleteChat(ctx context.Context, chatId int64) error
-	GetTrackedLinks(ctx context.Context, chatId int64) ([]scrapperdomain.TrackedLink, error)
-	AddLink(ctx context.Context, chatId int64, url string, tags []string) (scrapperdomain.TrackedLink, error)
-	RemoveLink(ctx context.Context, chatId int64, url string) (scrapperdomain.TrackedLink, error)
+	GetTrackedLinks(ctx context.Context, chatId int64) ([]domain.TrackedLink, error)
+	AddLink(ctx context.Context, chatId int64, url string, tags []string) (domain.TrackedLink, error)
+	RemoveLink(ctx context.Context, chatId int64, url string) (domain.TrackedLink, error)
 }
 
 type CommandService struct {
@@ -116,13 +114,13 @@ func (service *CommandService) processSM(ctx context.Context, chatID int64, text
 		delete(service.sessions, chatID)
 
 		if err != nil {
-			if errors.Is(err, scrapperdomain.ErrAlreadySubscribed) {
+			if errors.Is(err, domain.ErrAlreadySubscribed) {
 				return "You're already tracking this link."
 			}
-			if errors.Is(err, scrapperdomain.ErrChatNotRegistered) {
+			if errors.Is(err, domain.ErrChatNotRegistered) {
 				return "Please register before tracking any link. Just use /start :)"
 			}
-			if errors.Is(err, scrapperapplication.ErrUrlNotSupported) {
+			if errors.Is(err, domain.ErrUrlNotSupported) {
 				return "This link is not supported yet."
 			}
 			service.logger.Error("Scrapper AddLink failed", slog.String("error", err.Error()))
@@ -165,7 +163,7 @@ func (service *CommandService) handleUntrack(ctx context.Context, chatID int64, 
 
 	_, err := service.scrapper.RemoveLink(ctx, chatID, url)
 	if err != nil {
-		if errors.Is(err, scrapperdomain.ErrLinkNotFound) || errors.Is(err, scrapperdomain.ErrNotSubscribed) {
+		if errors.Is(err, domain.ErrLinkNotFound) || errors.Is(err, domain.ErrNotSubscribed) {
 			return "You're not tracking this link."
 		}
 		service.logger.Error("Scrapper RemoveLink failed", slog.String("error", err.Error()))
@@ -228,8 +226,8 @@ func (service *CommandService) handleList(ctx context.Context, chatID int64, arg
 	return sb.String()
 }
 
-func (service *CommandService) filterWithTags(links []scrapperdomain.TrackedLink, tags []string) []scrapperdomain.TrackedLink {
-	filteredLinks := make([]scrapperdomain.TrackedLink, 0)
+func (service *CommandService) filterWithTags(links []domain.TrackedLink, tags []string) []domain.TrackedLink {
+	filteredLinks := make([]domain.TrackedLink, 0)
 Outer:
 	for _, link := range links {
 		for _, tag := range tags {
@@ -247,7 +245,7 @@ Outer:
 func (service *CommandService) handleStart(ctx context.Context, chatID int64) string {
 	err := service.scrapper.RegisterChat(ctx, chatID)
 	if err != nil {
-		if errors.Is(err, scrapperdomain.ErrChatAlreadyRegistered) {
+		if errors.Is(err, domain.ErrChatAlreadyRegistered) {
 			return "Hi again! This bot can track updates on your links, so you won't miss on news! /help for list my commands"
 		}
 		return "Something went wrong while registering you."
