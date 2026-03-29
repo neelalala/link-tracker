@@ -84,7 +84,7 @@ func (server *Server) SendUpdate(ctx context.Context, request *pb.LinkUpdate) (*
 			slog.String("method", "SendUpdate"),
 		)
 
-		return nil, status.Errorf(codes.Internal, "failed to handle update for link %server: %v", request.GetUrl(), err)
+		return nil, status.Errorf(codes.Internal, "failed to handle update for link %s: %v", request.GetUrl(), err)
 	}
 
 	return &emptypb.Empty{}, nil
