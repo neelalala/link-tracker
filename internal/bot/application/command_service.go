@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -213,18 +214,26 @@ func (service *CommandService) handleList(ctx context.Context, chatID int64, arg
 }
 
 func (service *CommandService) filterWithTags(links []domain.TrackedLink, tags []string) []domain.TrackedLink {
-	filteredLinks := make([]domain.TrackedLink, 0)
-Outer:
+	if len(tags) == 0 {
+		return links
+	}
+
+	var filteredLinks []domain.TrackedLink
+
 	for _, link := range links {
-		for _, tag := range tags {
-			for _, userTag := range link.Tags {
-				if userTag == tag {
-					filteredLinks = append(filteredLinks, link)
-					continue Outer
-				}
+		hasAllTags := true
+		for _, requiredTag := range tags {
+			if !slices.Contains(link.Tags, requiredTag) {
+				hasAllTags = false
+				break
 			}
 		}
+
+		if hasAllTags {
+			filteredLinks = append(filteredLinks, link)
+		}
 	}
+
 	return filteredLinks
 }
 
