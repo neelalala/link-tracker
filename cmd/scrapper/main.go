@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/grpc"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/http"
@@ -10,7 +11,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/github"
 	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/notifier"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/stackoverflow"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/chat"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/link"
@@ -34,17 +34,19 @@ func main() {
 		log.Fatalf("error loading config: %v", err)
 	}
 
+	scrapperCfg := cfg.ScrapperConfig
+
 	var out io.Writer = os.Stdout
 
-	if cfg.LogsFile != "" {
-		file, err := os.OpenFile(cfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if scrapperCfg.LogsFile != "" {
+		file, err := os.OpenFile(scrapperCfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatalf("error opening file: %v", err)
 		}
 		out = file
 	}
 
-	slogger := logger.NewLogger(cfg.LogLevel, cfg.Environment, out)
+	slogger := logger.NewLogger(scrapperCfg.LogLevel, out)
 
 	chatRepo := chat.NewMemoryRepository()
 	linkRepo := link.NewMemoryRepository()
@@ -64,11 +66,11 @@ func main() {
 	var apiServer ApiServer
 	var botNotifier application.UpdateNotifier
 	if cfg.ApiProtocol == "http" {
-		apiServer = http.NewServer(cfg.ScrapperApiPort, subsService, slogger)
-		botNotifier = httpnotifier.NewBot(cfg.BotUrl)
+		apiServer = http.NewServer(scrapperCfg.ApiPort, subsService, slogger)
+		botNotifier = httpnotifier.NewBot(scrapperCfg.BotUrl)
 	} else if cfg.ApiProtocol == "grpc" {
-		apiServer = grpc.NewServer(cfg.ScrapperApiPort, subsService, slogger)
-		botNotifier, err = grpcnotifier.NewBot(cfg.BotUrl)
+		apiServer = grpc.NewServer(scrapperCfg.ApiPort, subsService, slogger)
+		botNotifier, err = grpcnotifier.NewBot(scrapperCfg.BotUrl)
 		if err != nil {
 			slogger.Error("error creating grpc notifier: %v", err)
 			os.Exit(1)
