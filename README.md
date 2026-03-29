@@ -13,26 +13,20 @@ docker compose up -d
 [Dockerfile](./cmd/scrapper/Dockerfile) для скраппера
 
 Конфигурация:
-[application.conf](application.conf) – файл конфигурации микросервисов.
 
-- telegram-token – токена для телеграмм-бота
-- environment – исполняемое окружение
-- logs-file – файл, куда печатать логи
-- updates-interval-seconds – время между получением обновлений скраппером
-- bot-url – адрес скрапперу для вызова методов бота
-- scrapper-url – адрес боту для вызова методов скраппера
-- bot-api-port – порт, на котором будет слушать бот api запросы
-- scrapper-api-port – порт, на котором будет слушать скраппер api запросы
-- api-protocol – протокол, по которому будут общаться микросервисы
-- log-level – уровень логгирования, строка в формате, ожидаемом пакетом `slog`
+[bot.conf](cmd/bot/bot.conf) – файл конфигурации бота.
 
+[scrapper.conf](cmd/scrapper/scrapper.conf) – файл конфигурации Scrapper сервиса.
 
 Пример .env файла для работы:
 ```
 APP_TELEGRAM_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 BOT_API_PORT=63342
 SCRAPPER_API_PORT=63343
-BOT_URL="http://bot:${BOT_API_PORT}"
-SCRAPPER_URL="http://scrapper:${SCRAPPER_API_PORT}"
-LOG_LEVEL="ERROR+2"
+BOT_URL="bot:${BOT_API_PORT}"
+SCRAPPER_URL="scrapper:${SCRAPPER_API_PORT}"
+BOT_API_PROTOCOL="http"
+SCRAPPER_API_PROTOCOL="grpc"
+SCRAPPER_LOG_LEVEL="DEBUG"
+BOT_LOG_LEVEL="ERROR+4"
 ```
