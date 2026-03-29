@@ -45,7 +45,10 @@ func main() {
 
 	tgClient, err := telegramout.NewClient(botCfg.TelegramToken)
 	if err != nil {
-		slogger.Error("Error creating telegram client", slog.String("context", "main"), slog.String("error", err.Error()))
+		slogger.Error("Error creating telegram client",
+			slog.String("context", "main"),
+			slog.String("error", err.Error()),
+		)
 		os.Exit(1)
 	}
 
@@ -63,7 +66,10 @@ func main() {
 		apiServer = grpc.NewServer(botCfg.ApiPort, notifyService, slogger)
 		scrapperApi, err = grpcscrapper.NewClient(botCfg.ScrapperUrl)
 		if err != nil {
-			slogger.Error("error creating grpc scrapper: %v", err)
+			slogger.Error("error creating grpc scrapper",
+				slog.String("context", "main"),
+				slog.String("error", err.Error()),
+			)
 			os.Exit(1)
 		}
 	default:
@@ -74,7 +80,10 @@ func main() {
 	commandSerice := application.NewCommandService(scrapperApi, slogger)
 	poller, err := telegramin.NewPoller(commandSerice, tgClient, slogger)
 	if err != nil {
-		slogger.Error("Failed to create bot", slog.String("context", "main"), slog.String("error", err.Error()))
+		slogger.Error("Failed to create bot",
+			slog.String("context", "main"),
+			slog.String("error", err.Error()),
+		)
 		os.Exit(1)
 	}
 

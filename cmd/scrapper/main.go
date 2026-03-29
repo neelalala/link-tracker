@@ -73,7 +73,10 @@ func main() {
 		apiServer = grpc.NewServer(scrapperCfg.ApiPort, subsService, slogger)
 		botNotifier, err = grpcnotifier.NewBot(scrapperCfg.BotUrl)
 		if err != nil {
-			slogger.Error("error creating grpc notifier: %v", err)
+			slogger.Error("error creating grpc notifier",
+				slog.String("context", "main"),
+				slog.String("error", err.Error()),
+			)
 			os.Exit(1)
 		}
 	default:
@@ -83,7 +86,10 @@ func main() {
 
 	cron, err := scheduler.NewCron(ctx)
 	if err != nil {
-		slogger.Error("failed to init cron", slog.String("error", err.Error()))
+		slogger.Error("failed to init cron",
+			slog.String("context", "main"),
+			slog.String("error", err.Error()),
+		)
 		os.Exit(1)
 	}
 
@@ -92,11 +98,17 @@ func main() {
 	err = cron.Schedule(60*time.Second, 120*time.Second, func(jobCtx context.Context) {
 		err := scrapperService.GetUpdates(jobCtx)
 		if err != nil {
-			slogger.Error("scrapper iteration failed", slog.String("error", err.Error()))
+			slogger.Error("scrapper iteration failed",
+				slog.String("context", "main"),
+				slog.String("error", err.Error()),
+			)
 		}
 	})
 	if err != nil {
-		slogger.Error("failed to schedule job", slog.String("error", err.Error()))
+		slogger.Error("failed to schedule job",
+			slog.String("context", "main"),
+			slog.String("error", err.Error()),
+		)
 		os.Exit(1)
 	}
 
@@ -105,12 +117,18 @@ func main() {
 
 	slogger.Info("starting scrapper api server...")
 	if err := apiServer.Start(ctx); err != nil {
-		slogger.Error("api server stopped with error", slog.String("error", err.Error()))
+		slogger.Error("api server stopped with error",
+			slog.String("context", "main"),
+			slog.String("error", err.Error()),
+		)
 	}
 
 	slogger.Info("shutting down scheduler...")
 	if err := cron.Shutdown(); err != nil {
-		slogger.Error("failed to shutdown cron gracefully", slog.String("error", err.Error()))
+		slogger.Error("failed to shutdown cron gracefully",
+			slog.String("context", "main"),
+			slog.String("error", err.Error()),
+		)
 	}
 
 	slogger.Info("scrapper successfully stopped")
