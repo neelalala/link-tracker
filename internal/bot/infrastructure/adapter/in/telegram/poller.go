@@ -12,20 +12,22 @@ import (
 
 type Poller struct {
 	tgClient       *telegram.Client
-	commandService *application.CommandService
+	commandService *application.CommandHandler
+	dialogService  *application.DialogService
 	logger         *slog.Logger
 	timeout        time.Duration
 }
 
 func NewPoller(
-	commandService *application.CommandService,
+	commandService *application.CommandHandler,
+	dialogService *application.DialogService,
 	tgClient *telegram.Client,
 	logger *slog.Logger,
 	timeout time.Duration,
 ) (*Poller, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	commands := commandService.GetCommands()
+	commands := commandService.GetCommandsInfo()
 	err := tgClient.SetMyCommands(ctx, commands)
 	if err != nil {
 		return nil, err
@@ -34,6 +36,7 @@ func NewPoller(
 	return &Poller{
 		tgClient:       tgClient,
 		commandService: commandService,
+		dialogService:  dialogService,
 		logger:         logger,
 		timeout:        timeout,
 	}, nil
@@ -75,6 +78,30 @@ func (poller *Poller) Start(ctx context.Context) {
 }
 
 func (poller *Poller) handleMessage(ctx context.Context, msg domain.Message) error {
-	response := poller.commandService.HandleMessage(ctx, msg.ChatID, msg.Text)
-	return poller.tgClient.SendMessage(ctx, msg.ChatID, response)
+	var response string
+	var processErr error
+
+	if msg.IsCommand() {
+		response, processErr = poller.commandService.HandleCommand(ctx, msg)
+	} else {
+		response, processErr = poller.dialogService.HandleMessage(ctx, msg)
+	}
+
+	if processErr != nil {
+		poller.logger.Error("failed to process message",
+			slog.String("error", processErr.Error()),
+			slog.Int64("chat_id", msg.ChatID),
+			slog.String("user_message", msg.Text),
+		)
+
+		if response == "" {
+			response = "Something went wrong. Try again later.️"
+		}
+	}
+
+	if response != "" {
+		return poller.tgClient.SendMessage(ctx, msg.ChatID, response)
+	}
+
+	return nil
 }
