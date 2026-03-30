@@ -22,10 +22,7 @@ func (sessionRepo *MemoryRepository) GetOrCreate(ctx context.Context, chatID int
 	defer sessionRepo.mu.RUnlock()
 	session, ok := sessionRepo.sessions[chatID]
 	if !ok {
-		session = domain.Session{
-			ChatID: chatID,
-			State:  domain.StateIdle,
-		}
+		session = domain.NewSession(chatID)
 		sessionRepo.sessions[chatID] = session
 	}
 	return session, nil
@@ -43,6 +40,8 @@ func (sessionRepo *MemoryRepository) Delete(ctx context.Context, chatID int64) (
 	defer sessionRepo.mu.Unlock()
 	session, ok := sessionRepo.sessions[chatID]
 	if !ok {
+		session = domain.NewSession(chatID)
+	} else {
 		delete(sessionRepo.sessions, chatID)
 	}
 	return session, nil
