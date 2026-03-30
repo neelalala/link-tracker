@@ -118,7 +118,7 @@ func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) 
 	resp, err := client.grpcClient.RemoveLink(ctx, req)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return domain.TrackedLink{}, fmt.Errorf("chat not registered or link not found")
+			return domain.TrackedLink{}, domain.ErrChatNotRegisteredOrLinkNotFound
 		}
 		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected error: %w", err)
 	}

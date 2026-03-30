@@ -230,7 +230,7 @@ func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) 
 
 	if response.StatusCode != http.StatusOK {
 		if response.StatusCode == http.StatusNotFound {
-			return domain.TrackedLink{}, fmt.Errorf("chat not registered or link not found")
+			return domain.TrackedLink{}, domain.ErrChatNotRegisteredOrLinkNotFound
 		}
 
 		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
