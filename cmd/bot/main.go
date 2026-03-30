@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/commands"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/grpc"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/http"
 	telegramin "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/telegram"
@@ -12,6 +13,7 @@ import (
 	httpscrapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/scrapper"
 	telegramout "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/telegram"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/logger"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository/session"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"log"
@@ -30,7 +32,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("error loading config: %v", err)
 	}
-	fmt.Println(cfg)
 
 	var out io.Writer = os.Stdout
 
@@ -58,7 +59,7 @@ func main() {
 
 	notifyService := application.NewNotifierService(slogger, tgClient)
 	var apiServer ApiServer
-	var scrapperApi application.Scrapper
+	var scrapperApi domain.Scrapper
 	switch cfg.Server.Protocol {
 	case config.HTTP:
 		apiServer = http.NewServer(cfg.Server.Port, notifyService, slogger)
@@ -86,8 +87,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	commandService := application.NewCommandService(scrapperApi, slogger)
-	poller, err := telegramin.NewPoller(commandService, tgClient, slogger, cfg.Telegram.Timeout)
+	sessionRepo := session.NewMemoryRepository()
+
+	helpCommand := commands.NewHelpCommand()
+	startCommand := commands.NewStartCommand(scrapperApi, slogger)
+	listCommand := commands.NewListCommand(scrapperApi, slogger)
+	trackCommand := commands.NewTrackCommand(sessionRepo, slogger)
+	untrackCommand := commands.NewUntrackCommand(sessionRepo, slogger)
+	cancelCommand := commands.NewCancelCommand(sessionRepo, slogger)
+
+	cmds := []domain.Command{
+		helpCommand,
+		startCommand,
+		listCommand,
+		trackCommand,
+		untrackCommand,
+		cancelCommand,
+	}
+
+	helpCommand.SetCommands(cmds)
+
+	commandService := application.NewCommandService(scrapperApi, sessionRepo, cmds, slogger)
+
+	dialogService := application.NewDialogService(scrapperApi, sessionRepo, slogger)
+
+	poller, err := telegramin.NewPoller(commandService, dialogService, tgClient, slogger, cfg.Telegram.Timeout)
 	if err != nil {
 		slogger.Error("Failed to create bot",
 			slog.String("context", "main"),
