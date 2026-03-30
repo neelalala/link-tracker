@@ -6,9 +6,9 @@ type SessionState string
 
 const (
 	StateIdle                 SessionState = "idle"
-	StateWaitingForURLTrack                = "waiting_for_url_track"
-	StateWaitingForTags                    = "waiting_for_tags"
-	StateWaitingForURLUntrack              = "waiting_for_url_untrack"
+	StateWaitingForURLTrack   SessionState = "waiting_for_url_track"
+	StateWaitingForTags       SessionState = "waiting_for_tags"
+	StateWaitingForURLUntrack SessionState = "waiting_for_url_untrack"
 )
 
 type Session struct {
