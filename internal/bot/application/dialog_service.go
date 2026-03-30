@@ -145,8 +145,8 @@ func (service *DialogService) handleWaitingForURLUntrack(ctx context.Context, se
 		switch {
 		case errors.Is(err, domain.ErrNotSubscribed):
 			return "You are not tracking this link", nil
-		case errors.Is(err, domain.ErrChatNotRegistered):
-			return "You are not registered yet. Use /start", nil
+		case errors.Is(err, domain.ErrChatNotRegisteredOrLinkNotFound):
+			return "You are not registered yet or not tracking this link. To register use /start", nil
 		}
 
 		service.logger.Error("failed to remove link",
