@@ -107,7 +107,7 @@ func main() {
 
 	helpCommand.SetCommands(cmds)
 
-	commandService := application.NewCommandService(scrapperApi, sessionRepo, cmds, slogger)
+	commandService := application.NewCommandService(scrapperApi, sessionRepo, cmds)
 
 	dialogService := application.NewDialogService(scrapperApi, sessionRepo, slogger)
 

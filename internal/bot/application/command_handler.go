@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
-	"log/slog"
 )
 
 var ErrNotACommand = errors.New("message is not a command")
@@ -13,7 +12,6 @@ var ErrNotACommand = errors.New("message is not a command")
 type CommandService struct {
 	scrapper    domain.Scrapper
 	sessionRepo domain.SessionRepository
-	logger      *slog.Logger
 	commands    map[string]domain.Command
 }
 
@@ -21,12 +19,10 @@ func NewCommandService(
 	scrapper domain.Scrapper,
 	sessionRepo domain.SessionRepository,
 	commands []domain.Command,
-	logger *slog.Logger,
 ) *CommandService {
 	service := &CommandService{
 		scrapper:    scrapper,
 		sessionRepo: sessionRepo,
-		logger:      logger,
 		commands:    make(map[string]domain.Command),
 	}
 
