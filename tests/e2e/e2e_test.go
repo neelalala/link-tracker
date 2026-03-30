@@ -20,18 +20,17 @@ import (
 	"time"
 )
 
-type Config struct {
-	TelegramToken         string `config:"telegram-token"`
-	ScrapperUrl           string `config:"scrapper-url"`
-	BotApiPort            uint16 `config:"bot-api-port"`
-	UpdateIntervalSeconds int    `config:"update-interval-seconds"`
-	BotUrl                string `config:"bot-url"`
-	ScrapperApiPort       uint16 `config:"scrapper-api-port"`
+type TelegramConfig struct {
+	Token string `config:"token"`
 }
 
-func Load(configPath string) (*Config, error) {
+type Config struct {
+	Telegram TelegramConfig `config:"telegram"`
+}
+
+func Load(botConfig string) (*Config, error) {
 	godotenv.Load("../../.env")
-	tree, err := parse.ParseFile(configPath)
+	tree, err := parse.ParseFile(botConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
@@ -44,8 +43,15 @@ func Load(configPath string) (*Config, error) {
 }
 
 func TestEndToEnd_ScrapperAndBot(t *testing.T) {
-	cfg, err := Load("../../application.conf")
+	cfg, err := Load("../../cmd/bot/bot.conf")
 	require.NoErrorf(t, err, "error loading config: %v", err)
+
+	const (
+		BOT_API_PORT      = 63342
+		BOT_URL           = "bot:63342"
+		SCRAPPER_API_PORT = 63343
+		SCRAPPER_URL      = "scrapper:63343"
+	)
 
 	ctx := context.Background()
 
@@ -59,17 +65,19 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 			Context:    "../../",
 			Dockerfile: "cmd/bot/Dockerfile",
 		},
-		ExposedPorts: []string{fmt.Sprintf("%d/tcp", cfg.BotApiPort)},
+		ExposedPorts: []string{fmt.Sprintf("%d/tcp", BOT_API_PORT)},
 		Networks:     []string{newNetwork.Name},
 		NetworkAliases: map[string][]string{
 			newNetwork.Name: {"bot"},
 		},
 		Env: map[string]string{
-			"APP_TELEGRAM_TOKEN": cfg.TelegramToken,
-			"BOT_API_PORT":       strconv.Itoa(int(cfg.BotApiPort)),
-			"SCRAPPER_URL":       cfg.ScrapperUrl,
+			"APP_TELEGRAM_TOKEN":    cfg.Telegram.Token,
+			"BOT_API_PORT":          strconv.Itoa(BOT_API_PORT),
+			"SCRAPPER_URL":          SCRAPPER_URL,
+			"BOT_API_PROTOCOL":      "http",
+			"SCRAPPER_API_PROTOCOL": "http",
 		},
-		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", cfg.BotApiPort))).WithStartupTimeout(30 * time.Second),
+		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", BOT_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
 
 	botContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -85,17 +93,19 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 			Context:    "../../",
 			Dockerfile: "cmd/scrapper/Dockerfile",
 		},
-		ExposedPorts: []string{fmt.Sprintf("%d/tcp", cfg.ScrapperApiPort)},
+		ExposedPorts: []string{fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT)},
 		Networks:     []string{newNetwork.Name},
 		NetworkAliases: map[string][]string{
 			newNetwork.Name: {"scrapper"},
 		},
 
 		Env: map[string]string{
-			"SCRAPPER_API_PORT": strconv.Itoa(int(cfg.ScrapperApiPort)),
-			"BOT_URL":           cfg.BotUrl,
+			"SCRAPPER_API_PORT":     strconv.Itoa(SCRAPPER_API_PORT),
+			"BOT_URL":               BOT_URL,
+			"BOT_API_PROTOCOL":      "http",
+			"SCRAPPER_API_PROTOCOL": "http",
 		},
-		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", cfg.ScrapperApiPort))).WithStartupTimeout(30 * time.Second),
+		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
 
 	scrapperContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -107,7 +117,7 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 	defer scrapperContainer.Terminate(ctx)
 
 	scrapperHost, _ := scrapperContainer.Host(ctx)
-	scrapperPort, _ := scrapperContainer.MappedPort(ctx, nat.Port(strconv.Itoa(int(cfg.ScrapperApiPort))))
+	scrapperPort, _ := scrapperContainer.MappedPort(ctx, nat.Port(strconv.Itoa(SCRAPPER_API_PORT)))
 	scrapperURL := fmt.Sprintf("http://%s:%s", scrapperHost, scrapperPort.Port())
 
 	client := &http.Client{Timeout: 10 * time.Second}
