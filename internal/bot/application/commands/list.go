@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"log/slog"
@@ -13,8 +14,9 @@ const (
 	listCommandName        = "list"
 	listCommandDescription = "List your tracked links. You can filter them by specifying tags"
 
-	listCommandUnexpectedError = "Something went wrong while getting your links. Try again"
-	listCommandNoTrackedLinks  = "You have no tracked links"
+	listCommandUnexpectedError   = "Something went wrong while getting your links. Try again"
+	listCommandNoTrackedLinks    = "You have no tracked links"
+	listCommandUserNotRegistered = "You are not registered yet. Use /start"
 )
 
 type ListCommand struct {
@@ -40,6 +42,9 @@ func (c *ListCommand) Description() string {
 func (c *ListCommand) Execute(ctx context.Context, msg domain.Message) (string, error) {
 	links, err := c.scrapper.GetTrackedLinks(ctx, msg.ChatID)
 	if err != nil {
+		if errors.Is(err, domain.ErrChatNotRegistered) {
+			return listCommandUserNotRegistered, nil
+		}
 		c.logger.Error("error getting tracked links from scrapper",
 			slog.String("error", err.Error()),
 			slog.Int64("chat_id", msg.ChatID),
