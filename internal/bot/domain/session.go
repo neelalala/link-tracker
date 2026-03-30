@@ -17,7 +17,7 @@ type Session struct {
 	URL    string
 }
 
-func NewTrackSession(chatID int64) Session {
+func NewSession(chatID int64) Session {
 	return Session{
 		ChatID: chatID,
 		State:  StateIdle,
