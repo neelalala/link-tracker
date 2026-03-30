@@ -57,11 +57,15 @@ func (poller *Poller) Start(ctx context.Context) {
 
 		updates, err := poller.tgClient.GetUpdates(requestCtx)
 		if err != nil {
-			if errors.Is(err, context.Canceled) {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				cancel()
 				return
 			}
-			poller.logger.Error("Failed to get updates", slog.String("error", err.Error()), slog.String("context", "tgClient.GetUpdates"))
+
+			poller.logger.Error("Failed to get updates",
+				slog.String("error", err.Error()),
+				slog.String("context", "tgClient.GetUpdates"),
+			)
 			cancel()
 			//time.Sleep(1 * time.Second)
 			continue
@@ -70,7 +74,10 @@ func (poller *Poller) Start(ctx context.Context) {
 		for _, update := range updates {
 			err := poller.handleMessage(requestCtx, update)
 			if err != nil {
-				poller.logger.Error("Failed to handle update", slog.String("error", err.Error()), slog.String("context", "poller.handleMessage"))
+				poller.logger.Error("Failed to handle update",
+					slog.String("error", err.Error()),
+					slog.String("context", "poller.handleMessage"),
+				)
 			}
 		}
 		cancel()
