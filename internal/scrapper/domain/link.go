@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"errors"
 	"time"
 )
 
@@ -18,10 +17,6 @@ type LinkUpdate struct {
 	Description string
 	TgChatIDs   []int64
 }
-
-var (
-	ErrLinkNotFound = errors.New("link not found")
-)
 
 type LinkRepository interface {
 	Save(ctx context.Context, link Link) (Link, error)

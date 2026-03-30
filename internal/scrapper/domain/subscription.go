@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"errors"
 )
 
 type Subscription struct {
@@ -16,11 +15,6 @@ type TrackedLink struct {
 	URL  string
 	Tags []string
 }
-
-var (
-	ErrAlreadySubscribed = errors.New("already subscribed")
-	ErrNotSubscribed     = errors.New("not subscribed")
-)
 
 type SubscriptionRepository interface {
 	Save(ctx context.Context, sub Subscription) error
