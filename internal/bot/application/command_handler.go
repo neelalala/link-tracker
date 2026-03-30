@@ -10,7 +10,7 @@ import (
 
 var ErrNotACommand = errors.New("message is not a command")
 
-type CommandHandler struct {
+type CommandService struct {
 	scrapper    domain.Scrapper
 	sessionRepo domain.SessionRepository
 	logger      *slog.Logger
@@ -22,8 +22,8 @@ func NewCommandService(
 	sessionRepo domain.SessionRepository,
 	commands []domain.Command,
 	logger *slog.Logger,
-) *CommandHandler {
-	service := &CommandHandler{
+) *CommandService {
+	service := &CommandService{
 		scrapper:    scrapper,
 		sessionRepo: sessionRepo,
 		logger:      logger,
@@ -37,7 +37,7 @@ func NewCommandService(
 	return service
 }
 
-func (service *CommandHandler) HandleCommand(ctx context.Context, msg domain.Message) (string, error) {
+func (service *CommandService) HandleCommand(ctx context.Context, msg domain.Message) (string, error) {
 	command, _ := msg.ParseCommand()
 	if command == "" {
 		return "", ErrNotACommand
@@ -57,7 +57,7 @@ func (service *CommandHandler) HandleCommand(ctx context.Context, msg domain.Mes
 	return resp, nil
 }
 
-func (service *CommandHandler) GetCommandsInfo() []domain.CommandInfo {
+func (service *CommandService) GetCommandsInfo() []domain.CommandInfo {
 	var infos []domain.CommandInfo
 
 	for _, command := range service.commands {

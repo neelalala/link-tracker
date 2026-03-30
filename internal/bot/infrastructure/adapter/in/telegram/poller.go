@@ -12,14 +12,14 @@ import (
 
 type Poller struct {
 	tgClient       *telegram.Client
-	commandService *application.CommandHandler
+	commandService *application.CommandService
 	dialogService  *application.DialogService
 	logger         *slog.Logger
 	timeout        time.Duration
 }
 
 func NewPoller(
-	commandService *application.CommandHandler,
+	commandService *application.CommandService,
 	dialogService *application.DialogService,
 	tgClient *telegram.Client,
 	logger *slog.Logger,
