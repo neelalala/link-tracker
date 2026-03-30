@@ -173,7 +173,7 @@ func (client *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) 
 	return updates, nil
 }
 
-func (client *Client) SetMyCommands(ctx context.Context, cmds []domain.Command) error {
+func (client *Client) SetMyCommands(ctx context.Context, cmds []domain.CommandInfo) error {
 	query := fmt.Sprintf("%s/setMyCommands", client.url)
 
 	type botCommandJson struct {
