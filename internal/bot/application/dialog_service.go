@@ -10,6 +10,15 @@ import (
 	"log/slog"
 )
 
+const (
+	dialogServiceErrorGettingSession = "Something went wrong while getting your session"
+	dialogServiceErrorUnknownState   = "Unknown state. Process reset. Please send a command"
+	dialogServiceIdleState           = "I don't understand plain text right now. Please use commands from /help menu"
+	dialogServiceErrorEmptyURL       = "Link cannot be empty. Please send a valid link or /cancel"
+	dialogServiceUnexpectedError     = "Something went wrong. Please try again"
+	dialogServiceTrackLinkSaved      = "Link saved! Now send tags separated by commas (e.g., work, bug). Or send 'skip' to add without tags."
+)
+
 var ErrBadSessionState = fmt.Errorf("unknown session state")
 
 type StateHandler func(context.Context, domain.Session, domain.Message) (string, error)
@@ -49,27 +58,27 @@ func (service *DialogService) HandleMessage(ctx context.Context, msg domain.Mess
 			slog.String("error", err.Error()),
 			slog.Int64("chat_id", msg.ChatID),
 		)
-		return "Something went wrong while getting your session", err
+		return dialogServiceErrorGettingSession, err
 	}
 
 	handler, ok := service.stateRegistry[session.State]
 	if !ok {
 		session.Reset()
 		_ = service.sessionRepo.Save(ctx, session)
-		return "Unknown state. Process reset. Please send a command", ErrBadSessionState
+		return dialogServiceErrorUnknownState, ErrBadSessionState
 	}
 
 	return handler(ctx, session, msg)
 }
 
 func (service *DialogService) handleIdle(ctx context.Context, session domain.Session, msg domain.Message) (string, error) {
-	return "I don't understand plain text right now. Please use commands from /help menu", nil
+	return dialogServiceIdleState, nil
 }
 
 func (service *DialogService) handleWaitingForURLTrack(ctx context.Context, session domain.Session, msg domain.Message) (string, error) {
 	url := strings.TrimSpace(msg.Text)
 	if url == "" {
-		return "Link cannot be empty. Please send a valid link or /cancel", nil
+		return dialogServiceErrorEmptyURL, nil
 	}
 
 	session.URL = url
@@ -82,10 +91,10 @@ func (service *DialogService) handleWaitingForURLTrack(ctx context.Context, sess
 			slog.String("url", url),
 			slog.Any("state", session.State),
 		)
-		return "Something went wrong. Please try again", err
+		return dialogServiceUnexpectedError, err
 	}
 
-	return "Link saved! Now send tags separated by commas (e.g., work, bug). Or send 'skip' to add without tags.", nil
+	return dialogServiceTrackLinkSaved, nil
 }
 
 func (service *DialogService) handleWaitingForTags(ctx context.Context, session domain.Session, msg domain.Message) (string, error) {
@@ -128,7 +137,7 @@ func (service *DialogService) handleWaitingForTags(ctx context.Context, session 
 			slog.String("error", err.Error()),
 			slog.Int64("chat_id", session.ChatID),
 		)
-		return "Something went wrong. Please try again", err
+		return dialogServiceUnexpectedError, err
 	}
 
 	return fmt.Sprintf("Success! Now tracking link: %s", url), nil
@@ -137,7 +146,7 @@ func (service *DialogService) handleWaitingForTags(ctx context.Context, session 
 func (service *DialogService) handleWaitingForURLUntrack(ctx context.Context, session domain.Session, msg domain.Message) (string, error) {
 	url := strings.TrimSpace(msg.Text)
 	if url == "" {
-		return "Link cannot be empty. Please send a valid link or /cancel", nil
+		return dialogServiceErrorEmptyURL, nil
 	}
 
 	_, err := service.scrapper.RemoveLink(ctx, session.ChatID, url)
@@ -164,7 +173,7 @@ func (service *DialogService) handleWaitingForURLUntrack(ctx context.Context, se
 			slog.String("error", err.Error()),
 			slog.Int64("chat_id", session.ChatID),
 		)
-		return "Something went wrong. Please try again", err
+		return dialogServiceUnexpectedError, err
 	}
 
 	return fmt.Sprintf("Link %s has been untracked", url), nil
