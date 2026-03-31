@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
@@ -39,7 +38,6 @@ func (service *CommandService) HandleCommand(ctx context.Context, msg domain.Mes
 		return "", ErrNotACommand
 	}
 
-	fmt.Println(msg, command)
 	cmd, ok := service.commands[command]
 	if !ok {
 		return "Unknown command. Use /help to list all commands", nil
