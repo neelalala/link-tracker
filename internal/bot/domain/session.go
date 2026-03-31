@@ -29,6 +29,7 @@ func (s *Session) Reset() {
 	s.URL = ""
 }
 
+//go:generate mockgen -source=session.go -destination=../mocks/mock_domain_session.go -package=mocks
 type SessionRepository interface {
 	GetOrCreate(ctx context.Context, chatID int64) (Session, error)
 	Save(ctx context.Context, session Session) error

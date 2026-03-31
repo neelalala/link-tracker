@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+//go:generate mockgen -source=scrapper.go -destination=../mocks/mock_domain_scrapper.go -package=mocks
 type Scrapper interface {
 	RegisterChat(ctx context.Context, chatId int64) error
 	DeleteChat(ctx context.Context, chatId int64) error
