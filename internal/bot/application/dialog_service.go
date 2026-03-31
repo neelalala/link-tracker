@@ -166,7 +166,6 @@ func (service *DialogService) handleWaitingForURLUntrack(ctx context.Context, se
 		return "Failed to untrack link", err
 	}
 
-	url = session.URL
 	session.Reset()
 	if err := service.sessionRepo.Save(ctx, session); err != nil {
 		service.logger.Error("failed to save session",
