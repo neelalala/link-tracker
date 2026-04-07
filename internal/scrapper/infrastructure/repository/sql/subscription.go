@@ -198,8 +198,21 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId i
 }
 
 func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64, linkId int64) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+	query := `
+       SELECT EXISTS (
+           SELECT 1
+           FROM subscriptions
+           WHERE chat_id = $1 AND link_id = $2
+       );
+    `
+
+	var exists bool
+	err := subRepo.pool.QueryRow(ctx, query, chatId, linkId).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check subscription for link %d in chat %d: %w", linkId, chatId, err)
+	}
+
+	return exists, nil
 }
 
 func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {

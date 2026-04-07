@@ -99,8 +99,25 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId i
 }
 
 func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64, linkId int64) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+	subquery := psql.Select(goqu.L("1")).
+		From(goqu.T("subscriptions").As("s")).
+		Where(goqu.Ex{
+			"s.chat_id": chatId,
+			"s.link_id": linkId,
+		})
+
+	query, args, err := psql.Select(goqu.L("EXISTS ?", subquery)).ToSQL()
+	if err != nil {
+		return false, fmt.Errorf("failed to build exists query: %w", err)
+	}
+
+	var exists bool
+	err = subRepo.pool.QueryRow(ctx, query, args...).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check subscription for link %d in chat %d: %w", linkId, chatId, err)
+	}
+
+	return exists, nil
 }
 
 func (subRepo *SubscriptionRepository) scanSubscriptions(
