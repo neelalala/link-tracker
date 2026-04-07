@@ -76,6 +76,10 @@ func (m *MockSubRepo) GetByChatId(ctx context.Context, chatID int64) ([]domain.S
 	return nil, nil
 }
 
+func (m *MockSubRepo) Exists(ctx context.Context, chatId int64, linkId int64) (bool, error) {
+	return false, nil
+}
+
 func (m *MockSubRepo) Save(ctx context.Context, sub domain.Subscription) error {
 	if m.SaveFunc != nil {
 		return m.SaveFunc(sub)

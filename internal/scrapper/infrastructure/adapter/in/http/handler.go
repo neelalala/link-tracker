@@ -409,7 +409,7 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, request *http.R
 			)
 			return
 		}
-		if errors.Is(err, domain.ErrNotSubscribed) {
+		if errors.Is(err, domain.ErrNotSubscribed) || errors.Is(err, domain.ErrLinkNotFound) {
 			handler.writeError(w, http.StatusNotFound,
 				"Link not tracked",
 				"not_found",

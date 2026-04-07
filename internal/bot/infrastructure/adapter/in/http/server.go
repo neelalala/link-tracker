@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"log/slog"
 	"net/http"
 	"time"
 )
 
 type LinkUpdateHandler interface {
-	HandleUpdate(ctx context.Context, update scrapperdomain.LinkUpdate) error
+	HandleUpdate(ctx context.Context, update domain.LinkUpdate) error
 }
 
 type Server struct {

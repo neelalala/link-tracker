@@ -7,10 +7,7 @@ import (
 	pb "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/proto/bot"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"time"
 )
-
-const defaultTimeout = 10 * time.Second
 
 type Bot struct {
 	connection *grpc.ClientConn
@@ -37,9 +34,6 @@ func (bot *Bot) Close() error {
 }
 
 func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
-	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
-	defer cancel()
-
 	request := &pb.LinkUpdate{
 		Id:          update.ID,
 		Url:         update.URL,

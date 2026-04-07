@@ -60,6 +60,15 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, id int64
 	return subscriptions, nil
 }
 
+func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64, linkId int64) (bool, error) {
+	subRepo.mu.RLock()
+	defer subRepo.mu.RUnlock()
+
+	_, exists := subRepo.links[linkId][chatId]
+
+	return exists, nil
+}
+
 func (subRepo *SubscriptionRepository) Delete(ctx context.Context, subscription domain.Subscription) (domain.Subscription, error) {
 	subRepo.mu.Lock()
 	defer subRepo.mu.Unlock()

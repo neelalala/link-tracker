@@ -177,7 +177,7 @@ func (server *Server) RemoveLink(ctx context.Context, req *pb.RemoveLinkRequest)
 		if errors.Is(err, domain.ErrChatNotRegistered) {
 			return nil, status.Errorf(codes.NotFound, "chat %d not registered", chatId)
 		}
-		if errors.Is(err, domain.ErrNotSubscribed) {
+		if errors.Is(err, domain.ErrNotSubscribed) || errors.Is(err, domain.ErrLinkNotFound) {
 			return nil, status.Errorf(codes.NotFound, "link %s not tracked in chat %d", linkUrl, chatId)
 		}
 

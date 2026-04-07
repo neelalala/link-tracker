@@ -197,6 +197,11 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId i
 	return result, nil
 }
 
+func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64, linkId int64) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
 	tx, err := subRepo.pool.Begin(ctx)
 	if err != nil {

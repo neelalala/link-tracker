@@ -98,6 +98,11 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId i
 	return subRepo.scanSubscriptions(ctx, query, args, func(chatID, linkID int64) int64 { return chatID })
 }
 
+func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64, linkId int64) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (subRepo *SubscriptionRepository) scanSubscriptions(
 	ctx context.Context,
 	query string,

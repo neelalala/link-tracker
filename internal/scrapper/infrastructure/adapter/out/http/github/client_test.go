@@ -18,13 +18,13 @@ func TestClient_Fetch_Resilience(t *testing.T) {
 		{
 			name:       "500 Internal Server Error",
 			statusCode: http.StatusInternalServerError,
-			body:       `{"error": "something went wrong"}`,
+			body:       `{"message": "Internal Server Error"}`,
 			expectErr:  true,
 		},
 		{
 			name:       "404 Not Found",
 			statusCode: http.StatusNotFound,
-			body:       `{"error": "not found"}`,
+			body:       `{"message": "Not Found"}`,
 			expectErr:  true,
 		},
 		{
@@ -34,9 +34,9 @@ func TestClient_Fetch_Resilience(t *testing.T) {
 			expectErr:  true,
 		},
 		{
-			name:       "200 OK but empty items array",
-			statusCode: http.StatusOK,
-			body:       `{"items": []}`,
+			name:       "403 Forbidden (API Rate Limit Exceeded)",
+			statusCode: http.StatusForbidden,
+			body:       `{"message": "API rate limit exceeded"}`,
 			expectErr:  true,
 		},
 	}
@@ -45,18 +45,18 @@ func TestClient_Fetch_Resilience(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "application/vnd.github+json", r.Header.Get("Accept"))
+
 				w.WriteHeader(tt.statusCode)
 				w.Write([]byte(tt.body))
 			}))
 			defer ts.Close()
 
-			client := &Client{
-				httpClient: &http.Client{},
-				apiURL:     ts.URL,
-			}
+			client := NewClient(BaseURL, ts.URL, Timeout)
 
-			_, err := client.Fetch(ctx, "https://stackoverflow.com/questions/12345/test")
+			_, err := client.Fetch(ctx, "https://github.com/octocat/Hello-World")
 
 			assert.Equalf(t, tt.expectErr, err != nil, "Fetch() expected error = %v, got err = %v", tt.expectErr, err)
 		})

@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	baseURL    = "https://stackoverflow.com/questions/"
-	baseApiURL = "https://api.stackexchange.com/2.3"
-	timeout    = 10 * time.Second
+	BaseURL    = "https://stackoverflow.com/questions/"
+	BaseApiURL = "https://api.stackexchange.com/2.3"
+	Timeout    = 10 * time.Second
 )
 
 type Client struct {
@@ -22,11 +22,11 @@ type Client struct {
 	baseURL    string
 }
 
-func NewClient() *Client {
+func NewClient(baseUrl, baseApiUrl string, timeout time.Duration) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: timeout},
-		apiURL:     baseApiURL,
-		baseURL:    baseURL,
+		apiURL:     baseApiUrl,
+		baseURL:    baseUrl,
 	}
 }
 

@@ -89,7 +89,15 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 				Description: "no fetcher for this link yet",
 				TgChatIDs:   chatIDs,
 			}
-			service.notifier.SendUpdate(ctx, update)
+			err := service.notifier.SendUpdate(ctx, update)
+			if err != nil {
+				service.logger.Error("failed to send update",
+					slog.String("error", err.Error()),
+					slog.Int64("link_id", link.ID),
+					slog.Any("chat_ids", update.TgChatIDs),
+					slog.String("context", "scrapperService.notifier.SendUpdate"),
+				)
+			}
 		} else {
 			service.logger.Warn("link with no subscribers still in DB", slog.String("url", link.URL))
 		}

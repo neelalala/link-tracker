@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/bot";
+option go_package = "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/proto/bot";
 
 package bot;
 

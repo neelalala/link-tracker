@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"log/slog"
 )
 
@@ -24,7 +24,7 @@ func NewNotifierService(logger *slog.Logger, sender MessageSender) *NotifierServ
 	}
 }
 
-func (service *NotifierService) HandleUpdate(ctx context.Context, update scrapperdomain.LinkUpdate) error {
+func (service *NotifierService) HandleUpdate(ctx context.Context, update domain.LinkUpdate) error {
 	if update.URL == "" {
 		service.logger.Warn("No URL provided",
 			slog.Int64("link-id", update.ID),
@@ -46,7 +46,11 @@ func (service *NotifierService) HandleUpdate(ctx context.Context, update scrappe
 	for _, chatID := range update.TgChatIDs {
 		err := service.sender.SendMessage(ctx, chatID, text)
 		if err != nil {
-			service.logger.Error("Failed to send notification", slog.String("context", "NotifyService.sender.SendMessage"), slog.Int64("chatID", chatID), slog.String("error", err.Error()))
+			service.logger.Error("Failed to send notification",
+				slog.String("context", "NotifyService.sender.SendMessage"),
+				slog.Int64("chatID", chatID),
+				slog.String("error", err.Error()),
+			)
 		}
 	}
 

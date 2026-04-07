@@ -7,12 +7,10 @@ import (
 	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"net/http"
-	"time"
 )
 
 const (
 	endpoint = "updates"
-	timeout  = 10 * time.Second
 )
 
 type Bot struct {
@@ -23,7 +21,7 @@ type Bot struct {
 func NewBot(url string) *Bot {
 	return &Bot{
 		url:        url,
-		httpClient: &http.Client{Timeout: timeout},
+		httpClient: &http.Client{},
 	}
 }
 
@@ -48,7 +46,7 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 	}
 
 	query := fmt.Sprintf("%s/%s", bot.url, endpoint)
-	request, err := http.NewRequest(http.MethodPost, query, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

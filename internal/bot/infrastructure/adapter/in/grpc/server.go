@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
-	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	pb "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/proto/bot"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -14,7 +14,7 @@ import (
 )
 
 type LinkUpdateHandler interface {
-	HandleUpdate(ctx context.Context, update scrapperdomain.LinkUpdate) error
+	HandleUpdate(ctx context.Context, update domain.LinkUpdate) error
 }
 
 type Server struct {
@@ -67,7 +67,7 @@ func (server *Server) Start(ctx context.Context) error {
 }
 
 func (server *Server) SendUpdate(ctx context.Context, request *pb.LinkUpdate) (*emptypb.Empty, error) {
-	linkUpdate := scrapperdomain.LinkUpdate{
+	linkUpdate := domain.LinkUpdate{
 		ID:          request.GetId(),
 		URL:         request.GetUrl(),
 		Description: request.GetDescription(),
@@ -84,7 +84,7 @@ func (server *Server) SendUpdate(ctx context.Context, request *pb.LinkUpdate) (*
 			slog.String("method", "SendUpdate"),
 		)
 
-		return nil, status.Errorf(codes.Internal, "failed to handle update for link %server: %v", request.GetUrl(), err)
+		return nil, status.Errorf(codes.Internal, "failed to handle update for link %s: %v", request.GetUrl(), err)
 	}
 
 	return &emptypb.Empty{}, nil

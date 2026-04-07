@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/commands"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/grpc"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/http"
 	telegramin "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/telegram"
 	grpcscrapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/grpc/scrapper"
 	httpscrapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/scrapper"
 	telegramout "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/telegram"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/logger"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository/session"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"log"
@@ -25,26 +29,32 @@ type ApiServer interface {
 }
 
 func main() {
-	cfg, err := config.Load("application.conf")
+	cfg, err := config.Load("bot.conf")
 	if err != nil {
 		log.Fatalf("error loading config: %v", err)
 	}
 
+	fmt.Printf("config: %+v\n", cfg)
+
 	var out io.Writer = os.Stdout
 
-	if cfg.LogsFile != "" {
-		file, err := os.OpenFile(cfg.LogsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if cfg.Logger.File != "" {
+		file, err := os.OpenFile(cfg.Logger.File, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatalf("error opening file: %v", err)
 		}
 		out = file
 	}
 
-	slogger := logger.NewLogger(cfg.LogLevel, cfg.Environment, out)
+	slogger := logger.NewLogger(cfg.Logger.Level, out)
 
-	tgClient, err := telegramout.NewClient(cfg.TelegramToken)
+	tgClient, err := telegramout.NewClient(cfg.Telegram.ApiUrl, cfg.Telegram.Token, cfg.Telegram.Timeout)
 	if err != nil {
-		slogger.Error("Error creating telegram client", slog.String("context", "main"), slog.String("error", err.Error()))
+		slogger.Error("Error creating telegram client",
+			slog.String("context", "main"),
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -52,25 +62,64 @@ func main() {
 
 	notifyService := application.NewNotifierService(slogger, tgClient)
 	var apiServer ApiServer
-	var scrapperApi application.Scrapper
-	if cfg.ApiProtocol == "http" {
-		apiServer = http.NewServer(cfg.BotApiPort, notifyService, slogger)
-		scrapperApi = httpscrapper.NewClient(cfg.ScrapperUrl)
-	} else if cfg.ApiProtocol == "grpc" {
-		apiServer = grpc.NewServer(cfg.BotApiPort, notifyService, slogger)
-		scrapperApi, err = grpcscrapper.NewClient(cfg.ScrapperUrl)
-		if err != nil {
-			slogger.Error("error creating grpc scrapper", "error", err)
-			os.Exit(1)
-		}
-	} else {
-		slogger.Error("unsupported protocol", "protocol", cfg.ApiProtocol)
+	var scrapperApi domain.Scrapper
+	switch cfg.Server.Protocol {
+	case config.HTTP:
+		apiServer = http.NewServer(cfg.Server.Port, notifyService, slogger)
+	case config.GRPC:
+		apiServer = grpc.NewServer(cfg.Server.Port, notifyService, slogger)
+	default:
+		slogger.Error("unsupported protocol", "protocol", cfg.Server.Protocol)
 		os.Exit(1)
 	}
 
-	poller, err := telegramin.NewPoller(tgClient, scrapperApi, slogger)
+	switch cfg.ScrapperService.Protocol {
+	case config.HTTP:
+		scrapperApi = httpscrapper.NewClient(cfg.ScrapperService.URL)
+	case config.GRPC:
+		scrapperApi, err = grpcscrapper.NewClient(cfg.ScrapperService.URL)
+		if err != nil {
+			slogger.Error("error creating grpc scrapper",
+				slog.String("context", "main"),
+				slog.String("error", err.Error()),
+			)
+			os.Exit(1)
+		}
+	default:
+		slogger.Error("unsupported protocol", "protocol", cfg.ScrapperService.Protocol)
+		os.Exit(1)
+	}
+
+	sessionRepo := session.NewMemoryRepository()
+
+	helpCommand := commands.NewHelpCommand()
+	startCommand := commands.NewStartCommand(scrapperApi, slogger)
+	listCommand := commands.NewListCommand(scrapperApi, slogger)
+	trackCommand := commands.NewTrackCommand(sessionRepo, slogger)
+	untrackCommand := commands.NewUntrackCommand(sessionRepo, slogger)
+	cancelCommand := commands.NewCancelCommand(sessionRepo, slogger)
+
+	cmds := []domain.Command{
+		helpCommand,
+		startCommand,
+		listCommand,
+		trackCommand,
+		untrackCommand,
+		cancelCommand,
+	}
+
+	helpCommand.SetCommands(cmds)
+
+	commandService := application.NewCommandService(scrapperApi, sessionRepo, cmds)
+
+	dialogService := application.NewDialogService(scrapperApi, sessionRepo, slogger)
+
+	poller, err := telegramin.NewPoller(commandService, dialogService, tgClient, slogger, cfg.Telegram.Timeout)
 	if err != nil {
-		slogger.Error("Failed to create bot", slog.String("context", "main"), slog.String("error", err.Error()))
+		slogger.Error("Failed to create bot",
+			slog.String("context", "main"),
+			slog.String("error", err.Error()),
+		)
 		os.Exit(1)
 	}
 
