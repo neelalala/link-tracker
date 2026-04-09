@@ -10,8 +10,8 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY cmd/bot ./cmd/bot
-COPY internal/bot ./internal/bot
+COPY cmd/scrapper ./cmd/scrapper
+COPY internal/scrapper ./internal/scrapper
 COPY docs/scrapper.proto ./docs/
 COPY docs/bot.proto ./docs/
 
@@ -29,15 +29,15 @@ RUN protoc -I=docs \
     --go-grpc_out=pkg/api/proto/bot --go-grpc_opt=paths=source_relative \
     bot.proto
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/bot ./cmd/bot/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/scrapper ./cmd/scrapper/main.go
 
 FROM alpine:latest
 
 WORKDIR /app
 
-COPY cmd/bot/bot.conf ./bot.conf
-COPY --from=builder /bin/bot /app/bot
+COPY cmd/scrapper/scrapper.conf ./scrapper.conf
+COPY --from=builder /bin/scrapper /app/scrapper
 
 EXPOSE 63342
 
-ENTRYPOINT ["/app/bot"]
+ENTRYPOINT ["/app/scrapper"]

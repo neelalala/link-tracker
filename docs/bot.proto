@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/proto/bot";
+
+package bot;
+
+import "google/protobuf/empty.proto";
+
+service BotService {
+  rpc SendUpdate (LinkUpdate) returns (google.protobuf.Empty);
+}
+
+message LinkUpdate {
+  int64 id = 1;
+  string url = 2;
+  string description = 3;
+  repeated int64 tg_chat_ids = 4;
+}
