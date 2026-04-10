@@ -22,6 +22,27 @@ func (protocol Protocol) Validate() error {
 	}
 }
 
+type AccessType string
+
+const (
+	AccessTypeBUILDER AccessType = "BUILDER"
+	AccessTypeSQL     AccessType = "SQL"
+)
+
+func (accessType AccessType) Validate() error {
+	switch accessType {
+	case AccessTypeBUILDER, AccessTypeSQL:
+		return nil
+	default:
+		return fmt.Errorf("invalid access type: %q. Allowed values are 'SQL' or 'BUILDER'", accessType)
+	}
+}
+
+type DatabaseConfig struct {
+	URL        string     `config:"url"`
+	AccessType AccessType `config:"access-type,BUILDER"`
+}
+
 type TelegramConfig struct {
 	Token   string        `config:"token"`
 	ApiUrl  string        `config:"api-url"`
@@ -48,6 +69,7 @@ type Config struct {
 	Logger          LoggerConfig          `config:"logger"`
 	ScrapperService ScrapperServiceConfig `config:"scrapper-service"`
 	Server          ServerConfig          `config:"server"`
+	Database        DatabaseConfig        `config:"database"`
 }
 
 func Load(configPath string) (*Config, error) {
