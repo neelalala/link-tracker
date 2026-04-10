@@ -3,10 +3,14 @@ services:
     build:
       context: .
       dockerfile: cmd/bot/Dockerfile
+    restart: unless-stopped
     env_file:
       - .env
     depends_on:
-      - scrapper
+      scrapper:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     environment:
       - BOT_API_PORT=63342
       - SCRAPPER_URL="scrapper:63343"
@@ -20,6 +24,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
     env_file:
       - .env
     environment:
