@@ -6,9 +6,7 @@ import (
 	"time"
 )
 
-var (
-	ErrUrlNotSupported = errors.New("url not supported")
-)
+var ErrUrlNotSupported = errors.New("url not supported")
 
 type FetchResult struct {
 	UpdatedAt   time.Time

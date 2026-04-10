@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
@@ -34,7 +35,6 @@ func (linkRepo *LinkRepository) Save(ctx context.Context, link domain.Link) (dom
 		&saved.URL,
 		&saved.LastUpdated,
 	)
-
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("failed to save link: %w", err)
 	}
@@ -51,7 +51,6 @@ func (linkRepo *LinkRepository) GetById(ctx context.Context, id int64) (domain.L
 		&link.URL,
 		&link.LastUpdated,
 	)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Link{}, fmt.Errorf("%w: link with id %d not found: %v", domain.ErrLinkNotFound, id, err.Error())
@@ -71,7 +70,6 @@ func (linkRepo *LinkRepository) GetByUrl(ctx context.Context, url string) (domai
 		&link.URL,
 		&link.LastUpdated,
 	)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Link{}, fmt.Errorf("%w: link with url %s not found: %v", domain.ErrLinkNotFound, url, err.Error())

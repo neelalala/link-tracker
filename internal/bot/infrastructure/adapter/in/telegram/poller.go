@@ -3,11 +3,12 @@ package telegram
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"time"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/telegram"
-	"log/slog"
-	"time"
 )
 
 type Poller struct {
@@ -67,7 +68,7 @@ func (poller *Poller) Start(ctx context.Context) {
 				slog.String("context", "tgClient.GetUpdates"),
 			)
 			cancel()
-			//time.Sleep(1 * time.Second)
+			// time.Sleep(1 * time.Second)
 			continue
 		}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/doug-martin/goqu/v9"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"

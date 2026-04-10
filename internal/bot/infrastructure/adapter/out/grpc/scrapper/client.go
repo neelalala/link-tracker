@@ -3,6 +3,7 @@ package scrapper
 import (
 	"context"
 	"fmt"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	pb "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/proto/scrapper"
 	"google.golang.org/grpc"

@@ -2,8 +2,9 @@ package scheduler
 
 import (
 	"context"
-	"github.com/go-co-op/gocron/v2"
 	"time"
+
+	"github.com/go-co-op/gocron/v2"
 )
 
 type Cron struct {

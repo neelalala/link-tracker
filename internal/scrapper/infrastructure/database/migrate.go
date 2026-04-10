@@ -3,10 +3,11 @@ package database
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"log/slog"
 )
 
 func RunMigrationsFromFile(databaseUrl, migrationsUrl string, logger *slog.Logger) error {

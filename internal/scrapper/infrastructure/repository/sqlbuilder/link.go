@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/doug-martin/goqu/v9"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,7 +32,6 @@ func (linkRepo *LinkRepository) Save(ctx context.Context, link domain.Link) (dom
 		})).
 		Returning("id", "url", "last_updated").
 		ToSQL()
-
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("failed to build query: %w", err)
 	}
@@ -60,7 +60,6 @@ func (linkRepo *LinkRepository) GetById(ctx context.Context, id int64) (domain.L
 		&link.URL,
 		&link.LastUpdated,
 	)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Link{}, fmt.Errorf("%w: link with id %d not found", domain.ErrLinkNotFound, id)
@@ -86,7 +85,6 @@ func (linkRepo *LinkRepository) GetByUrl(ctx context.Context, url string) (domai
 		&link.URL,
 		&link.LastUpdated,
 	)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Link{}, fmt.Errorf("%w: link with url %s not found", domain.ErrLinkNotFound, url)
@@ -124,7 +122,6 @@ func (linkRepo *LinkRepository) GetBatch(ctx context.Context, limit int, offset 
 		Limit(uint(limit)).
 		Offset(uint(offset)).
 		ToSQL()
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}

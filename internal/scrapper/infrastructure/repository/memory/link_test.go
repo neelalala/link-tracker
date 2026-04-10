@@ -3,10 +3,11 @@ package memory
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
-	"testing"
 )
 
 func TestMemoryLinkRepository(t *testing.T) {

@@ -2,9 +2,10 @@ package memory
 
 import (
 	"context"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"sort"
 	"sync"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
 type LinkRepository struct {

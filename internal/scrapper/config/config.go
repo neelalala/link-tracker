@@ -2,8 +2,9 @@ package config
 
 import (
 	"fmt"
-	"github.com/byrnedo/typesafe-config/parse"
 	"time"
+
+	"github.com/byrnedo/typesafe-config/parse"
 )
 
 type Protocol string

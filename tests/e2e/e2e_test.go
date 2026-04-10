@@ -5,6 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/byrnedo/typesafe-config/parse"
 	"github.com/docker/go-connections/nat"
 	"github.com/joho/godotenv"
@@ -13,11 +19,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"io"
-	"net/http"
-	"strconv"
-	"testing"
-	"time"
 )
 
 type TelegramConfig struct {

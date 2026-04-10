@@ -3,9 +3,10 @@ package application
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
-	"testing"
 )
 
 const testCommandExecuted = "Command executed"
@@ -32,7 +33,6 @@ func (f fakeCommand) Execute(ctx context.Context, msg domain.Message) (string, e
 }
 
 func TestCommandService_HandleCommand(t *testing.T) {
-
 	cmdSuccess := fakeCommand{
 		name: "test",
 		desc: "test command",

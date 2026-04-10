@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"io"
 	"net/http"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
 const (
@@ -140,7 +141,7 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 		Tags []string `json:"tags"`
 	}
 
-	var reqJson = requestJson{
+	reqJson := requestJson{
 		Link: url,
 		Tags: tags,
 	}
@@ -204,7 +205,7 @@ func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) 
 		Link string `json:"link"`
 	}
 
-	var reqJson = requestJson{
+	reqJson := requestJson{
 		Link: url,
 	}
 

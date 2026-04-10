@@ -75,7 +75,6 @@ func (sessionRepo *SessionRepository) Delete(ctx context.Context, chatID int64) 
 		&session.State,
 		&session.URL,
 	)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.NewSession(chatID), nil

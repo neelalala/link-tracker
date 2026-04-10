@@ -3,18 +3,17 @@ package application
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/mocks"
 	"go.uber.org/mock/gomock"
-	"io"
-	"log/slog"
-	"testing"
 )
 
-var (
-	testUnexpectedError = errors.New("unexpected error")
-)
+var testUnexpectedError = errors.New("unexpected error")
 
 func discardLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -43,7 +42,6 @@ func TestDialogService_HandleMessage(t *testing.T) {
 			name: "Unknown state fallback",
 			msg:  domain.Message{ChatID: 123, Text: "hello"},
 			mockBehavior: func(repo *mocks.MockSessionRepository, scrapper *mocks.MockScrapper, chatID int64) {
-
 				invalidSession := domain.Session{ChatID: chatID, State: domain.SessionState("broken_state")}
 				repo.EXPECT().GetOrCreate(gomock.Any(), chatID).Return(invalidSession, nil)
 

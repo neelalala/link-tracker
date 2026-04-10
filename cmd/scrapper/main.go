@@ -2,6 +2,13 @@ package main
 
 import (
 	"context"
+	"io"
+	"log"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/config"
@@ -17,12 +24,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sql"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sqlbuilder"
-	"io"
-	"log"
-	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 type ApiServer interface {
@@ -38,7 +39,7 @@ func main() {
 	var out io.Writer = os.Stdout
 
 	if cfg.Logger.File != "" {
-		file, err := os.OpenFile(cfg.Logger.File, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		file, err := os.OpenFile(cfg.Logger.File, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			log.Fatalf("error opening file: %v", err)
 		}

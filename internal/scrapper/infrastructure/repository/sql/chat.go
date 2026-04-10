@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -28,7 +29,6 @@ func (chatRepo *ChatRepository) Create(ctx context.Context, chat domain.Chat) er
 	`
 
 	_, err := chatRepo.pool.Exec(ctx, query, chat.ID)
-
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {

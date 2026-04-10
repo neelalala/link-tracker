@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/doug-martin/goqu/v9"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -32,7 +33,6 @@ func (sessionRepo *SessionRepository) GetOrCreate(ctx context.Context, chatID in
 		})).
 		Returning("chat_id", "state", "url").
 		ToSQL()
-
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("failed to build get_or_create query: %w", err)
 	}
@@ -62,7 +62,6 @@ func (sessionRepo *SessionRepository) Save(ctx context.Context, session domain.S
 			"url":   goqu.L("EXCLUDED.url"),
 		})).
 		ToSQL()
-
 	if err != nil {
 		return fmt.Errorf("failed to build save query: %w", err)
 	}
@@ -82,7 +81,6 @@ func (sessionRepo *SessionRepository) Delete(ctx context.Context, chatID int64) 
 		}).
 		Returning("chat_id", "state", "url").
 		ToSQL()
-
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("failed to build delete query: %w", err)
 	}
@@ -93,7 +91,6 @@ func (sessionRepo *SessionRepository) Delete(ctx context.Context, chatID int64) 
 		&session.State,
 		&session.URL,
 	)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.NewSession(chatID), nil
