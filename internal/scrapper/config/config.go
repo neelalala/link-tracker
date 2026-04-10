@@ -46,7 +46,7 @@ type LoggerConfig struct {
 type DatabaseConfig struct {
 	MigrationsDirUrl string     `config:"migrations-dir-url"`
 	URL              string     `config:"url"`
-	AccessType       AccessType `config:"access_type,BUILDER"`
+	AccessType       AccessType `config:"access-type,BUILDER"`
 }
 
 type SchedulerConfig struct {
