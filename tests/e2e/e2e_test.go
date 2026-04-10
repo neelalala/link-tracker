@@ -134,7 +134,7 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 		Env: map[string]string{
 			"SCRAPPER_API_PORT":     strconv.Itoa(SCRAPPER_API_PORT),
 			"BOT_URL":               BOT_URL,
-			"DATABASE_URL":      dbURL,
+			"DATABASE_URL":          dbURL,
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
 		},
