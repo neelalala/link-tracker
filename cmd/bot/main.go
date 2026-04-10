@@ -2,7 +2,16 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository/sql"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository/sqlbuilder"
+	"io"
+	"log"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/commands"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/config"
@@ -14,14 +23,7 @@ import (
 	httpscrapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/scrapper"
 	telegramout "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/telegram"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/logger"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository/session"
 	"golang.org/x/sync/errgroup"
-	"io"
-	"log"
-	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 type ApiServer interface {
@@ -33,8 +35,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("error loading config: %v", err)
 	}
-
-	fmt.Printf("config: %+v\n", cfg)
 
 	var out io.Writer = os.Stdout
 
@@ -90,7 +90,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	sessionRepo := session.NewMemoryRepository()
+	dbPool, err := pgxpool.New(context.Background(), cfg.Database.URL)
+	if err != nil {
+		slogger.Error("unable to connect to database", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	defer dbPool.Close()
+
+	var sessionRepo domain.SessionRepository
+	switch cfg.Database.AccessType {
+	case config.AccessTypeSQL:
+		sessionRepo = sql.NewSessionRepository(dbPool)
+	case config.AccessTypeBUILDER:
+		sessionRepo = sqlbuilder.NewSessionRepository(dbPool)
+	}
 
 	helpCommand := commands.NewHelpCommand()
 	startCommand := commands.NewStartCommand(scrapperApi, slogger)
