@@ -27,3 +27,13 @@ CREATE TABLE IF NOT EXISTS subscription_tags (
     FOREIGN KEY (chat_id, link_id) REFERENCES subscriptions(chat_id, link_id) ON DELETE CASCADE,
     PRIMARY KEY (chat_id, link_id, tag)
 );
+
+CREATE TABLE IF NOT EXISTS sessions (
+    chat_id BIGINT PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE,
+    state TEXT NOT NULL,
+    url TEXT NOT NULL,
+
+    CONSTRAINT valid_session_state CHECK (
+        state IN ('idle', 'waiting_for_url_track', 'waiting_for_tags', 'waiting_for_url_untrack')
+    )
+)
