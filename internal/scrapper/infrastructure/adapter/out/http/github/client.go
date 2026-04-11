@@ -14,20 +14,21 @@ import (
 const (
 	BaseURL    = "https://github.com/"
 	BaseApiURL = "https://api.github.com"
-	Timeout    = 10 * time.Second
 )
 
 type Client struct {
-	httpClient *http.Client
-	apiURL     string
-	baseURL    string
+	httpClient    *http.Client
+	apiURL        string
+	baseURL       string
+	maxPreviewLen int
 }
 
-func NewClient(baseUrl, baseApiUrl string, timeout time.Duration) *Client {
+func NewClient(baseUrl, baseApiUrl string, timeout time.Duration, maxPreviewLen int) *Client {
 	return &Client{
-		httpClient: &http.Client{Timeout: timeout},
-		apiURL:     baseApiUrl,
-		baseURL:    baseUrl,
+		httpClient:    &http.Client{Timeout: timeout},
+		apiURL:        baseApiUrl,
+		baseURL:       baseUrl,
+		maxPreviewLen: maxPreviewLen,
 	}
 }
 
@@ -106,10 +107,11 @@ func (client *Client) fetchPullRequests(ctx context.Context, repoURL string, sin
 			continue
 		}
 		prUpdates = append(prUpdates, &GithubNewPRUpdate{
-			Title:     pullRequest.Title,
-			Author:    pullRequest.User.Login,
-			CreatedAt: pullRequest.CreatedAt,
-			Body:      pullRequest.BodyText,
+			Title:         pullRequest.Title,
+			Author:        pullRequest.User.Login,
+			CreatedAt:     pullRequest.CreatedAt,
+			Body:          pullRequest.BodyText,
+			MaxPreviewLen: client.maxPreviewLen,
 		})
 	}
 
@@ -163,10 +165,11 @@ func (client *Client) fetchIssues(ctx context.Context, repoURL string, since tim
 		}
 
 		issueUpdates = append(issueUpdates, &GithubNewIssueUpdate{
-			Title:     issue.Title,
-			Author:    issue.User.Login,
-			CreatedAt: issue.CreatedAt,
-			Body:      issue.BodyText,
+			Title:         issue.Title,
+			Author:        issue.User.Login,
+			CreatedAt:     issue.CreatedAt,
+			Body:          issue.BodyText,
+			MaxPreviewLen: client.maxPreviewLen,
 		})
 	}
 

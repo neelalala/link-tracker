@@ -14,22 +14,23 @@ import (
 const (
 	BaseURL    = "https://stackoverflow.com/questions/"
 	BaseApiURL = "https://api.stackexchange.com/2.3"
-	Timeout    = 10 * time.Second
 
 	site = "stackoverflow.com"
 )
 
 type Client struct {
-	httpClient *http.Client
-	apiURL     string
-	baseURL    string
+	httpClient    *http.Client
+	apiURL        string
+	baseURL       string
+	maxPreviewLen int
 }
 
-func NewClient(baseUrl, baseApiUrl string, timeout time.Duration) *Client {
+func NewClient(baseUrl, baseApiUrl string, timeout time.Duration, maxPreviewLen int) *Client {
 	return &Client{
-		httpClient: &http.Client{Timeout: timeout},
-		apiURL:     baseApiUrl,
-		baseURL:    baseUrl,
+		httpClient:    &http.Client{Timeout: timeout},
+		apiURL:        baseApiUrl,
+		baseURL:       baseUrl,
+		maxPreviewLen: maxPreviewLen,
 	}
 }
 
@@ -143,10 +144,11 @@ func (client *Client) fetchAnswers(ctx context.Context, questionURL string, sinc
 	answerUpdates := []domain.UpdateEvent{}
 	for _, answer := range answers.Items {
 		answerUpdates = append(answerUpdates, &StackoverflowAnswerUpdate{
-			Title:     questionTitle,
-			Owner:     answer.Owner.DisplayName,
-			CreatedAt: time.Unix(answer.CreationDate, 0),
-			Body:      answer.Body,
+			Title:         questionTitle,
+			Owner:         answer.Owner.DisplayName,
+			CreatedAt:     time.Unix(answer.CreationDate, 0),
+			Body:          answer.Body,
+			MaxPreviewLen: client.maxPreviewLen,
 		})
 	}
 
@@ -189,10 +191,11 @@ func (client *Client) fetchComments(ctx context.Context, questionURL string, sin
 	commentUpdates := []domain.UpdateEvent{}
 	for _, comment := range comments.Items {
 		commentUpdates = append(commentUpdates, &StackoverflowCommentUpdate{
-			Title:     questionTitle,
-			Owner:     comment.Owner.DisplayName,
-			CreatedAt: time.Unix(comment.CreationDate, 0),
-			Body:      comment.Body,
+			Title:         questionTitle,
+			Owner:         comment.Owner.DisplayName,
+			CreatedAt:     time.Unix(comment.CreationDate, 0),
+			Body:          comment.Body,
+			MaxPreviewLen: client.maxPreviewLen,
 		})
 	}
 

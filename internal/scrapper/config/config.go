@@ -65,12 +65,18 @@ type ServerConfig struct {
 	Protocol Protocol `config:"protocol"`
 }
 
+type FetchersConfig struct {
+	PreviewLimit int           `config:"preview-limit,200"`
+	Timeout      time.Duration `config:"timeout"`
+}
+
 type Config struct {
 	Logger     LoggerConfig     `config:"logger"`
 	Scheduler  SchedulerConfig  `config:"scheduler"`
 	BotService BotServiceConfig `config:"bot-service"`
 	Server     ServerConfig     `config:"server"`
 	Database   DatabaseConfig   `config:"database"`
+	Fetchers   FetchersConfig   `config:"fetchers"`
 }
 
 func Load(configPath string) (*Config, error) {

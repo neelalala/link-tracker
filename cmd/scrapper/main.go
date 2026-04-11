@@ -76,8 +76,8 @@ func main() {
 		subRepo = sqlbuilder.NewSubscriptionRepository(dbPool)
 	}
 
-	githubClient := github.NewClient(github.BaseURL, github.BaseApiURL, github.Timeout)
-	stackoverflowClient := stackoverflow.NewClient(stackoverflow.BaseURL, stackoverflow.BaseApiURL, stackoverflow.Timeout)
+	githubClient := github.NewClient(github.BaseURL, github.BaseApiURL, cfg.Fetchers.Timeout, cfg.Fetchers.PreviewLimit)
+	stackoverflowClient := stackoverflow.NewClient(stackoverflow.BaseURL, stackoverflow.BaseApiURL, cfg.Fetchers.Timeout, cfg.Fetchers.PreviewLimit)
 
 	fetchers := []domain.LinkFetcher{githubClient, stackoverflowClient}
 	fetcher := application.NewFetcherService(fetchers)

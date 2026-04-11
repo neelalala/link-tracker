@@ -10,6 +10,8 @@ type GithubNewPRUpdate struct {
 	Author    string
 	CreatedAt time.Time
 	Body      string
+
+	MaxPreviewLen int
 }
 
 func (prUpdate *GithubNewPRUpdate) UpdatedAt() time.Time {
@@ -21,7 +23,7 @@ func (prUpdate *GithubNewPRUpdate) Description() string {
 }
 
 func (prUpdate *GithubNewPRUpdate) Preview() string {
-	return prUpdate.Body
+	return truncateText(prUpdate.Body, prUpdate.MaxPreviewLen)
 }
 
 type GithubNewIssueUpdate struct {
@@ -29,6 +31,8 @@ type GithubNewIssueUpdate struct {
 	Author    string
 	CreatedAt time.Time
 	Body      string
+
+	MaxPreviewLen int
 }
 
 func (issueUpdate *GithubNewIssueUpdate) UpdatedAt() time.Time {
@@ -40,5 +44,15 @@ func (issueUpdate *GithubNewIssueUpdate) Description() string {
 }
 
 func (issueUpdate *GithubNewIssueUpdate) Preview() string {
-	return issueUpdate.Body
+	return truncateText(issueUpdate.Body, issueUpdate.MaxPreviewLen)
+}
+
+func truncateText(s string, maxLen int) string {
+	runes := []rune(s)
+
+	if len(runes) <= maxLen {
+		return s
+	}
+
+	return string(runes[:maxLen-3]) + "..."
 }

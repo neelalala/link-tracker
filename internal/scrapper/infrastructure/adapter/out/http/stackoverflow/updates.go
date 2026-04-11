@@ -10,6 +10,8 @@ type StackoverflowAnswerUpdate struct {
 	Owner     string
 	CreatedAt time.Time
 	Body      string
+
+	MaxPreviewLen int
 }
 
 func (soAnswerUpdate *StackoverflowAnswerUpdate) UpdatedAt() time.Time {
@@ -21,7 +23,7 @@ func (soAnswerUpdate *StackoverflowAnswerUpdate) Description() string {
 }
 
 func (soAnswerUpdate *StackoverflowAnswerUpdate) Preview() string {
-	return soAnswerUpdate.Body
+	return truncateText(soAnswerUpdate.Body, soAnswerUpdate.MaxPreviewLen)
 }
 
 type StackoverflowCommentUpdate struct {
@@ -29,6 +31,8 @@ type StackoverflowCommentUpdate struct {
 	Owner     string
 	CreatedAt time.Time
 	Body      string
+
+	MaxPreviewLen int
 }
 
 func (soCommentUpdate *StackoverflowCommentUpdate) UpdatedAt() time.Time {
@@ -40,5 +44,15 @@ func (soCommentUpdate *StackoverflowCommentUpdate) Description() string {
 }
 
 func (soCommentUpdate *StackoverflowCommentUpdate) Preview() string {
-	return soCommentUpdate.Body
+	return truncateText(soCommentUpdate.Body, soCommentUpdate.MaxPreviewLen)
+}
+
+func truncateText(s string, maxLen int) string {
+	runes := []rune(s)
+
+	if len(runes) <= maxLen {
+		return s
+	}
+
+	return string(runes[:maxLen-3]) + "..."
 }
