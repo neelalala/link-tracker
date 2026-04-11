@@ -83,11 +83,11 @@ func (client *Client) fetchPullRequests(ctx context.Context, repoURL string, sin
 		return nil, err
 	}
 
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("github api returned status: %d", response.StatusCode)
 	}
-
-	defer response.Body.Close()
 
 	var pullRequests []struct {
 		Title string `json:"title"`
@@ -134,11 +134,11 @@ func (client *Client) fetchIssues(ctx context.Context, repoURL string, since tim
 		return nil, err
 	}
 
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("github api returned status: %d", response.StatusCode)
 	}
-
-	defer response.Body.Close()
 
 	var issues []struct {
 		Title string `json:"title"`
