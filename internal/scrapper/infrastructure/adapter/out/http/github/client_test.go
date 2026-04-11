@@ -179,6 +179,6 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 	require.Len(t, updates, 2)
 
 	for _, update := range updates {
-		assert.LessOrEqual(t, 200, len(update.Preview()))
+		assert.LessOrEqual(t, 200, len([]rune(update.Preview())))
 	}
 }
