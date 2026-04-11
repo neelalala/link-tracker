@@ -150,6 +150,25 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 			slog.String("error", err.Error()),
 			slog.String("context", "scrapperService.fetcher.Fetch"),
 		)
+		update := domain.LinkUpdate{
+			URL:         link.URL,
+			Description: "couldn't fetch your link :(",
+			TgChatIDs:   chatIDs,
+		}
+		err := service.notifier.SendUpdate(ctx, update)
+		if err != nil {
+			service.logger.Error("failed to send update",
+				slog.String("error", err.Error()),
+				slog.Int64("link_id", link.ID),
+				slog.Any("chat_ids", update.TgChatIDs),
+				slog.String("context", "scrapperService.notifier.SendUpdate"),
+			)
+		}
+
+		return
+	}
+
+	if len(events) == 0 {
 		return
 	}
 
