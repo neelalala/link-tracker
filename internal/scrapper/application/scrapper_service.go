@@ -105,7 +105,7 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 		return
 	}
 
-	result, err := service.fetcher.Fetch(ctx, link.URL)
+	events, err := service.fetcher.Fetch(ctx, link.URL, link.LastUpdated)
 	if err != nil {
 		service.logger.Error("failed to fetch link",
 			slog.String("url", link.URL),
@@ -115,14 +115,17 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 		return
 	}
 
-	if result.UpdatedAt.After(link.LastUpdated) {
-		service.logger.Info("found update for link", slog.String("url", link.URL))
+	service.logger.Info("found update for link",
+		slog.String("url", link.URL),
+		slog.Int("count", len(events)),
+	)
 
+	for _, event := range events {
 		if len(chatIDs) > 0 {
 			update := domain.LinkUpdate{
 				ID:          link.ID,
 				URL:         link.URL,
-				Description: result.Description,
+				Description: event.Description(),
 				TgChatIDs:   chatIDs,
 			}
 
@@ -136,7 +139,7 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 			}
 		}
 
-		link.LastUpdated = result.UpdatedAt
+		link.LastUpdated = event.UpdatedAt()
 		_, err = service.linkRepo.Save(ctx, link)
 		if err != nil {
 			service.logger.Error("failed to update link in DB",

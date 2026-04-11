@@ -80,7 +80,7 @@ func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, u
 	}
 
 	if !service.linkValidator.CanHandle(url) {
-		return domain.TrackedLink{}, fmt.Errorf("%w: %s", ErrUrlNotSupported, url)
+		return domain.TrackedLink{}, fmt.Errorf("%w: %s", domain.ErrURLNotSupported, url)
 	}
 
 	link, err := service.linkRepo.GetByUrl(ctx, url)

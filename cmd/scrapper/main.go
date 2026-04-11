@@ -79,7 +79,7 @@ func main() {
 	githubClient := github.NewClient(github.BaseURL, github.BaseApiURL, github.Timeout)
 	stackoverflowClient := stackoverflow.NewClient(stackoverflow.BaseURL, stackoverflow.BaseApiURL, stackoverflow.Timeout)
 
-	fetchers := []application.LinkFetcher{githubClient, stackoverflowClient}
+	fetchers := []domain.LinkFetcher{githubClient, stackoverflowClient}
 	fetcher := application.NewFetcherService(fetchers)
 
 	subsService := application.NewSubscriptionService(chatRepo, linkRepo, subRepo, fetcher, slogger)
