@@ -76,8 +76,18 @@ func main() {
 		subRepo = sqlbuilder.NewSubscriptionRepository(dbPool)
 	}
 
-	githubClient := github.NewClient(github.BaseURL, github.BaseApiURL, cfg.Fetchers.Timeout, cfg.Fetchers.PreviewLimit)
-	stackoverflowClient := stackoverflow.NewClient(stackoverflow.BaseURL, stackoverflow.BaseApiURL, cfg.Fetchers.Timeout, cfg.Fetchers.PreviewLimit)
+	githubClient := github.NewClient(
+		github.BaseURL,
+		github.BaseApiURL,
+		cfg.Fetchers.Timeout,
+		cfg.Fetchers.PreviewLimit,
+	)
+	stackoverflowClient := stackoverflow.NewClient(
+		stackoverflow.BaseURL,
+		stackoverflow.BaseApiURL,
+		cfg.Fetchers.Timeout,
+		cfg.Fetchers.PreviewLimit,
+	)
 
 	fetchers := []domain.LinkFetcher{githubClient, stackoverflowClient}
 	fetcher := application.NewFetcherService(fetchers)
@@ -125,7 +135,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	scrapperService := application.NewScrapperService(linkRepo, subRepo, fetcher, botNotifier, slogger)
+	scrapperService, err := application.NewScrapperService(
+		linkRepo,
+		subRepo,
+		fetcher,
+		botNotifier,
+		cfg.Fetchers.Batch,
+		cfg.Fetchers.Concurrency,
+		slogger,
+	)
+	if err != nil {
+		slogger.Error("failed to init scrapper service",
+			slog.String("error", err.Error()),
+			slog.String("context", "main"),
+		)
+	}
 
 	err = cron.Schedule(
 		cfg.Scheduler.FetchInterval,

@@ -79,7 +79,8 @@ func TestScrapperService_ProcessLink_NotifiesOnlySubscribers(t *testing.T) {
 		Return(testLink, nil)
 
 	fetcherService := NewFetcherService([]domain.LinkFetcher{mockFetcher})
-	service := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, logger())
+	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, 100, 4, logger())
+	require.NoError(t, err, "Expected no error on creating scrapper serivce")
 
 	service.processLink(context.Background(), testLink)
 
@@ -123,7 +124,8 @@ func TestScrapperService_ProcessLink_FetcherError(t *testing.T) {
 		Return(nil, expectedErr)
 
 	fetcherService := NewFetcherService([]domain.LinkFetcher{mockFetcher})
-	service := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, logger())
+	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, 100, 4, logger())
+	require.NoError(t, err, "Expected no error on creation scrapper service")
 
 	service.processLink(context.Background(), testLink)
 

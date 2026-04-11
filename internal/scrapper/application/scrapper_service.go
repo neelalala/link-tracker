@@ -2,12 +2,12 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"sync"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
-
-const batchSize = 100
 
 type UpdateNotifier interface {
 	SendUpdate(ctx context.Context, update domain.LinkUpdate) error
@@ -18,7 +18,11 @@ type ScrapperService struct {
 	subRepo  domain.SubscriptionRepository
 	fetcher  *FetcherService
 	notifier UpdateNotifier
-	logger   *slog.Logger
+
+	batchSize     int
+	fetchersCount int
+
+	logger *slog.Logger
 }
 
 func NewScrapperService(
@@ -26,24 +30,53 @@ func NewScrapperService(
 	subRepo domain.SubscriptionRepository,
 	fetcher *FetcherService,
 	notifier UpdateNotifier,
+	batchSize int,
+	fetchersCount int,
 	logger *slog.Logger,
-) *ScrapperService {
-	return &ScrapperService{
-		linkRepo: linkRepo,
-		subRepo:  subRepo,
-		fetcher:  fetcher,
-		notifier: notifier,
-		logger:   logger,
+) (*ScrapperService, error) {
+	if batchSize <= 0 {
+		return nil, fmt.Errorf("batchSize must be positive, got %d", batchSize)
 	}
+
+	if fetchersCount <= 0 {
+		return nil, fmt.Errorf("fetchersCount must be positive, got %d", fetchersCount)
+	}
+
+	return &ScrapperService{
+		linkRepo:      linkRepo,
+		subRepo:       subRepo,
+		fetcher:       fetcher,
+		notifier:      notifier,
+		batchSize:     batchSize,
+		fetchersCount: fetchersCount,
+		logger:        logger,
+	}, nil
 }
 
 func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 	service.logger.Info("started checking all links for updates")
 
+	jobs := make(chan domain.Link, service.batchSize)
+	defer close(jobs)
+
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	for range service.fetchersCount {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for link := range jobs {
+				service.processLink(ctx, link)
+			}
+		}()
+	}
+
 	offset := 0
 
 	for {
-		links, err := service.linkRepo.GetBatch(ctx, batchSize, offset)
+		links, err := service.linkRepo.GetBatch(ctx, service.batchSize, offset)
 		if err != nil {
 			service.logger.Error("failed to get batch of links",
 				slog.String("error", err.Error()),
@@ -57,10 +90,15 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 		}
 
 		for _, link := range links {
-			service.processLink(ctx, link)
+			select {
+			case <-ctx.Done():
+				service.logger.Warn("context cancelled, stopping updates")
+				return ctx.Err()
+			case jobs <- link:
+			}
 		}
 
-		offset += batchSize
+		offset += service.batchSize
 	}
 
 	service.logger.Info("finished checking updates")
