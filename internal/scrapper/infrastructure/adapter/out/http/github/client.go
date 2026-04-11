@@ -102,7 +102,7 @@ func (client *Client) fetchPullRequests(ctx context.Context, repoURL string, sin
 
 	var prUpdates []domain.UpdateEvent
 	for _, pullRequest := range pullRequests {
-		if pullRequest.CreatedAt.Before(since) {
+		if !pullRequest.CreatedAt.After(since) {
 			continue
 		}
 		prUpdates = append(prUpdates, &GithubNewPRUpdate{
@@ -146,7 +146,7 @@ func (client *Client) fetchIssues(ctx context.Context, repoURL string, since tim
 		BodyText  string    `json:"body_text"`
 		CreatedAt time.Time `json:"created_at"`
 
-		PullRequst *struct{} `json:"pull_request"`
+		PullRequest *struct{} `json:"pull_request"`
 	}
 
 	if err = json.NewDecoder(response.Body).Decode(&issues); err != nil {
@@ -155,10 +155,10 @@ func (client *Client) fetchIssues(ctx context.Context, repoURL string, since tim
 
 	var issueUpdates []domain.UpdateEvent
 	for _, issue := range issues {
-		if issue.CreatedAt.Before(since) {
+		if !issue.CreatedAt.After(since) {
 			continue
 		}
-		if issue.PullRequst != nil {
+		if issue.PullRequest != nil {
 			continue
 		}
 
