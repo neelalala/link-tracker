@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"testing"
@@ -92,4 +93,39 @@ func TestScrapperService_ProcessLink_NotifiesOnlySubscribers(t *testing.T) {
 
 	assert.Equal(t, testLink.URL, update.URL)
 	assert.Equal(t, testLink.ID, update.ID)
+}
+
+func TestScrapperService_ProcessLink_FetcherError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLinkRepo := mocks.NewMockLinkRepository(ctrl)
+	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
+	mockFetcher := mocks.NewMockLinkFetcher(ctrl)
+
+	testLink := domain.Link{
+		ID:          1,
+		URL:         "https://github.com/user/repo",
+		LastUpdated: time.Now().Add(-1 * time.Hour),
+	}
+
+	mockSubRepo.EXPECT().
+		GetByLinkId(gomock.Any(), testLink.ID).
+		Return([]domain.Subscription{{ChatID: 100, LinkID: testLink.ID}}, nil)
+
+	notifier := &MockNotifier{}
+
+	mockFetcher.EXPECT().CanHandle(testLink.URL).Return(true).AnyTimes()
+
+	expectedErr := errors.New("github api timeout")
+	mockFetcher.EXPECT().
+		Fetch(gomock.Any(), testLink.URL, testLink.LastUpdated).
+		Return(nil, expectedErr)
+
+	fetcherService := NewFetcherService([]domain.LinkFetcher{mockFetcher})
+	service := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, logger())
+
+	service.processLink(context.Background(), testLink)
+
+	assert.Empty(t, notifier.SentUpdates, "Expected no updates to be sent when fetcher fails")
 }
