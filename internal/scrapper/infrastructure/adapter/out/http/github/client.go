@@ -48,20 +48,18 @@ func (client *Client) Fetch(ctx context.Context, url string, since time.Time) ([
 
 	repoURL := fmt.Sprintf("%s/repos/%s/%s", client.apiURL, owner, repo)
 
-	updates := []domain.UpdateEvent{}
-
 	pullRequests, err := client.fetchPullRequests(ctx, repoURL, since)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching pull requests: %w", err)
 	}
-
-	updates = append(updates, pullRequests...)
 
 	issues, err := client.fetchIssues(ctx, repoURL, since)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching issues: %w", err)
 	}
 
+	updates := make([]domain.UpdateEvent, 0, len(pullRequests)+len(issues))
+	updates = append(updates, pullRequests...)
 	updates = append(updates, issues...)
 
 	return updates, nil
@@ -102,7 +100,7 @@ func (client *Client) fetchPullRequests(ctx context.Context, repoURL string, sin
 		return nil, err
 	}
 
-	prUpdates := []domain.UpdateEvent{}
+	var prUpdates []domain.UpdateEvent
 	for _, pullRequest := range pullRequests {
 		if pullRequest.CreatedAt.Before(since) {
 			continue
@@ -155,7 +153,7 @@ func (client *Client) fetchIssues(ctx context.Context, repoURL string, since tim
 		return nil, err
 	}
 
-	issueUpdates := []domain.UpdateEvent{}
+	var issueUpdates []domain.UpdateEvent
 	for _, issue := range issues {
 		if issue.CreatedAt.Before(since) {
 			continue
