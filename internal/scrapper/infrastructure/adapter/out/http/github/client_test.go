@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 )
 
 func TestClient_CanHandle(t *testing.T) {
-	client := NewClient(BaseURL, BaseApiURL, Timeout)
+	client := NewClient(BaseURL, BaseApiURL, 10*time.Second, 200)
 
 	tests := []struct {
 		name     string
@@ -93,7 +94,7 @@ func TestClient_Fetch_Success(t *testing.T) {
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
-	client := NewClient(BaseURL, server.URL, Timeout)
+	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
 
 	url := "https://github.com/owner/repo"
 	updates, err := client.Fetch(context.Background(), url, since)
@@ -113,7 +114,7 @@ func TestClient_Fetch_Success(t *testing.T) {
 }
 
 func TestClient_Fetch_InvalidURL(t *testing.T) {
-	client := NewClient(BaseURL, BaseApiURL, Timeout)
+	client := NewClient(BaseURL, BaseApiURL, 10*time.Second, 200)
 
 	_, err := client.Fetch(context.Background(), "https://github.com/owner", time.Now())
 
@@ -127,10 +128,57 @@ func TestClient_Fetch_ApiError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(BaseURL, server.URL, Timeout)
+	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
 
 	_, err := client.Fetch(context.Background(), "https://github.com/owner/repo", time.Now())
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error fetching pull requests")
+}
+
+func TestClient_Preview_MaxLength(t *testing.T) {
+	since := time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC)
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/repos/owner/repo/pulls", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+
+		fmt.Fprintf(w, `[
+			{
+				"title": "New PR",
+				"user": {"login": "alice"},
+			"body_text": "long pr body: %s",
+				"created_at": "2026-04-11T12:00:00Z"
+			}
+		]`, strings.Repeat("1234", 100))
+	})
+
+	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+
+		fmt.Fprintf(w, `[
+			{
+				"title": "New Issue",
+				"user": {"login": "charlie"},
+			"body_text": "long issue body: %s",
+				"created_at": "2026-04-11T12:00:00Z"
+			}
+		]`, strings.Repeat("1234", 100))
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
+
+	url := "https://github.com/owner/repo"
+	updates, err := client.Fetch(context.Background(), url, since)
+
+	require.NoError(t, err)
+	require.Len(t, updates, 2)
+
+	for _, update := range updates {
+		assert.LessOrEqual(t, 200, len(update.Preview()))
+	}
 }
