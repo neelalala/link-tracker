@@ -2,63 +2,135 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestClient_Fetch_Resilience(t *testing.T) {
+func TestClient_CanHandle(t *testing.T) {
+	client := NewClient(BaseURL, BaseApiURL, Timeout)
+
 	tests := []struct {
-		name       string
-		statusCode int
-		body       string
-		expectErr  bool
+		name     string
+		url      string
+		expected bool
 	}{
 		{
-			name:       "500 Internal Server Error",
-			statusCode: http.StatusInternalServerError,
-			body:       `{"message": "Internal Server Error"}`,
-			expectErr:  true,
+			name:     "Valid GitHub URL",
+			url:      "https://github.com/owner/repo",
+			expected: true,
 		},
 		{
-			name:       "404 Not Found",
-			statusCode: http.StatusNotFound,
-			body:       `{"message": "Not Found"}`,
-			expectErr:  true,
-		},
-		{
-			name:       "200 OK but corrupted/invalid JSON",
-			statusCode: http.StatusOK,
-			body:       `{ invalid json { `,
-			expectErr:  true,
-		},
-		{
-			name:       "403 Forbidden (API Rate Limit Exceeded)",
-			statusCode: http.StatusForbidden,
-			body:       `{"message": "API rate limit exceeded"}`,
-			expectErr:  true,
+			name:     "Invalid GitHub URL",
+			url:      "https://stackoverflow.com/questions/123",
+			expected: false,
 		},
 	}
-
-	ctx := context.Background()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, "application/vnd.github+json", r.Header.Get("Accept"))
-
-				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.body))
-			}))
-			defer ts.Close()
-
-			client := NewClient(BaseURL, ts.URL, Timeout)
-
-			_, err := client.Fetch(ctx, "https://github.com/octocat/Hello-World")
-
-			assert.Equalf(t, tt.expectErr, err != nil, "Fetch() expected error = %v, got err = %v", tt.expectErr, err)
+			result := client.CanHandle(tt.url)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestClient_Fetch_Success(t *testing.T) {
+	since := time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC)
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/repos/owner/repo/pulls", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+
+		fmt.Fprintln(w, `[
+			{
+				"title": "New PR",
+				"user": {"login": "alice"},
+				"body_text": "new pr body",
+				"created_at": "2026-04-11T12:00:00Z"
+			},
+			{
+				"title": "Old PR",
+				"user": {"login": "bob"},
+				"body_text": "old pr body",
+				"created_at": "2026-04-09T12:00:00Z"
+			}
+		]`)
+	})
+
+	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+
+		fmt.Fprintln(w, `[
+			{
+				"title": "New Issue",
+				"user": {"login": "charlie"},
+				"body_text": "new issue body",
+				"created_at": "2026-04-11T12:00:00Z"
+			},
+			{
+				"title": "Old Issue",
+				"user": {"login": "dave"},
+				"body_text": "old issue body",
+				"created_at": "2026-04-09T12:00:00Z"
+			},
+			{
+				"title": "Pull request",
+				"user": {"login": "eve"},
+				"body_text": "pr body",
+				"created_at": "2026-04-11T12:00:00Z",
+				"pull_request": {} 
+			}
+		]`)
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client := NewClient(BaseURL, server.URL, Timeout)
+
+	url := "https://github.com/owner/repo"
+	updates, err := client.Fetch(context.Background(), url, since)
+
+	require.NoError(t, err)
+	require.Len(t, updates, 2)
+
+	prUpdate, ok := updates[0].(*GithubNewPRUpdate)
+	require.True(t, ok, "first update should be a PR")
+	assert.Equal(t, "New PR", prUpdate.Title)
+	assert.Equal(t, "alice", prUpdate.Author)
+
+	issueUpdate, ok := updates[1].(*GithubNewIssueUpdate)
+	require.True(t, ok, "second update should be an Issue")
+	assert.Equal(t, "New Issue", issueUpdate.Title)
+	assert.Equal(t, "charlie", issueUpdate.Author)
+}
+
+func TestClient_Fetch_InvalidURL(t *testing.T) {
+	client := NewClient(BaseURL, BaseApiURL, Timeout)
+
+	_, err := client.Fetch(context.Background(), "https://github.com/owner", time.Now())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid github url")
+}
+
+func TestClient_Fetch_ApiError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	client := NewClient(BaseURL, server.URL, Timeout)
+
+	_, err := client.Fetch(context.Background(), "https://github.com/owner/repo", time.Now())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error fetching pull requests")
 }
