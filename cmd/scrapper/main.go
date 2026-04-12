@@ -87,6 +87,7 @@ func main() {
 		stackoverflow.BaseApiURL,
 		cfg.Fetchers.Timeout,
 		cfg.Fetchers.PreviewLimit,
+		cfg.Fetchers.StackOverflowKey,
 	)
 
 	fetchers := []domain.LinkFetcher{githubClient, stackoverflowClient}
@@ -111,7 +112,7 @@ func main() {
 
 	switch cfg.BotService.Protocol {
 	case config.ProtocolHTTP:
-		botNotifier = httpnotifier.NewBot(cfg.BotService.URL)
+		botNotifier = httpnotifier.NewBot(cfg.BotService.URL, slogger)
 	case config.ProtocolGRPC:
 		botNotifier, err = grpcnotifier.NewBot(cfg.BotService.URL)
 		if err != nil {

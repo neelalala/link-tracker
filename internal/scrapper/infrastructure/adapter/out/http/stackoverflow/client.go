@@ -23,14 +23,16 @@ type Client struct {
 	apiURL        string
 	baseURL       string
 	maxPreviewLen int
+	key           string
 }
 
-func NewClient(baseUrl, baseApiUrl string, timeout time.Duration, maxPreviewLen int) *Client {
+func NewClient(baseURL, baseAPIURL string, timeout time.Duration, maxPreviewLen int, key string) *Client {
 	return &Client{
 		httpClient:    &http.Client{Timeout: timeout},
-		apiURL:        baseApiUrl,
-		baseURL:       baseUrl,
+		apiURL:        baseAPIURL,
+		baseURL:       baseURL,
 		maxPreviewLen: maxPreviewLen,
+		key:           key,
 	}
 }
 
@@ -73,7 +75,7 @@ func (client *Client) Fetch(ctx context.Context, url string, since time.Time) ([
 }
 
 func (client *Client) fetchQuestionTitle(ctx context.Context, questionID string) (string, error) {
-	apiURL := fmt.Sprintf("%s/questions/%s?site=%s", client.apiURL, questionID, site)
+	apiURL := fmt.Sprintf("%s/questions/%s?site=%s&key=%s", client.apiURL, questionID, site, client.key)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -109,7 +111,7 @@ func (client *Client) fetchQuestionTitle(ctx context.Context, questionID string)
 }
 
 func (client *Client) fetchAnswers(ctx context.Context, questionURL string, since time.Time, questionTitle string) ([]domain.UpdateEvent, error) {
-	apiURL := fmt.Sprintf("%s/answers?site=%s&filter=withbody&fromdate=%d", questionURL, site, since.Unix())
+	apiURL := fmt.Sprintf("%s/answers?site=%s&filter=withbody&fromdate=%d&key=%s", questionURL, site, since.Unix(), client.key)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -143,10 +145,14 @@ func (client *Client) fetchAnswers(ctx context.Context, questionURL string, sinc
 
 	answerUpdates := []domain.UpdateEvent{}
 	for _, answer := range answers.Items {
-		answerUpdates = append(answerUpdates, &StackoverflowAnswerUpdate{
+		timestamp := time.Unix(answer.CreationDate, 0)
+		if !timestamp.After(since) {
+			continue
+		}
+		answerUpdates = append(answerUpdates, &AnswerUpdate{
 			Title:         questionTitle,
 			Owner:         answer.Owner.DisplayName,
-			CreatedAt:     time.Unix(answer.CreationDate, 0),
+			CreatedAt:     timestamp,
 			Body:          answer.Body,
 			MaxPreviewLen: client.maxPreviewLen,
 		})
@@ -156,7 +162,7 @@ func (client *Client) fetchAnswers(ctx context.Context, questionURL string, sinc
 }
 
 func (client *Client) fetchComments(ctx context.Context, questionURL string, since time.Time, questionTitle string) ([]domain.UpdateEvent, error) {
-	apiURL := fmt.Sprintf("%s/comments?site=%s&filter=withbody&fromdate=%d", questionURL, site, since.Unix())
+	apiURL := fmt.Sprintf("%s/comments?site=%s&filter=withbody&fromdate=%d&key=%s", questionURL, site, since.Unix(), client.key)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -190,7 +196,7 @@ func (client *Client) fetchComments(ctx context.Context, questionURL string, sin
 
 	commentUpdates := []domain.UpdateEvent{}
 	for _, comment := range comments.Items {
-		commentUpdates = append(commentUpdates, &StackoverflowCommentUpdate{
+		commentUpdates = append(commentUpdates, &CommentUpdate{
 			Title:         questionTitle,
 			Owner:         comment.Owner.DisplayName,
 			CreatedAt:     time.Unix(comment.CreationDate, 0),

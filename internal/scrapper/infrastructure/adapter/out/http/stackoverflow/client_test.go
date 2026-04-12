@@ -14,7 +14,7 @@ import (
 )
 
 func TestClient_CanHandle(t *testing.T) {
-	client := NewClient(BaseURL, BaseApiURL, 10*time.Second, 200)
+	client := NewClient(BaseURL, BaseApiURL, 10*time.Second, 200, "")
 
 	tests := []struct {
 		name     string
@@ -86,7 +86,7 @@ func TestClient_Fetch_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
+	client := NewClient(BaseURL, server.URL, 10*time.Second, 200, "")
 
 	url := "https://stackoverflow.com/questions/1/test-question"
 	updates, err := client.Fetch(context.Background(), url, since)
@@ -95,13 +95,13 @@ func TestClient_Fetch_Success(t *testing.T) {
 
 	require.Len(t, updates, 2)
 
-	answerUpdate, ok := updates[0].(*StackoverflowAnswerUpdate)
+	answerUpdate, ok := updates[0].(*AnswerUpdate)
 	require.True(t, ok, "first update should be an answer")
 	assert.Equal(t, "Test title", answerUpdate.Title)
 	assert.Equal(t, "Test User", answerUpdate.Owner)
 	assert.Equal(t, "Test answer", answerUpdate.Body)
 
-	commentUpdate, ok := updates[1].(*StackoverflowCommentUpdate)
+	commentUpdate, ok := updates[1].(*CommentUpdate)
 	require.True(t, ok, "second update should be a comment")
 	assert.Equal(t, "Test title", commentUpdate.Title)
 	assert.Equal(t, "Test User 2", commentUpdate.Owner)
@@ -109,7 +109,7 @@ func TestClient_Fetch_Success(t *testing.T) {
 }
 
 func TestClient_Fetch_InvalidURL(t *testing.T) {
-	client := NewClient(BaseURL, BaseApiURL, 10*time.Second, 200)
+	client := NewClient(BaseURL, BaseApiURL, 10*time.Second, 200, "")
 
 	_, err := client.Fetch(context.Background(), "https://stackoverflow.com/questions/", time.Now())
 
@@ -124,7 +124,7 @@ func TestClient_Fetch_QuestionNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
+	client := NewClient(BaseURL, server.URL, 10*time.Second, 200, "")
 
 	_, err := client.Fetch(context.Background(), "https://stackoverflow.com/questions/99999", time.Now())
 
@@ -138,7 +138,7 @@ func TestClient_Fetch_ApiError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
+	client := NewClient(BaseURL, server.URL, 10*time.Second, 200, "")
 
 	_, err := client.Fetch(context.Background(), "https://stackoverflow.com/questions/1", time.Now())
 
@@ -192,7 +192,7 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
+	client := NewClient(BaseURL, server.URL, 10*time.Second, 200, "")
 
 	url := "https://stackoverflow.com/questions/1/test-question"
 	updates, err := client.Fetch(context.Background(), url, since)
