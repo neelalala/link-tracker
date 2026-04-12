@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,10 +18,13 @@ import (
 )
 
 type MockNotifier struct {
+	mu          sync.Mutex
 	SentUpdates []domain.LinkUpdate
 }
 
 func (m *MockNotifier) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.SentUpdates = append(m.SentUpdates, update)
 	return nil
 }
@@ -131,4 +135,114 @@ func TestScrapperService_ProcessLink_FetcherError(t *testing.T) {
 
 	require.GreaterOrEqualf(t, len(notifier.SentUpdates), 1, "Expected 1 update sent")
 	assert.Contains(t, notifier.SentUpdates[0].Description, "couldn't fetch your link")
+}
+
+func TestScrapperService_GetUpdates_BatchProcessedCorrectly(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLinkRepo := mocks.NewMockLinkRepository(ctrl)
+	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
+	mockFetcher := mocks.NewMockLinkFetcher(ctrl)
+
+	notifier := &MockNotifier{}
+	batchSize := 2
+
+	linksBatch1 := []domain.Link{
+		{ID: 1, URL: "https://github.com/user/repo1"},
+		{ID: 2, URL: "https://github.com/user/repo2"},
+	}
+	linksBatch2 := []domain.Link{
+		{ID: 3, URL: "https://stackoverflow.com/q/123"},
+	}
+
+	mockLinkRepo.EXPECT().GetBatch(gomock.Any(), batchSize, 0).Return(linksBatch1, nil)
+	mockLinkRepo.EXPECT().GetBatch(gomock.Any(), batchSize, 2).Return(linksBatch2, nil)
+	mockLinkRepo.EXPECT().GetBatch(gomock.Any(), batchSize, 4).Return([]domain.Link{}, nil)
+
+	mockFetcher.EXPECT().CanHandle(gomock.Any()).Return(true).AnyTimes()
+
+	allLinks := append(linksBatch1, linksBatch2...)
+	for _, link := range allLinks {
+		mockSubRepo.EXPECT().
+			GetByLinkId(gomock.Any(), link.ID).
+			Return([]domain.Subscription{{ChatID: 100}}, nil).AnyTimes()
+
+		mockEvent := TestUpdateEvent{Time: time.Now(), Desc: "Update for " + link.URL}
+		mockFetcher.EXPECT().
+			Fetch(gomock.Any(), link.URL, gomock.Any()).
+			Return([]domain.UpdateEvent{mockEvent}, nil).AnyTimes()
+
+		mockLinkRepo.EXPECT().
+			Save(gomock.Any(), gomock.Any()).
+			Return(link, nil).AnyTimes()
+	}
+
+	fetcherService := NewFetcherService([]domain.LinkFetcher{mockFetcher})
+	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, batchSize, 2, logger())
+	require.NoError(t, err)
+
+	err = service.GetUpdates(context.Background())
+	require.NoError(t, err)
+
+	assert.Len(t, notifier.SentUpdates, 3, "Expected 3 updates, one for each link")
+
+	var updatedURLs []string
+	for _, u := range notifier.SentUpdates {
+		updatedURLs = append(updatedURLs, u.URL)
+	}
+	assert.Contains(t, updatedURLs, linksBatch1[0].URL)
+	assert.Contains(t, updatedURLs, linksBatch1[1].URL)
+	assert.Contains(t, updatedURLs, linksBatch2[0].URL)
+}
+
+func TestScrapperService_GetUpdates_PartialFailureIsolation(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLinkRepo := mocks.NewMockLinkRepository(ctrl)
+	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
+	mockFetcher := mocks.NewMockLinkFetcher(ctrl)
+
+	notifier := &MockNotifier{}
+	batchSize := 10
+
+	goodLink1 := domain.Link{ID: 1, URL: "https://github.com/good1"}
+	badLink := domain.Link{ID: 2, URL: "https://github.com/bad"}
+	goodLink2 := domain.Link{ID: 3, URL: "https://github.com/good2"}
+
+	mockLinkRepo.EXPECT().GetBatch(gomock.Any(), batchSize, 0).Return([]domain.Link{goodLink1, badLink, goodLink2}, nil)
+	mockLinkRepo.EXPECT().GetBatch(gomock.Any(), batchSize, batchSize).Return([]domain.Link{}, nil)
+
+	mockFetcher.EXPECT().CanHandle(gomock.Any()).Return(true).AnyTimes()
+
+	mockSubRepo.EXPECT().GetByLinkId(gomock.Any(), gomock.Any()).
+		Return([]domain.Subscription{{ChatID: 100}}, nil).AnyTimes()
+
+	mockFetcher.EXPECT().Fetch(gomock.Any(), goodLink1.URL, gomock.Any()).
+		Return([]domain.UpdateEvent{TestUpdateEvent{Desc: "Success 1"}}, nil)
+	mockFetcher.EXPECT().Fetch(gomock.Any(), goodLink2.URL, gomock.Any()).
+		Return([]domain.UpdateEvent{TestUpdateEvent{Desc: "Success 2"}}, nil)
+
+	mockFetcher.EXPECT().Fetch(gomock.Any(), badLink.URL, gomock.Any()).
+		Return(nil, errors.New("external api timeout"))
+
+	mockLinkRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(goodLink1, nil).AnyTimes()
+	mockLinkRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(goodLink2, nil).AnyTimes()
+
+	fetcherService := NewFetcherService([]domain.LinkFetcher{mockFetcher})
+	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, batchSize, 2, logger())
+	require.NoError(t, err)
+
+	err = service.GetUpdates(context.Background())
+
+	require.NoError(t, err)
+
+	var descriptions []string
+	for _, u := range notifier.SentUpdates {
+		descriptions = append(descriptions, u.Description)
+	}
+
+	assert.Contains(t, descriptions, "Success 1")
+	assert.Contains(t, descriptions, "Success 2")
 }
