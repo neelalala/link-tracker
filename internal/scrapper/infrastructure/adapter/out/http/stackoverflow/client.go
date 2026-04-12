@@ -23,16 +23,19 @@ type Client struct {
 	apiURL        string
 	baseURL       string
 	maxPreviewLen int
-	key           string
+	keyQuery      string
 }
 
 func NewClient(baseURL, baseAPIURL string, timeout time.Duration, maxPreviewLen int, key string) *Client {
+	if key != "" {
+		key = fmt.Sprintf("&key=%s", key)
+	}
 	return &Client{
 		httpClient:    &http.Client{Timeout: timeout},
 		apiURL:        baseAPIURL,
 		baseURL:       baseURL,
 		maxPreviewLen: maxPreviewLen,
-		key:           key,
+		keyQuery:      key,
 	}
 }
 
@@ -75,7 +78,7 @@ func (client *Client) Fetch(ctx context.Context, url string, since time.Time) ([
 }
 
 func (client *Client) fetchQuestionTitle(ctx context.Context, questionID string) (string, error) {
-	apiURL := fmt.Sprintf("%s/questions/%s?site=%s&key=%s", client.apiURL, questionID, site, client.key)
+	apiURL := fmt.Sprintf("%s/questions/%s?site=%s%s", client.apiURL, questionID, site, client.keyQuery)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -111,7 +114,7 @@ func (client *Client) fetchQuestionTitle(ctx context.Context, questionID string)
 }
 
 func (client *Client) fetchAnswers(ctx context.Context, questionURL string, since time.Time, questionTitle string) ([]domain.UpdateEvent, error) {
-	apiURL := fmt.Sprintf("%s/answers?site=%s&filter=withbody&fromdate=%d&key=%s", questionURL, site, since.Unix(), client.key)
+	apiURL := fmt.Sprintf("%s/answers?site=%s&filter=withbody&fromdate=%d%s", questionURL, site, since.Unix(), client.keyQuery)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -162,7 +165,7 @@ func (client *Client) fetchAnswers(ctx context.Context, questionURL string, sinc
 }
 
 func (client *Client) fetchComments(ctx context.Context, questionURL string, since time.Time, questionTitle string) ([]domain.UpdateEvent, error) {
-	apiURL := fmt.Sprintf("%s/comments?site=%s&filter=withbody&fromdate=%d&key=%s", questionURL, site, since.Unix(), client.key)
+	apiURL := fmt.Sprintf("%s/comments?site=%s&filter=withbody&fromdate=%d%s", questionURL, site, since.Unix(), client.keyQuery)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
