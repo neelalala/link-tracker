@@ -99,7 +99,7 @@ func (linkRepo *LinkRepository) GetBatch(ctx context.Context, limit int, offset 
 	query := `
 		SELECT id, url, last_updated 
 		FROM links 
-		ORDER BY id 
+		ORDER BY last_updated 
 		LIMIT $1 OFFSET $2
 	`
 
