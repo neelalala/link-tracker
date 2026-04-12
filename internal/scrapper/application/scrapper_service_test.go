@@ -129,5 +129,6 @@ func TestScrapperService_ProcessLink_FetcherError(t *testing.T) {
 
 	service.processLink(context.Background(), testLink)
 
-	assert.Empty(t, notifier.SentUpdates, "Expected no updates to be sent when fetcher fails")
+	require.GreaterOrEqualf(t, len(notifier.SentUpdates), 1, "Expected 1 update sent")
+	assert.Contains(t, notifier.SentUpdates[0].Description, "couldn't fetch your link")
 }
