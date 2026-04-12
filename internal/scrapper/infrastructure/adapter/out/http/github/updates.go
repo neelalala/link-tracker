@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type GithubNewPRUpdate struct {
+type NewPRUpdate struct {
 	Title     string
 	Author    string
 	CreatedAt time.Time
@@ -14,19 +14,19 @@ type GithubNewPRUpdate struct {
 	MaxPreviewLen int
 }
 
-func (prUpdate *GithubNewPRUpdate) UpdatedAt() time.Time {
+func (prUpdate *NewPRUpdate) UpdatedAt() time.Time {
 	return prUpdate.CreatedAt
 }
 
-func (prUpdate *GithubNewPRUpdate) Description() string {
+func (prUpdate *NewPRUpdate) Description() string {
 	return fmt.Sprintf("New Pull Request: %s by %s", prUpdate.Title, prUpdate.Author)
 }
 
-func (prUpdate *GithubNewPRUpdate) Preview() string {
+func (prUpdate *NewPRUpdate) Preview() string {
 	return truncateText(prUpdate.Body, prUpdate.MaxPreviewLen)
 }
 
-type GithubNewIssueUpdate struct {
+type NewIssueUpdate struct {
 	Title     string
 	Author    string
 	CreatedAt time.Time
@@ -35,15 +35,15 @@ type GithubNewIssueUpdate struct {
 	MaxPreviewLen int
 }
 
-func (issueUpdate *GithubNewIssueUpdate) UpdatedAt() time.Time {
+func (issueUpdate *NewIssueUpdate) UpdatedAt() time.Time {
 	return issueUpdate.CreatedAt
 }
 
-func (issueUpdate *GithubNewIssueUpdate) Description() string {
+func (issueUpdate *NewIssueUpdate) Description() string {
 	return fmt.Sprintf("New Issue: %s by %s", issueUpdate.Title, issueUpdate.Author)
 }
 
-func (issueUpdate *GithubNewIssueUpdate) Preview() string {
+func (issueUpdate *NewIssueUpdate) Preview() string {
 	return truncateText(issueUpdate.Body, issueUpdate.MaxPreviewLen)
 }
 

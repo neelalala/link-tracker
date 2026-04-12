@@ -102,12 +102,12 @@ func TestClient_Fetch_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, updates, 2)
 
-	prUpdate, ok := updates[0].(*GithubNewPRUpdate)
+	prUpdate, ok := updates[0].(*NewPRUpdate)
 	require.True(t, ok, "first update should be a PR")
 	assert.Equal(t, "New PR", prUpdate.Title)
 	assert.Equal(t, "alice", prUpdate.Author)
 
-	issueUpdate, ok := updates[1].(*GithubNewIssueUpdate)
+	issueUpdate, ok := updates[1].(*NewIssueUpdate)
 	require.True(t, ok, "second update should be an Issue")
 	assert.Equal(t, "New Issue", issueUpdate.Title)
 	assert.Equal(t, "charlie", issueUpdate.Author)

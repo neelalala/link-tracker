@@ -106,7 +106,7 @@ func (client *Client) fetchPullRequests(ctx context.Context, repoURL string, sin
 		if !pullRequest.CreatedAt.After(since) {
 			continue
 		}
-		prUpdates = append(prUpdates, &GithubNewPRUpdate{
+		prUpdates = append(prUpdates, &NewPRUpdate{
 			Title:         pullRequest.Title,
 			Author:        pullRequest.User.Login,
 			CreatedAt:     pullRequest.CreatedAt,
@@ -164,7 +164,7 @@ func (client *Client) fetchIssues(ctx context.Context, repoURL string, since tim
 			continue
 		}
 
-		issueUpdates = append(issueUpdates, &GithubNewIssueUpdate{
+		issueUpdates = append(issueUpdates, &NewIssueUpdate{
 			Title:         issue.Title,
 			Author:        issue.User.Login,
 			CreatedAt:     issue.CreatedAt,
