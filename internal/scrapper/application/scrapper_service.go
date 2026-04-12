@@ -57,10 +57,10 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 	service.logger.Info("started checking all links for updates")
 
 	jobs := make(chan domain.Link, service.batchSize)
-	defer close(jobs)
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
+	defer close(jobs)
 
 	for range service.fetchersCount {
 		wg.Go(func() {
