@@ -63,14 +63,11 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 	defer wg.Wait()
 
 	for range service.fetchersCount {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			for link := range jobs {
 				service.processLink(ctx, link)
 			}
-		}()
+		})
 	}
 
 	offset := 0
@@ -183,8 +180,15 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 				ID:          link.ID,
 				URL:         link.URL,
 				Description: event.Description(),
+				Preview:     event.Preview(),
 				TgChatIDs:   chatIDs,
 			}
+
+			service.logger.Debug("update",
+				slog.String("url", update.URL),
+				slog.String("description", update.Description),
+				slog.String("preview", update.Preview),
+			)
 
 			err = service.notifier.SendUpdate(ctx, update)
 			if err != nil {
