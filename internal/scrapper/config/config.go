@@ -66,10 +66,11 @@ type ServerConfig struct {
 }
 
 type FetchersConfig struct {
-	PreviewLimit int           `config:"preview-limit,200"`
-	Timeout      time.Duration `config:"timeout"`
-	Concurrency  int           `config:"concurrency,1"`
-	Batch        int           `config:"batch,100"`
+	PreviewLimit     int           `config:"preview-limit,200"`
+	Timeout          time.Duration `config:"timeout"`
+	Concurrency      int           `config:"concurrency,1"`
+	Batch            int           `config:"batch,100"`
+	StackOverflowKey string        `config:"stackoverflow-key"`
 }
 
 type Config struct {
