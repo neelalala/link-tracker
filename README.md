@@ -2,33 +2,31 @@
 
 **LinkTracker** – Telegram-бот, который отслеживает изменения на веб-страницах и оперативно информирует пользователя о них.
 
-
-Это шаблон проекта, который вам необходимо взять за основу для разработки своей системы.
-
-
-В данном файле должна находиться инструкция для ассистента по запуску и настройке бота.
-Полезную для разработки проекта информацию вы можете найти в файле [HELP.md.](./HELP.md)
-
 Запуск через [docker compose](compose.yaml):
 ```sh
+docker compose build
 docker compose up -d
 ```
 
 [Dockerfile](./cmd/bot/Dockerfile) для бота
 
+[Dockerfile](./cmd/scrapper/Dockerfile) для скраппера
+
 Конфигурация:
-[application.conf](application.conf) – файл конфигурации бота.
 
-telegram-token – токен для телеграмм бота
+[bot.conf](cmd/bot/bot.conf) – файл конфигурации бота.
 
-environment – исполняемое окружение (local для вывода логов в виде текса, json-логи для остальных значений). По умолчанию local
+[scrapper.conf](cmd/scrapper/scrapper.conf) – файл конфигурации Scrapper сервиса.
 
-logs-file – файл, куда печатать логи. Пустая строка для печати в stdout. По умолчанию печать в stdout
-
-Переменные окружения (перезаписывают значения из [application.conf](application.conf)):
-
-APP_TELEGRAM_TOKEN – токена для телеграмм-бота
-
-ENV – исполняемое окружение
-
-LOGS_FILE – файл, куда печатать логи
+Пример .env файла для работы:
+```
+APP_TELEGRAM_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+BOT_API_PORT=63342
+SCRAPPER_API_PORT=63343
+BOT_URL="bot:${BOT_API_PORT}"
+SCRAPPER_URL="scrapper:${SCRAPPER_API_PORT}"
+BOT_API_PROTOCOL="http"
+SCRAPPER_API_PROTOCOL="grpc"
+SCRAPPER_LOG_LEVEL="DEBUG"
+BOT_LOG_LEVEL="ERROR+4"
+```

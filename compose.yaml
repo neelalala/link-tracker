@@ -5,3 +5,26 @@ services:
       dockerfile: cmd/bot/Dockerfile
     env_file:
       - .env
+    depends_on:
+      - scrapper
+    environment:
+      - BOT_API_PORT=63342
+      - SCRAPPER_URL="scrapper:63343"
+      - BOT_API_PROTOCOL="grpc"
+      - SCRAPPER_API_PROTOCOL="grpc"
+
+  scrapper:
+    build:
+      context: .
+      dockerfile: cmd/scrapper/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - BOT_URL="bot:63342"
+      - SCRAPPER_API_PORT=63343
+      - BOT_API_PROTOCOL="grpc"
+      - SCRAPPER_API_PROTOCOL="grpc"
+
+networks:
+  app-network:
+    driver: bridge
