@@ -128,7 +128,7 @@ func TestLinkRepository_Integration(t *testing.T) {
 				saved, err := repo.Save(ctx, link)
 				require.NoErrorf(t, err, "Failed to save link before deletion: %v", err)
 
-				err = repo.Delete(ctx, saved)
+				err = repo.Delete(ctx, saved.ID)
 				require.NoErrorf(t, err, "Failed to delete link: %v", err)
 
 				_, err = repo.GetById(ctx, saved.ID)

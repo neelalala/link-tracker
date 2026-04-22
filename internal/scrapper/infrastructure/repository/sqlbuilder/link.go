@@ -95,9 +95,9 @@ func (linkRepo *LinkRepository) GetByUrl(ctx context.Context, url string) (domai
 	return link, nil
 }
 
-func (linkRepo *LinkRepository) Delete(ctx context.Context, link domain.Link) error {
+func (linkRepo *LinkRepository) Delete(ctx context.Context, id int64) error {
 	query, args, err := psql.Delete("links").
-		Where(goqu.Ex{"id": link.ID}).
+		Where(goqu.Ex{"id": id}).
 		ToSQL()
 	if err != nil {
 		return fmt.Errorf("failed to build query: %w", err)
@@ -109,7 +109,7 @@ func (linkRepo *LinkRepository) Delete(ctx context.Context, link domain.Link) er
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return fmt.Errorf("%w: link with id %d did not exist", domain.ErrLinkNotFound, link.ID)
+		return fmt.Errorf("%w: link with id %d did not exist", domain.ErrLinkNotFound, id)
 	}
 
 	return nil

@@ -80,16 +80,16 @@ func (linkRepo *LinkRepository) GetByUrl(ctx context.Context, url string) (domai
 	return link, nil
 }
 
-func (linkRepo *LinkRepository) Delete(ctx context.Context, link domain.Link) error {
+func (linkRepo *LinkRepository) Delete(ctx context.Context, id int64) error {
 	query := `DELETE FROM links WHERE id = $1`
 
-	cmdTag, err := linkRepo.pool.Exec(ctx, query, link.ID)
+	cmdTag, err := linkRepo.pool.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete link: %w", err)
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return fmt.Errorf("%w: link with id %d did not exist", domain.ErrLinkNotFound, link.ID)
+		return fmt.Errorf("%w: link with id %d did not exist", domain.ErrLinkNotFound, id)
 	}
 
 	return nil

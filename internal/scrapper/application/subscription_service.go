@@ -143,7 +143,8 @@ func (service *SubscriptionService) RemoveLink(ctx context.Context, chatID int64
 		if !errors.Is(err, domain.ErrLinkNotFound) {
 			return domain.TrackedLink{}, err
 		}
-		_ = service.linkRepo.Delete(ctx, link)
+		err = service.linkRepo.Delete(ctx, link.ID)
+		service.logger.Error("failed to remove link", "chatID", chatID, "url", url, "err", err)
 	}
 
 	return domain.TrackedLink{
