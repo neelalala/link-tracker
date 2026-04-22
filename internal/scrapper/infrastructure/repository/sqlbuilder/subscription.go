@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/doug-martin/goqu/v9"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
@@ -123,7 +122,7 @@ func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64,
 func (subRepo *SubscriptionRepository) scanSubscriptions(
 	ctx context.Context,
 	query string,
-	args []interface{},
+	args []any,
 	keyFn func(chatID, linkID int64) int64,
 ) ([]domain.Subscription, error) {
 	rows, err := subRepo.pool.Query(ctx, query, args...)
