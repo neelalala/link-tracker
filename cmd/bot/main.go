@@ -27,7 +27,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type ApiServer interface {
+type APIServer interface {
 	Start(ctx context.Context) error
 }
 
@@ -62,8 +62,8 @@ func main() {
 	defer stop()
 
 	notifyService := application.NewNotifierService(slogger, tgClient)
-	var apiServer ApiServer
-	var scrapperApi domain.Scrapper
+
+	var apiServer APIServer
 	switch cfg.Server.Protocol {
 	case config.HTTP:
 		apiServer = http.NewServer(cfg.Server.Port, notifyService, slogger)
@@ -74,6 +74,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	var scrapperApi domain.Scrapper
 	switch cfg.ScrapperService.Protocol {
 	case config.HTTP:
 		scrapperApi = httpscrapper.NewClient(cfg.ScrapperService.URL)
@@ -124,7 +125,7 @@ func main() {
 
 	helpCommand.SetCommands(cmds)
 
-	commandService := application.NewCommandService(scrapperApi, sessionRepo, cmds)
+	commandService := application.NewCommandService(scrapperApi, cmds)
 
 	dialogService := application.NewDialogService(scrapperApi, sessionRepo, slogger)
 
