@@ -2,7 +2,7 @@ package application
 
 import (
 	"context"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"time"
 )
 
@@ -41,5 +41,5 @@ func (service *FetcherService) Fetch(ctx context.Context, url string) (FetchResu
 			return linkFetcher.Fetch(ctx, url)
 		}
 	}
-	return FetchResult{}, domain.ErrUrlNotSupported
+	return FetchResult{}, domain.ErrURLNotSupported
 }
