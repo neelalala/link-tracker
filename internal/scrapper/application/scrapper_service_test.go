@@ -60,7 +60,7 @@ func TestScrapperService_ProcessLink_NotifiesOnlySubscribers(t *testing.T) {
 	}
 
 	mockSubRepo.EXPECT().
-		GetByLinkId(gomock.Any(), testLink.ID).
+		GetByLinkID(gomock.Any(), testLink.ID).
 		Return(subs, nil).
 		Times(1)
 

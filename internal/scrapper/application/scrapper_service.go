@@ -68,7 +68,7 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 }
 
 func (service *ScrapperService) processLink(ctx context.Context, link domain.Link) {
-	subscriptions, err := service.subRepo.GetByLinkId(ctx, link.ID)
+	subscriptions, err := service.subRepo.GetByLinkID(ctx, link.ID)
 	if err != nil {
 		service.logger.Error("failed to get subscriptions",
 			slog.String("context", "scrapperService.subRepo.GetByLinkId"),
