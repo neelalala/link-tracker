@@ -18,6 +18,11 @@ type LinkUpdate struct {
 	TgChatIDs   []int64
 }
 
+type FetchResult struct {
+	UpdatedAt   time.Time
+	Description string
+}
+
 //go:generate mockgen -source=link.go -destination=../mocks/mock_domain_link.go -package=mocks
 type LinkRepository interface {
 	Save(ctx context.Context, link Link) (Link, error)

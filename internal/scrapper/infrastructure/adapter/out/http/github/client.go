@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
 const (
@@ -35,13 +35,13 @@ func (client *Client) CanHandle(url string) bool {
 	return strings.HasPrefix(url, client.baseURL)
 }
 
-func (client *Client) Fetch(ctx context.Context, url string) (application.FetchResult, error) {
+func (client *Client) Fetch(ctx context.Context, url string) (domain.FetchResult, error) {
 	path := strings.TrimPrefix(url, client.baseURL)
 	path = strings.Trim(path, "/")
 	parts := strings.Split(path, "/")
 
 	if len(parts) < 2 {
-		return application.FetchResult{}, fmt.Errorf("invalid github url: %s", url)
+		return domain.FetchResult{}, fmt.Errorf("invalid github url: %s", url)
 	}
 	owner, repo := parts[0], parts[1]
 
@@ -49,20 +49,20 @@ func (client *Client) Fetch(ctx context.Context, url string) (application.FetchR
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiUrl, nil)
 	if err != nil {
-		return application.FetchResult{}, err
+		return domain.FetchResult{}, err
 	}
 
 	request.Header.Set("Accept", "application/vnd.github+json")
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return application.FetchResult{}, err
+		return domain.FetchResult{}, err
 	}
 
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return application.FetchResult{}, fmt.Errorf("github api returned status: %d for %s", response.StatusCode, apiUrl)
+		return domain.FetchResult{}, fmt.Errorf("github api returned status: %d for %s", response.StatusCode, apiUrl)
 	}
 
 	var repoData struct {
@@ -71,10 +71,10 @@ func (client *Client) Fetch(ctx context.Context, url string) (application.FetchR
 	}
 
 	if err := json.NewDecoder(response.Body).Decode(&repoData); err != nil {
-		return application.FetchResult{}, err
+		return domain.FetchResult{}, err
 	}
 
-	return application.FetchResult{
+	return domain.FetchResult{
 		UpdatedAt:   repoData.PushedAt,
 		Description: fmt.Sprintf("Something new to %s was pushed", repoData.FullName),
 	}, nil

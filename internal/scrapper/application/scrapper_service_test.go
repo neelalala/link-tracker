@@ -27,14 +27,14 @@ type MockFetcher struct{}
 
 func (f *MockFetcher) CanHandle(string) bool { return true }
 
-func (f *MockFetcher) Fetch(context.Context, string) (FetchResult, error) {
-	return FetchResult{
+func (f *MockFetcher) Fetch(context.Context, string) (domain.FetchResult, error) {
+	return domain.FetchResult{
 		UpdatedAt:   time.Now().Add(1 * time.Hour),
 		Description: "Mock update",
 	}, nil
 }
 
-func logger() *slog.Logger {
+func new_logger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 }
 
@@ -71,7 +71,7 @@ func TestScrapperService_ProcessLink_NotifiesOnlySubscribers(t *testing.T) {
 		}).
 		Times(1)
 
-	service := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, logger())
+	service := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, new_logger())
 
 	service.processLink(context.Background(), testLink)
 
