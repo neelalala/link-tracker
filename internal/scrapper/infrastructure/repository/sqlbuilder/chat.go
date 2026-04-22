@@ -23,9 +23,9 @@ func NewChatRepository(pool *pgxpool.Pool) *ChatRepository {
 	}
 }
 
-func (chatRepo *ChatRepository) Create(ctx context.Context, chat domain.Chat) error {
+func (chatRepo *ChatRepository) Create(ctx context.Context, id int64) error {
 	query, args, err := psql.Insert("chats").
-		Rows(goqu.Record{"id": chat.ID}).
+		Rows(goqu.Record{"id": id}).
 		ToSQL()
 	if err != nil {
 		return fmt.Errorf("failed to build query: %w", err)
@@ -36,7 +36,7 @@ func (chatRepo *ChatRepository) Create(ctx context.Context, chat domain.Chat) er
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				return fmt.Errorf("%w: id = %d", domain.ErrChatAlreadyRegistered, chat.ID)
+				return fmt.Errorf("%w: id = %d", domain.ErrChatAlreadyRegistered, id)
 			}
 		}
 
@@ -46,10 +46,10 @@ func (chatRepo *ChatRepository) Create(ctx context.Context, chat domain.Chat) er
 	return nil
 }
 
-func (chatRepo *ChatRepository) GetById(ctx context.Context, chatId int64) (domain.Chat, error) {
+func (chatRepo *ChatRepository) GetByID(ctx context.Context, id int64) (domain.Chat, error) {
 	query, args, err := psql.From("chats").
 		Select("id").
-		Where(goqu.Ex{"id": chatId}).
+		Where(goqu.Ex{"id": id}).
 		ToSQL()
 	if err != nil {
 		return domain.Chat{}, fmt.Errorf("failed to build query: %w", err)
@@ -59,18 +59,18 @@ func (chatRepo *ChatRepository) GetById(ctx context.Context, chatId int64) (doma
 	err = chatRepo.pool.QueryRow(ctx, query, args...).Scan(&saved.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Chat{}, fmt.Errorf("%w: chat with id %d not found", domain.ErrChatNotRegistered, chatId)
+			return domain.Chat{}, fmt.Errorf("%w: chat with id %d not found", domain.ErrChatNotRegistered, id)
 		}
 
-		return domain.Chat{}, fmt.Errorf("%w: failed to retrieve chat with id %d", err, chatId)
+		return domain.Chat{}, fmt.Errorf("%w: failed to retrieve chat with id %d", err, id)
 	}
 
 	return saved, nil
 }
 
-func (chatRepo *ChatRepository) Delete(ctx context.Context, chat domain.Chat) error {
+func (chatRepo *ChatRepository) Delete(ctx context.Context, id int64) error {
 	query, args, err := psql.Delete("chats").
-		Where(goqu.Ex{"id": chat.ID}).
+		Where(goqu.Ex{"id": id}).
 		ToSQL()
 	if err != nil {
 		return fmt.Errorf("failed to build query: %w", err)
@@ -78,11 +78,11 @@ func (chatRepo *ChatRepository) Delete(ctx context.Context, chat domain.Chat) er
 
 	cmdTag, err := chatRepo.pool.Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to delete chat with id %d: %w", chat.ID, err)
+		return fmt.Errorf("failed to delete chat with id %d: %w", id, err)
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return fmt.Errorf("%w: chat with id %d not found", domain.ErrChatNotRegistered, chat.ID)
+		return fmt.Errorf("%w: chat with id %d not found", domain.ErrChatNotRegistered, id)
 	}
 
 	return nil
