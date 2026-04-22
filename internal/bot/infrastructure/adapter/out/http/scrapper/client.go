@@ -174,7 +174,7 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 			return domain.TrackedLink{}, domain.ErrAlreadySubscribed
 		}
 		if response.StatusCode == http.StatusUnprocessableEntity {
-			return domain.TrackedLink{}, domain.ErrUrlNotSupported
+			return domain.TrackedLink{}, domain.ErrURLNotSupported
 		}
 		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
 	}

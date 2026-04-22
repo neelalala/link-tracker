@@ -49,7 +49,7 @@ func TestDialogService_HandleMessage(t *testing.T) {
 				repo.EXPECT().Save(gomock.Any(), resetSession).Return(nil)
 			},
 			expectedResult: dialogServiceErrorUnknownState,
-			expectedError:  ErrBadSessionState,
+			expectedError:  domain.ErrBadSessionState,
 		},
 
 		{
