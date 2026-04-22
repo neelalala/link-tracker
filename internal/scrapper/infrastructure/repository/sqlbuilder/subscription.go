@@ -59,7 +59,7 @@ func (subRepo *SubscriptionRepository) Save(ctx context.Context, sub domain.Subs
 	return nil
 }
 
-func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, chatId int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByChatID(ctx context.Context, chatID int64) ([]domain.Subscription, error) {
 	query, args, err := psql.Select("s.chat_id", "s.link_id", "st.tag").
 		From(goqu.T("subscriptions").As("s")).
 		LeftJoin(
@@ -69,7 +69,7 @@ func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, chatId i
 				goqu.Ex{"s.link_id": goqu.I("st.link_id")},
 			),
 		).
-		Where(goqu.Ex{"s.chat_id": chatId}).
+		Where(goqu.Ex{"s.chat_id": chatID}).
 		ToSQL()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
@@ -78,7 +78,7 @@ func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, chatId i
 	return subRepo.scanSubscriptions(ctx, query, args, func(chatID, linkID int64) int64 { return linkID })
 }
 
-func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByLinkID(ctx context.Context, linkID int64) ([]domain.Subscription, error) {
 	query, args, err := psql.Select("s.chat_id", "s.link_id", "st.tag").
 		From(goqu.T("subscriptions").As("s")).
 		LeftJoin(
@@ -88,7 +88,7 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId i
 				goqu.Ex{"s.link_id": goqu.I("st.link_id")},
 			),
 		).
-		Where(goqu.Ex{"s.link_id": linkId}).
+		Where(goqu.Ex{"s.link_id": linkID}).
 		ToSQL()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
@@ -97,12 +97,12 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId i
 	return subRepo.scanSubscriptions(ctx, query, args, func(chatID, linkID int64) int64 { return chatID })
 }
 
-func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64, linkId int64) (bool, error) {
+func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatID int64, linkID int64) (bool, error) {
 	subquery := psql.Select(goqu.L("1")).
 		From(goqu.T("subscriptions").As("s")).
 		Where(goqu.Ex{
-			"s.chat_id": chatId,
-			"s.link_id": linkId,
+			"s.chat_id": chatID,
+			"s.link_id": linkID,
 		})
 
 	query, args, err := psql.Select(goqu.L("EXISTS ?", subquery)).ToSQL()
@@ -113,7 +113,7 @@ func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64,
 	var exists bool
 	err = subRepo.pool.QueryRow(ctx, query, args...).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("failed to check subscription for link %d in chat %d: %w", linkId, chatId, err)
+		return false, fmt.Errorf("failed to check subscription for link %d in chat %d: %w", linkID, chatID, err)
 	}
 
 	return exists, nil
@@ -169,7 +169,7 @@ func (subRepo *SubscriptionRepository) scanSubscriptions(
 	return result, nil
 }
 
-func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) Delete(ctx context.Context, chatID int64, linkID int64) (domain.Subscription, error) {
 	tx, err := subRepo.pool.Begin(ctx)
 	if err != nil {
 		return domain.Subscription{}, fmt.Errorf("failed to begin transaction: %w", err)
@@ -178,8 +178,8 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Su
 
 	deleteSubQuery, args, err := psql.Delete("subscriptions").
 		Where(goqu.Ex{
-			"chat_id": sub.ChatID,
-			"link_id": sub.LinkID,
+			"chat_id": chatID,
+			"link_id": linkID,
 		}).
 		ToSQL()
 	if err != nil {
@@ -191,13 +191,13 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Su
 		return domain.Subscription{}, fmt.Errorf("failed to delete subscription: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return domain.Subscription{}, fmt.Errorf("%w: link id = %d, chat id = %d", domain.ErrNotSubscribed, sub.LinkID, sub.ChatID)
+		return domain.Subscription{}, fmt.Errorf("%w: link id = %d, chat id = %d", domain.ErrNotSubscribed, linkID, chatID)
 	}
 
 	deleteLinkQuery, linkArgs, err := psql.Delete("links").
 		Where(
-			goqu.Ex{"id": sub.LinkID},
-			goqu.L("NOT EXISTS (SELECT 1 FROM subscriptions WHERE link_id = ?)", sub.LinkID),
+			goqu.Ex{"id": linkID},
+			goqu.L("NOT EXISTS (SELECT 1 FROM subscriptions WHERE link_id = ?)", linkID),
 		).
 		ToSQL()
 	if err != nil {
@@ -213,10 +213,15 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Su
 		return domain.Subscription{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	sub := domain.Subscription{
+		ChatID: chatID,
+		LinkID: linkID,
+	}
+
 	return sub, nil
 }
 
-func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkID, chatID int64, tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -227,7 +232,7 @@ func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkId, chat
 	}
 	defer tx.Rollback(context.Background())
 
-	if err := insertTagsBatch(ctx, tx, chatId, linkId, tags, true); err != nil {
+	if err := insertTagsBatch(ctx, tx, chatID, linkID, tags, true); err != nil {
 		return err
 	}
 
@@ -238,21 +243,21 @@ func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkId, chat
 	return nil
 }
 
-func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkId, chatId int64) ([]string, error) {
+func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkID, chatID int64) ([]string, error) {
 	query, args, err := psql.From("subscription_tags").
 		Select("tag").
 		Where(goqu.Ex{
-			"chat_id": chatId,
-			"link_id": linkId,
+			"chat_id": chatID,
+			"link_id": linkID,
 		}).
 		ToSQL()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build get tags SQL for link %d: %w", linkId, err)
+		return nil, fmt.Errorf("failed to build get tags SQL for link %d: %w", linkID, err)
 	}
 
 	rows, err := subRepo.pool.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query tags for link %d: %w", linkId, err)
+		return nil, fmt.Errorf("failed to query tags for link %d: %w", linkID, err)
 	}
 	defer rows.Close()
 
@@ -272,7 +277,7 @@ func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkId, chat
 	return tags, nil
 }
 
-func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkID, chatID int64, tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -287,8 +292,8 @@ func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkId, c
 	for _, tag := range tags {
 		q, args, err := psql.Delete("subscription_tags").
 			Where(goqu.Ex{
-				"chat_id": chatId,
-				"link_id": linkId,
+				"chat_id": chatID,
+				"link_id": linkID,
 				"tag":     tag,
 			}).
 			ToSQL()
@@ -317,14 +322,14 @@ func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkId, c
 	return nil
 }
 
-func insertTagsBatch(ctx context.Context, tx pgx.Tx, chatId, linkId int64, tags []string, onConflictDoNothing bool) error {
+func insertTagsBatch(ctx context.Context, tx pgx.Tx, chatID, linkID int64, tags []string, onConflictDoNothing bool) error {
 	batch := &pgx.Batch{}
 
 	for _, tag := range tags {
 		ds := psql.Insert("subscription_tags").
 			Rows(goqu.Record{
-				"chat_id": chatId,
-				"link_id": linkId,
+				"chat_id": chatID,
+				"link_id": linkID,
 				"tag":     tag,
 			})
 

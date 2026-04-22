@@ -42,17 +42,17 @@ func (m *MockLinkRepository) EXPECT() *MockLinkRepositoryMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockLinkRepository) Delete(ctx context.Context, in int64) error {
+func (m *MockLinkRepository) Delete(ctx context.Context, id int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, in)
+	ret := m.ctrl.Call(m, "Delete", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockLinkRepositoryMockRecorder) Delete(ctx, in any) *gomock.Call {
+func (mr *MockLinkRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockLinkRepository)(nil).Delete), ctx, in)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockLinkRepository)(nil).Delete), ctx, id)
 }
 
 // GetBatch mocks base method.

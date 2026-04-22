@@ -102,7 +102,7 @@ func TestSubscriptionRepository_Integration(t *testing.T) {
 				err := repo.Save(ctx, sub)
 				require.NoErrorf(t, err, "Failed to save subscription: %v", err)
 
-				subs, err := repo.GetByChatId(ctx, chatID)
+				subs, err := repo.GetByChatID(ctx, chatID)
 				require.NoErrorf(t, err, "Failed to get subscriptions: %v", err)
 				require.Len(t, subs, 1)
 				assert.Equal(t, sub.LinkID, subs[0].LinkID)
@@ -123,7 +123,7 @@ func TestSubscriptionRepository_Integration(t *testing.T) {
 				err = repo.Save(ctx, sub2)
 				require.NoError(t, err)
 
-				subs, err := repo.GetByChatId(ctx, chatID)
+				subs, err := repo.GetByChatID(ctx, chatID)
 				require.NoErrorf(t, err, "Failed to get by ChatId: %v", err)
 				require.Len(t, subs, 2)
 
@@ -147,7 +147,7 @@ func TestSubscriptionRepository_Integration(t *testing.T) {
 				err = repo.Save(ctx, domain.Subscription{ChatID: 4, LinkID: linkID, Tags: []string{"tag2"}})
 				require.NoError(t, err)
 
-				subs, err := repo.GetByLinkId(ctx, linkID)
+				subs, err := repo.GetByLinkID(ctx, linkID)
 				require.NoErrorf(t, err, "Failed to get by LinkId: %v", err)
 				require.Len(t, subs, 2)
 
@@ -168,14 +168,14 @@ func TestSubscriptionRepository_Integration(t *testing.T) {
 				require.NoErrorf(t, err, "Failed to get link: %v", err)
 				assert.Equalf(t, linkID, link.ID, "Expected link id %d, got %d", linkID, link.ID)
 
-				deletedSub, err := repo.Delete(ctx, sub)
+				deletedSub, err := repo.Delete(ctx, sub.ChatID, sub.LinkID)
 				require.NoErrorf(t, err, "Failed to delete subscription: %v", err)
 				assert.Equal(t, chatID, deletedSub.ChatID)
 
 				link, err = linksRepo.GetById(ctx, linkID)
 				assert.Truef(t, errors.Is(err, domain.ErrLinkNotFound), "Expected Link not found")
 
-				subs, err := repo.GetByChatId(ctx, chatID)
+				subs, err := repo.GetByChatID(ctx, chatID)
 				require.NoError(t, err)
 				assert.Empty(t, subs, "Expected no subscriptions after deletion")
 
@@ -260,7 +260,7 @@ func TestSubscriptionRepository_Integration(t *testing.T) {
 				require.NoError(t, repo.Save(ctx, domain.Subscription{ChatID: chat1, LinkID: linkID}))
 				require.NoError(t, repo.Save(ctx, domain.Subscription{ChatID: chat2, LinkID: linkID}))
 
-				_, err = repo.Delete(ctx, domain.Subscription{ChatID: chat1, LinkID: linkID})
+				_, err = repo.Delete(ctx, chat1, linkID)
 				require.NoError(t, err)
 
 				link, err := linksRepo.GetById(ctx, linkID)
@@ -269,10 +269,7 @@ func TestSubscriptionRepository_Integration(t *testing.T) {
 			})
 
 			t.Run("Delete non-existing subscription", func(t *testing.T) {
-				_, err := repo.Delete(ctx, domain.Subscription{
-					ChatID: 999,
-					LinkID: 999,
-				})
+				_, err := repo.Delete(ctx, 999, 999)
 
 				require.Error(t, err)
 				assert.True(t, errors.Is(err, domain.ErrNotSubscribed))
