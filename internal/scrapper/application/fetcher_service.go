@@ -2,11 +2,9 @@ package application
 
 import (
 	"context"
-	"errors"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"time"
 )
-
-var ErrUrlNotSupported = errors.New("url not supported")
 
 type FetchResult struct {
 	UpdatedAt   time.Time
@@ -43,5 +41,5 @@ func (service *FetcherService) Fetch(ctx context.Context, url string) (FetchResu
 			return linkFetcher.Fetch(ctx, url)
 		}
 	}
-	return FetchResult{}, ErrUrlNotSupported
+	return FetchResult{}, domain.ErrUrlNotSupported
 }

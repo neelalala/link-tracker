@@ -305,7 +305,7 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, request *http.Req
 			)
 			return
 		}
-		if errors.Is(err, application.ErrUrlNotSupported) {
+		if errors.Is(err, domain.ErrURLNotSupported) {
 			handler.writeError(w, http.StatusUnprocessableEntity,
 				"Link not supported",
 				"unprocessable_entity",

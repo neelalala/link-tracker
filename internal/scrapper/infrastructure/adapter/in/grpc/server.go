@@ -148,7 +148,7 @@ func (server *Server) AddLink(ctx context.Context, request *pb.AddLinkRequest) (
 		if errors.Is(err, domain.ErrAlreadySubscribed) {
 			return nil, status.Errorf(codes.AlreadyExists, "link %s already tracked", linkUrl)
 		}
-		if errors.Is(err, application.ErrUrlNotSupported) {
+		if errors.Is(err, domain.ErrURLNotSupported) {
 			return nil, status.Errorf(codes.Unimplemented, "link %s not supported", linkUrl)
 		}
 
