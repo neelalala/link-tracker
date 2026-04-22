@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
@@ -28,12 +27,12 @@ type apiErrorResponse struct {
 }
 
 type Handler struct {
-	service *application.SubscriptionService
+	service SubscriptionService
 
 	logger *slog.Logger
 }
 
-func NewHandler(service *application.SubscriptionService, logger *slog.Logger) *Handler {
+func NewHandler(service SubscriptionService, logger *slog.Logger) *Handler {
 	return &Handler{
 		service: service,
 		logger:  logger,
