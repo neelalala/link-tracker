@@ -217,38 +217,21 @@ func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64,
 }
 
 func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
-	tx, err := subRepo.pool.Begin(ctx)
-	if err != nil {
-		return domain.Subscription{}, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(context.Background())
-
-	deleteSubQuery := `
+	query := `
 		DELETE FROM subscriptions 
 		WHERE chat_id = $1 AND link_id = $2;
 	`
 
-	ct, err := tx.Exec(ctx, deleteSubQuery, sub.ChatID, sub.LinkID)
+	ct, err := subRepo.pool.Exec(ctx, query, sub.ChatID, sub.LinkID)
 	if err != nil {
 		return domain.Subscription{}, fmt.Errorf("failed to delete subscription: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return domain.Subscription{}, fmt.Errorf("%w: link id = %d, chat id = %d", domain.ErrNotSubscribed, sub.LinkID, sub.ChatID)
-	}
-
-	deleteLinkQuery := `
-		DELETE FROM links 
-		WHERE id = $1 AND NOT EXISTS (
-			SELECT 1 FROM subscriptions WHERE link_id = $1
-		);
-	`
-	_, err = tx.Exec(ctx, deleteLinkQuery, sub.LinkID)
-	if err != nil {
-		return domain.Subscription{}, fmt.Errorf("failed to cleanup orphaned link: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return domain.Subscription{}, fmt.Errorf("failed to commit transaction: %w", err)
+		return domain.Subscription{}, fmt.Errorf(
+			"%w: link id = %d, chat id = %d",
+			domain.ErrNotSubscribed,
+			sub.LinkID,
+			sub.ChatID)
 	}
 
 	return sub, nil
