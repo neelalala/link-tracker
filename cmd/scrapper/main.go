@@ -26,7 +26,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sqlbuilder"
 )
 
-type ApiServer interface {
+type APIServer interface {
 	Start(ctx context.Context) error
 }
 
@@ -87,18 +87,18 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	var apiServer ApiServer
-	var botNotifier application.UpdateNotifier
+	var server APIServer
 	switch cfg.Server.Protocol {
 	case config.ProtocolHTTP:
-		apiServer = http.NewServer(cfg.Server.Port, subsService, slogger)
+		server = http.NewServer(cfg.Server.Port, subsService, slogger)
 	case config.ProtocolGRPC:
-		apiServer = grpc.NewServer(cfg.Server.Port, subsService, slogger)
+		server = grpc.NewServer(cfg.Server.Port, subsService, slogger)
 	default:
 		slogger.Error("unsupported protocol", "protocol", cfg.Server.Protocol)
 		os.Exit(1)
 	}
 
+	var botNotifier application.UpdateNotifier
 	switch cfg.BotService.Protocol {
 	case config.ProtocolHTTP:
 		botNotifier = httpnotifier.NewBot(cfg.BotService.URL)
@@ -151,7 +151,7 @@ func main() {
 	slogger.Info("scheduler started")
 
 	slogger.Info("starting scrapper api server...")
-	if err := apiServer.Start(ctx); err != nil {
+	if err := server.Start(ctx); err != nil {
 		slogger.Error("api server stopped with error",
 			slog.String("context", "main"),
 			slog.String("error", err.Error()),
