@@ -36,4 +36,4 @@ CREATE TABLE IF NOT EXISTS sessions (
     CONSTRAINT valid_session_state CHECK (
         state IN ('idle', 'waiting_for_url_track', 'waiting_for_tags', 'waiting_for_url_untrack')
     )
-)
+);
