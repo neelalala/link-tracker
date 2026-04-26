@@ -93,7 +93,7 @@ func (sessionRepo *SessionRepository) Delete(ctx context.Context, chatID int64) 
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.NewSession(chatID), nil
+			return domain.Session{}, domain.ErrSessionNotFound
 		}
 		return domain.Session{}, fmt.Errorf("failed to delete session: %w", err)
 	}

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	pb "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/proto/scrapper"
 	"google.golang.org/grpc"
@@ -16,15 +15,23 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+type SubscriptionService interface {
+	RegisterChat(ctx context.Context, chatID int64) error
+	DeleteChat(ctx context.Context, chatID int64) error
+	GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error)
+	AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error)
+	RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error)
+}
+
 type Server struct {
 	pb.UnimplementedScrapperServiceServer
 	port       uint16
 	grpcServer *grpc.Server
-	service    *application.SubscriptionService
+	service    SubscriptionService
 	logger     *slog.Logger
 }
 
-func NewServer(port uint16, service *application.SubscriptionService, logger *slog.Logger) *Server {
+func NewServer(port uint16, service SubscriptionService, logger *slog.Logger) *Server {
 	grpcServer := grpc.NewServer()
 
 	server := &Server{

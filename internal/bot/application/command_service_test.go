@@ -46,7 +46,7 @@ func TestCommandService_HandleCommand(t *testing.T) {
 		err:  testCommandError,
 	}
 
-	service := NewCommandService(nil, nil, []domain.Command{cmdSuccess, cmdError})
+	service := NewCommandService(nil, []domain.Command{cmdSuccess, cmdError})
 
 	tests := []struct {
 		name           string
@@ -98,7 +98,7 @@ func TestCommandService_GetCommandsInfo(t *testing.T) {
 	cmd1 := fakeCommand{name: "cmd1", desc: "first"}
 	cmd2 := fakeCommand{name: "cmd2", desc: "second"}
 
-	service := NewCommandService(nil, nil, []domain.Command{cmd1, cmd2})
+	service := NewCommandService(nil, []domain.Command{cmd1, cmd2})
 
 	infos := service.GetCommandsInfo()
 

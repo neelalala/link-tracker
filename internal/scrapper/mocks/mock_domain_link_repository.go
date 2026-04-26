@@ -42,17 +42,17 @@ func (m *MockLinkRepository) EXPECT() *MockLinkRepositoryMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockLinkRepository) Delete(ctx context.Context, link domain.Link) error {
+func (m *MockLinkRepository) Delete(ctx context.Context, id int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, link)
+	ret := m.ctrl.Call(m, "Delete", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockLinkRepositoryMockRecorder) Delete(ctx, link any) *gomock.Call {
+func (mr *MockLinkRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockLinkRepository)(nil).Delete), ctx, link)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockLinkRepository)(nil).Delete), ctx, id)
 }
 
 // GetBatch mocks base method.
@@ -70,34 +70,34 @@ func (mr *MockLinkRepositoryMockRecorder) GetBatch(ctx, limit, offset any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBatch", reflect.TypeOf((*MockLinkRepository)(nil).GetBatch), ctx, limit, offset)
 }
 
-// GetById mocks base method.
-func (m *MockLinkRepository) GetById(ctx context.Context, id int64) (domain.Link, error) {
+// GetByID mocks base method.
+func (m *MockLinkRepository) GetByID(ctx context.Context, id int64) (domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetById", ctx, id)
+	ret := m.ctrl.Call(m, "GetByID", ctx, id)
 	ret0, _ := ret[0].(domain.Link)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetById indicates an expected call of GetById.
-func (mr *MockLinkRepositoryMockRecorder) GetById(ctx, id any) *gomock.Call {
+// GetByID indicates an expected call of GetByID.
+func (mr *MockLinkRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetById", reflect.TypeOf((*MockLinkRepository)(nil).GetById), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockLinkRepository)(nil).GetByID), ctx, id)
 }
 
-// GetByUrl mocks base method.
-func (m *MockLinkRepository) GetByUrl(ctx context.Context, url string) (domain.Link, error) {
+// GetByURL mocks base method.
+func (m *MockLinkRepository) GetByURL(ctx context.Context, url string) (domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByUrl", ctx, url)
+	ret := m.ctrl.Call(m, "GetByURL", ctx, url)
 	ret0, _ := ret[0].(domain.Link)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetByUrl indicates an expected call of GetByUrl.
-func (mr *MockLinkRepositoryMockRecorder) GetByUrl(ctx, url any) *gomock.Call {
+// GetByURL indicates an expected call of GetByURL.
+func (mr *MockLinkRepositoryMockRecorder) GetByURL(ctx, url any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByUrl", reflect.TypeOf((*MockLinkRepository)(nil).GetByUrl), ctx, url)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByURL", reflect.TypeOf((*MockLinkRepository)(nil).GetByURL), ctx, url)
 }
 
 // Save mocks base method.

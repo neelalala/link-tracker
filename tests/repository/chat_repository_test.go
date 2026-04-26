@@ -80,43 +80,43 @@ func TestChatRepository_Integration(t *testing.T) {
 			require.NoErrorf(t, err, "Failed to truncate tables before tests: %v", err)
 
 			t.Run("Create chat", func(t *testing.T) {
-				chat := domain.Chat{ID: 1}
+				id := int64(1)
 
-				err := repo.Create(ctx, chat)
+				err := repo.Create(ctx, id)
 				require.NoErrorf(t, err, "Failed to create chat: %v", err)
 
-				dbChat, err := repo.GetById(ctx, chat.ID)
-				require.NoErrorf(t, err, "Failed to get saved chat by ID %d: %v", chat.ID, err)
-				assert.Equalf(t, chat.ID, dbChat.ID, "Expected chat ID %d, got %d", chat.ID, dbChat.ID)
+				dbChat, err := repo.GetByID(ctx, id)
+				require.NoErrorf(t, err, "Failed to get saved chat by ID %d: %v", id, err)
+				assert.Equalf(t, id, dbChat.ID, "Expected chat ID %d, got %d", id, dbChat.ID)
 			})
 
 			t.Run("Get non-existent chat", func(t *testing.T) {
-				_, err := repo.GetById(ctx, 999)
+				_, err := repo.GetByID(ctx, 999)
 				require.Errorf(t, err, "Expected error when getting non-existent chat, got nil")
 				assert.Truef(t, errors.Is(err, domain.ErrChatNotRegistered), "Expected ErrChatNotRegistered, got %v", err)
 			})
 
 			t.Run("Delete chat", func(t *testing.T) {
-				chat := domain.Chat{ID: 2}
+				id := int64(2)
 
-				err := repo.Create(ctx, chat)
+				err := repo.Create(ctx, id)
 				require.NoErrorf(t, err, "Failed to create chat before deletion: %v", err)
 
-				err = repo.Delete(ctx, chat)
+				err = repo.Delete(ctx, id)
 				require.NoErrorf(t, err, "Failed to delete chat: %v", err)
 
-				_, err = repo.GetById(ctx, chat.ID)
+				_, err = repo.GetByID(ctx, id)
 				require.Errorf(t, err, "Expected error when getting deleted chat, got nil")
 				assert.Truef(t, errors.Is(err, domain.ErrChatNotRegistered), "Expected ErrChatNotRegistered, got %v", err)
 			})
 
 			t.Run("Create duplicate chat", func(t *testing.T) {
-				chat := domain.Chat{ID: 3}
+				id := int64(3)
 
-				err := repo.Create(ctx, chat)
+				err := repo.Create(ctx, id)
 				require.NoErrorf(t, err, "Failed to create initial chat: %v", err)
 
-				err = repo.Create(ctx, chat)
+				err = repo.Create(ctx, id)
 				require.Errorf(t, err, "Expected error on duplicate create, got: %v", err)
 			})
 		})

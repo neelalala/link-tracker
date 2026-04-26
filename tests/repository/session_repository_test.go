@@ -186,12 +186,8 @@ func TestSessionRepository_Integration(t *testing.T) {
 				chatID := int64(6)
 				createTestChat(chatID)
 
-				deletedSession, err := repo.Delete(ctx, chatID)
-				require.NoErrorf(t, err, "Expected no error when deleting non-existent session, got: %v", err)
-
-				assert.Equalf(t, chatID, deletedSession.ChatID, "Expected chat ID %d, got %d", chatID, deletedSession.ChatID)
-				assert.Equalf(t, domain.StateIdle, deletedSession.State, "Expected state %s for default session, got %s", domain.StateIdle, deletedSession.State)
-				assert.Emptyf(t, deletedSession.URL, "Expected empty URL for default session, got %s", deletedSession.URL)
+				_, err := repo.Delete(ctx, chatID)
+				require.True(t, errors.Is(err, domain.ErrSessionNotFound), "Expected no error when deleting non-existent session, got: %v", err)
 			})
 		})
 	}

@@ -39,7 +39,7 @@ func (e TestUpdateEvent) UpdatedAt() time.Time { return e.Time }
 func (e TestUpdateEvent) Description() string  { return e.Desc }
 func (e TestUpdateEvent) Preview() string      { return e.Prev }
 
-func logger() *slog.Logger {
+func newLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError}))
 }
 
@@ -72,7 +72,7 @@ func TestScrapperService_ProcessLink_NotifiesOnlySubscribers(t *testing.T) {
 		Return([]domain.UpdateEvent{mockEvent}, nil)
 
 	mockSubRepo.EXPECT().
-		GetByLinkId(gomock.Any(), testLink.ID).
+		GetByLinkID(gomock.Any(), testLink.ID).
 		Return([]domain.Subscription{
 			{ChatID: 100, LinkID: testLink.ID},
 			{ChatID: 200, LinkID: testLink.ID},
@@ -83,7 +83,7 @@ func TestScrapperService_ProcessLink_NotifiesOnlySubscribers(t *testing.T) {
 		Return(testLink, nil)
 
 	fetcherService := NewFetcherService([]domain.LinkFetcher{mockFetcher})
-	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, 100, 4, logger())
+	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, 100, 4, newLogger())
 	require.NoError(t, err, "Expected no error on creating scrapper serivce")
 
 	service.processLink(context.Background(), testLink)
@@ -115,7 +115,7 @@ func TestScrapperService_ProcessLink_FetcherError(t *testing.T) {
 	}
 
 	mockSubRepo.EXPECT().
-		GetByLinkId(gomock.Any(), testLink.ID).
+		GetByLinkID(gomock.Any(), testLink.ID).
 		Return([]domain.Subscription{{ChatID: 100, LinkID: testLink.ID}}, nil)
 
 	notifier := &MockNotifier{}
@@ -128,7 +128,7 @@ func TestScrapperService_ProcessLink_FetcherError(t *testing.T) {
 		Return(nil, expectedErr)
 
 	fetcherService := NewFetcherService([]domain.LinkFetcher{mockFetcher})
-	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, 100, 4, logger())
+	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, 100, 4, newLogger())
 	require.NoError(t, err, "Expected no error on creation scrapper service")
 
 	service.processLink(context.Background(), testLink)
@@ -165,7 +165,7 @@ func TestScrapperService_GetUpdates_BatchProcessedCorrectly(t *testing.T) {
 	allLinks := append(linksBatch1, linksBatch2...)
 	for _, link := range allLinks {
 		mockSubRepo.EXPECT().
-			GetByLinkId(gomock.Any(), link.ID).
+			GetByLinkID(gomock.Any(), link.ID).
 			Return([]domain.Subscription{{ChatID: 100}}, nil).AnyTimes()
 
 		mockEvent := TestUpdateEvent{Time: time.Now(), Desc: "Update for " + link.URL}
@@ -179,7 +179,7 @@ func TestScrapperService_GetUpdates_BatchProcessedCorrectly(t *testing.T) {
 	}
 
 	fetcherService := NewFetcherService([]domain.LinkFetcher{mockFetcher})
-	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, batchSize, 2, logger())
+	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, batchSize, 2, newLogger())
 	require.NoError(t, err)
 
 	err = service.GetUpdates(context.Background())
@@ -216,7 +216,7 @@ func TestScrapperService_GetUpdates_PartialFailureIsolation(t *testing.T) {
 
 	mockFetcher.EXPECT().CanHandle(gomock.Any()).Return(true).AnyTimes()
 
-	mockSubRepo.EXPECT().GetByLinkId(gomock.Any(), gomock.Any()).
+	mockSubRepo.EXPECT().GetByLinkID(gomock.Any(), gomock.Any()).
 		Return([]domain.Subscription{{ChatID: 100}}, nil).AnyTimes()
 
 	mockFetcher.EXPECT().Fetch(gomock.Any(), goodLink1.URL, gomock.Any()).
@@ -231,7 +231,7 @@ func TestScrapperService_GetUpdates_PartialFailureIsolation(t *testing.T) {
 	mockLinkRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(goodLink2, nil).AnyTimes()
 
 	fetcherService := NewFetcherService([]domain.LinkFetcher{mockFetcher})
-	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, batchSize, 2, logger())
+	service, err := NewScrapperService(mockLinkRepo, mockSubRepo, fetcherService, notifier, batchSize, 2, newLogger())
 	require.NoError(t, err)
 
 	err = service.GetUpdates(context.Background())

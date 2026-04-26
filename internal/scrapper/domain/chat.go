@@ -10,7 +10,7 @@ type Chat struct {
 
 //go:generate mockgen -source=chat.go -destination=../mocks/mock_domain_chat_repository.go -package=mocks
 type ChatRepository interface {
-	Create(context.Context, Chat) error
-	GetById(context.Context, int64) (Chat, error)
-	Delete(context.Context, Chat) error
+	Create(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (Chat, error)
+	Delete(ctx context.Context, id int64) error
 }

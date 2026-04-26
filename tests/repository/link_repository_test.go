@@ -89,7 +89,7 @@ func TestLinkRepository_Integration(t *testing.T) {
 				assert.NotZerof(t, saved.ID, "Expected generated ID to be non-zero, got %d", saved.ID)
 				assert.Equalf(t, link.URL, saved.URL, "Expected URL %s, got %s", link.URL, saved.URL)
 
-				dbLink, err := repo.GetById(ctx, saved.ID)
+				dbLink, err := repo.GetByID(ctx, saved.ID)
 				require.NoErrorf(t, err, "Failed to get saved link by ID %d: %v", saved.ID, err)
 				assert.Equalf(t, saved.URL, dbLink.URL, "Expected db URL %s to match saved URL %s", dbLink.URL, saved.URL)
 			})
@@ -114,11 +114,11 @@ func TestLinkRepository_Integration(t *testing.T) {
 				saved, err := repo.Save(ctx, link)
 				require.NoErrorf(t, err, "Failed to save link: %v", err)
 
-				dbLink, err := repo.GetByUrl(ctx, saved.URL)
+				dbLink, err := repo.GetByURL(ctx, saved.URL)
 				require.NoErrorf(t, err, "Failed to get saved link by URL %s: %v", saved.URL, err)
 				assert.Equalf(t, saved.ID, dbLink.ID, "Expected db ID %d to match saved ID %d", dbLink.ID, saved.ID)
 
-				_, err = repo.GetByUrl(ctx, "https://non-existent-url.com")
+				_, err = repo.GetByURL(ctx, "https://non-existent-url.com")
 				require.Errorf(t, err, "Expected error when getting non-existent link by URL, got nil")
 				assert.Truef(t, errors.Is(err, domain.ErrLinkNotFound), "Expected ErrLinkNotFound, got %v", err)
 			})
@@ -128,10 +128,10 @@ func TestLinkRepository_Integration(t *testing.T) {
 				saved, err := repo.Save(ctx, link)
 				require.NoErrorf(t, err, "Failed to save link before deletion: %v", err)
 
-				err = repo.Delete(ctx, saved)
+				err = repo.Delete(ctx, saved.ID)
 				require.NoErrorf(t, err, "Failed to delete link: %v", err)
 
-				_, err = repo.GetById(ctx, saved.ID)
+				_, err = repo.GetByID(ctx, saved.ID)
 				require.Errorf(t, err, "Expected error when getting deleted link, got nil")
 				assert.Truef(t, errors.Is(err, domain.ErrLinkNotFound), "Expected ErrLinkNotFound, got %v", err)
 			})

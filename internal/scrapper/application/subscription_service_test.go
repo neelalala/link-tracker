@@ -48,9 +48,9 @@ func TestSubscriptionService_AddLink_NewLinkCreatedAndSaved(t *testing.T) {
 	url := "https://github.com/user/repo"
 	tags := []string{"work", "important"}
 
-	mockChatRepo.EXPECT().GetById(ctx, chatID).Return(domain.Chat{ID: chatID}, nil)
+	mockChatRepo.EXPECT().GetByID(ctx, chatID).Return(domain.Chat{ID: chatID}, nil)
 
-	mockLinkRepo.EXPECT().GetByUrl(ctx, url).Return(domain.Link{}, domain.ErrLinkNotFound)
+	mockLinkRepo.EXPECT().GetByURL(ctx, url).Return(domain.Link{}, domain.ErrLinkNotFound)
 
 	expectedSavedLink := domain.Link{
 		ID:          1,
@@ -98,9 +98,9 @@ func TestSubscriptionService_AddLink_ExistingLinkJustSubscribed(t *testing.T) {
 		LastUpdated: time.Now().Add(-1 * time.Hour),
 	}
 
-	mockChatRepo.EXPECT().GetById(ctx, chatID).Return(domain.Chat{ID: chatID}, nil)
+	mockChatRepo.EXPECT().GetByID(ctx, chatID).Return(domain.Chat{ID: chatID}, nil)
 
-	mockLinkRepo.EXPECT().GetByUrl(ctx, url).Return(existingLink, nil)
+	mockLinkRepo.EXPECT().GetByURL(ctx, url).Return(existingLink, nil)
 
 	mockSubRepo.EXPECT().Exists(ctx, chatID, existingLink.ID).Return(false, nil)
 
@@ -133,7 +133,7 @@ func TestSubscriptionService_AddLink_UnsupportedURL(t *testing.T) {
 	chatID := int64(123)
 	url := "https://unsupported.com/page"
 
-	mockChatRepo.EXPECT().GetById(ctx, chatID).Return(domain.Chat{ID: chatID}, nil)
+	mockChatRepo.EXPECT().GetByID(ctx, chatID).Return(domain.Chat{ID: chatID}, nil)
 
 	_, err := service.AddLink(ctx, chatID, url, nil)
 

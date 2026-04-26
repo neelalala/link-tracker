@@ -80,7 +80,7 @@ func (subRepo *SubscriptionRepository) Save(ctx context.Context, sub domain.Subs
 	return nil
 }
 
-func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, chatId int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByChatID(ctx context.Context, chatID int64) ([]domain.Subscription, error) {
 	query := `
 		SELECT 
 			s.chat_id, 
@@ -88,12 +88,13 @@ func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, chatId i
 			st.tag
 		FROM subscriptions s
 		LEFT JOIN subscription_tags st ON s.chat_id = st.chat_id AND s.link_id = st.link_id
-		WHERE s.chat_id = $1;
+		WHERE s.chat_id = $1
+		ORDER BY s.link_id ASC;
 	`
 
-	rows, err := subRepo.pool.Query(ctx, query, chatId)
+	rows, err := subRepo.pool.Query(ctx, query, chatID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query subscriptions for chat %d: %w", chatId, err)
+		return nil, fmt.Errorf("failed to query subscriptions for chat %d: %w", chatID, err)
 	}
 	defer rows.Close()
 
@@ -139,7 +140,7 @@ func (subRepo *SubscriptionRepository) GetByChatId(ctx context.Context, chatId i
 	return result, nil
 }
 
-func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId int64) ([]domain.Subscription, error) {
+func (subRepo *SubscriptionRepository) GetByLinkID(ctx context.Context, linkID int64) ([]domain.Subscription, error) {
 	query := `
 		SELECT 
 			s.chat_id, 
@@ -147,12 +148,13 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId i
 			st.tag
 		FROM subscriptions s
 		LEFT JOIN subscription_tags st ON s.chat_id = st.chat_id AND s.link_id = st.link_id
-		WHERE s.link_id = $1;
+		WHERE s.link_id = $1
+		ORDER BY s.chat_id ASC;
 	`
 
-	rows, err := subRepo.pool.Query(ctx, query, linkId)
+	rows, err := subRepo.pool.Query(ctx, query, linkID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query subscriptions for link %d: %w", linkId, err)
+		return nil, fmt.Errorf("failed to query subscriptions for link %d: %w", linkID, err)
 	}
 	defer rows.Close()
 
@@ -198,7 +200,7 @@ func (subRepo *SubscriptionRepository) GetByLinkId(ctx context.Context, linkId i
 	return result, nil
 }
 
-func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64, linkId int64) (bool, error) {
+func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatID int64, linkID int64) (bool, error) {
 	query := `
        SELECT EXISTS (
            SELECT 1
@@ -208,53 +210,41 @@ func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatId int64,
     `
 
 	var exists bool
-	err := subRepo.pool.QueryRow(ctx, query, chatId, linkId).Scan(&exists)
+	err := subRepo.pool.QueryRow(ctx, query, chatID, linkID).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("failed to check subscription for link %d in chat %d: %w", linkId, chatId, err)
+		return false, fmt.Errorf("failed to check subscription for link %d in chat %d: %w", linkID, chatID, err)
 	}
 
 	return exists, nil
 }
 
-func (subRepo *SubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
-	tx, err := subRepo.pool.Begin(ctx)
-	if err != nil {
-		return domain.Subscription{}, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(context.Background())
-
-	deleteSubQuery := `
+func (subRepo *SubscriptionRepository) Delete(ctx context.Context, chatID int64, linkID int64) (domain.Subscription, error) {
+	query := `
 		DELETE FROM subscriptions 
 		WHERE chat_id = $1 AND link_id = $2;
 	`
 
-	ct, err := tx.Exec(ctx, deleteSubQuery, sub.ChatID, sub.LinkID)
+	ct, err := subRepo.pool.Exec(ctx, query, chatID, linkID)
 	if err != nil {
 		return domain.Subscription{}, fmt.Errorf("failed to delete subscription: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return domain.Subscription{}, fmt.Errorf("%w: link id = %d, chat id = %d", domain.ErrNotSubscribed, sub.LinkID, sub.ChatID)
+		return domain.Subscription{}, fmt.Errorf(
+			"%w: link id = %d, chat id = %d",
+			domain.ErrNotSubscribed,
+			linkID,
+			chatID)
 	}
 
-	deleteLinkQuery := `
-		DELETE FROM links 
-		WHERE id = $1 AND NOT EXISTS (
-			SELECT 1 FROM subscriptions WHERE link_id = $1
-		);
-	`
-	_, err = tx.Exec(ctx, deleteLinkQuery, sub.LinkID)
-	if err != nil {
-		return domain.Subscription{}, fmt.Errorf("failed to cleanup orphaned link: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return domain.Subscription{}, fmt.Errorf("failed to commit transaction: %w", err)
+	sub := domain.Subscription{
+		ChatID: chatID,
+		LinkID: linkID,
 	}
 
 	return sub, nil
 }
 
-func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkID, chatID int64, tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -273,7 +263,7 @@ func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkId, chat
 		ON CONFLICT (chat_id, link_id, tag) DO NOTHING;
 	`
 	for _, tag := range tags {
-		batch.Queue(query, chatId, linkId, tag)
+		batch.Queue(query, chatID, linkID, tag)
 	}
 
 	br := tx.SendBatch(ctx, batch)
@@ -298,15 +288,15 @@ func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkId, chat
 	return nil
 }
 
-func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkId, chatId int64) ([]string, error) {
+func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkID, chatID int64) ([]string, error) {
 	query := `
 		SELECT tag
 		FROM subscription_tags
 		WHERE chat_id = $1 AND link_id = $2;
 	`
-	rows, err := subRepo.pool.Query(ctx, query, chatId, linkId)
+	rows, err := subRepo.pool.Query(ctx, query, chatID, linkID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query tags for link %d: %w", linkId, err)
+		return nil, fmt.Errorf("failed to query tags for link %d: %w", linkID, err)
 	}
 	defer rows.Close()
 
@@ -315,7 +305,7 @@ func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkId, chat
 		var tag string
 		err := rows.Scan(&tag)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan tags for link %d: %w", linkId, err)
+			return nil, fmt.Errorf("failed to scan tags for link %d: %w", linkID, err)
 		}
 		tags = append(tags, tag)
 	}
@@ -326,7 +316,7 @@ func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkId, chat
 	return tags, nil
 }
 
-func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkID, chatID int64, tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -344,7 +334,7 @@ func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkId, c
 	`
 
 	for _, tag := range tags {
-		batch.Queue(query, chatId, linkId, tag)
+		batch.Queue(query, chatID, linkID, tag)
 	}
 
 	br := tx.SendBatch(ctx, batch)

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
@@ -39,6 +40,9 @@ func (c *CancelCommand) Description() string {
 func (c *CancelCommand) Execute(ctx context.Context, msg domain.Message) (string, error) {
 	session, err := c.sessionRepo.Delete(ctx, msg.ChatID)
 	if err != nil {
+		if errors.Is(err, domain.ErrSessionNotFound) {
+			return cancelCommandNothingToCancel, nil
+		}
 		c.logger.Error("failed to delete session",
 			slog.String("error", err.Error()),
 			slog.Int64("chat_id", msg.ChatID),

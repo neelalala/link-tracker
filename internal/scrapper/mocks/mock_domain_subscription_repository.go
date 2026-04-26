@@ -42,106 +42,106 @@ func (m *MockSubscriptionRepository) EXPECT() *MockSubscriptionRepositoryMockRec
 }
 
 // AddTags mocks base method.
-func (m *MockSubscriptionRepository) AddTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+func (m *MockSubscriptionRepository) AddTags(ctx context.Context, linkID, chatID int64, tags []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddTags", ctx, linkId, chatId, tags)
+	ret := m.ctrl.Call(m, "AddTags", ctx, linkID, chatID, tags)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddTags indicates an expected call of AddTags.
-func (mr *MockSubscriptionRepositoryMockRecorder) AddTags(ctx, linkId, chatId, tags any) *gomock.Call {
+func (mr *MockSubscriptionRepositoryMockRecorder) AddTags(ctx, linkID, chatID, tags any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTags", reflect.TypeOf((*MockSubscriptionRepository)(nil).AddTags), ctx, linkId, chatId, tags)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTags", reflect.TypeOf((*MockSubscriptionRepository)(nil).AddTags), ctx, linkID, chatID, tags)
 }
 
 // Delete mocks base method.
-func (m *MockSubscriptionRepository) Delete(ctx context.Context, sub domain.Subscription) (domain.Subscription, error) {
+func (m *MockSubscriptionRepository) Delete(ctx context.Context, chatID, linkID int64) (domain.Subscription, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, sub)
+	ret := m.ctrl.Call(m, "Delete", ctx, chatID, linkID)
 	ret0, _ := ret[0].(domain.Subscription)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockSubscriptionRepositoryMockRecorder) Delete(ctx, sub any) *gomock.Call {
+func (mr *MockSubscriptionRepositoryMockRecorder) Delete(ctx, chatID, linkID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSubscriptionRepository)(nil).Delete), ctx, sub)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSubscriptionRepository)(nil).Delete), ctx, chatID, linkID)
 }
 
 // DeleteTags mocks base method.
-func (m *MockSubscriptionRepository) DeleteTags(ctx context.Context, linkId, chatId int64, tags []string) error {
+func (m *MockSubscriptionRepository) DeleteTags(ctx context.Context, linkID, chatID int64, tags []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteTags", ctx, linkId, chatId, tags)
+	ret := m.ctrl.Call(m, "DeleteTags", ctx, linkID, chatID, tags)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteTags indicates an expected call of DeleteTags.
-func (mr *MockSubscriptionRepositoryMockRecorder) DeleteTags(ctx, linkId, chatId, tags any) *gomock.Call {
+func (mr *MockSubscriptionRepositoryMockRecorder) DeleteTags(ctx, linkID, chatID, tags any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTags", reflect.TypeOf((*MockSubscriptionRepository)(nil).DeleteTags), ctx, linkId, chatId, tags)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTags", reflect.TypeOf((*MockSubscriptionRepository)(nil).DeleteTags), ctx, linkID, chatID, tags)
 }
 
 // Exists mocks base method.
-func (m *MockSubscriptionRepository) Exists(ctx context.Context, chatId, linkId int64) (bool, error) {
+func (m *MockSubscriptionRepository) Exists(ctx context.Context, chatID, linkID int64) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Exists", ctx, chatId, linkId)
+	ret := m.ctrl.Call(m, "Exists", ctx, chatID, linkID)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Exists indicates an expected call of Exists.
-func (mr *MockSubscriptionRepositoryMockRecorder) Exists(ctx, chatId, linkId any) *gomock.Call {
+func (mr *MockSubscriptionRepositoryMockRecorder) Exists(ctx, chatID, linkID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exists", reflect.TypeOf((*MockSubscriptionRepository)(nil).Exists), ctx, chatId, linkId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exists", reflect.TypeOf((*MockSubscriptionRepository)(nil).Exists), ctx, chatID, linkID)
 }
 
-// GetByChatId mocks base method.
-func (m *MockSubscriptionRepository) GetByChatId(ctx context.Context, chatId int64) ([]domain.Subscription, error) {
+// GetByChatID mocks base method.
+func (m *MockSubscriptionRepository) GetByChatID(ctx context.Context, chatID int64) ([]domain.Subscription, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByChatId", ctx, chatId)
+	ret := m.ctrl.Call(m, "GetByChatID", ctx, chatID)
 	ret0, _ := ret[0].([]domain.Subscription)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetByChatId indicates an expected call of GetByChatId.
-func (mr *MockSubscriptionRepositoryMockRecorder) GetByChatId(ctx, chatId any) *gomock.Call {
+// GetByChatID indicates an expected call of GetByChatID.
+func (mr *MockSubscriptionRepositoryMockRecorder) GetByChatID(ctx, chatID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByChatId", reflect.TypeOf((*MockSubscriptionRepository)(nil).GetByChatId), ctx, chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByChatID", reflect.TypeOf((*MockSubscriptionRepository)(nil).GetByChatID), ctx, chatID)
 }
 
-// GetByLinkId mocks base method.
-func (m *MockSubscriptionRepository) GetByLinkId(ctx context.Context, linkId int64) ([]domain.Subscription, error) {
+// GetByLinkID mocks base method.
+func (m *MockSubscriptionRepository) GetByLinkID(ctx context.Context, linkID int64) ([]domain.Subscription, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByLinkId", ctx, linkId)
+	ret := m.ctrl.Call(m, "GetByLinkID", ctx, linkID)
 	ret0, _ := ret[0].([]domain.Subscription)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetByLinkId indicates an expected call of GetByLinkId.
-func (mr *MockSubscriptionRepositoryMockRecorder) GetByLinkId(ctx, linkId any) *gomock.Call {
+// GetByLinkID indicates an expected call of GetByLinkID.
+func (mr *MockSubscriptionRepositoryMockRecorder) GetByLinkID(ctx, linkID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByLinkId", reflect.TypeOf((*MockSubscriptionRepository)(nil).GetByLinkId), ctx, linkId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByLinkID", reflect.TypeOf((*MockSubscriptionRepository)(nil).GetByLinkID), ctx, linkID)
 }
 
 // GetTags mocks base method.
-func (m *MockSubscriptionRepository) GetTags(ctx context.Context, linkId, chatId int64) ([]string, error) {
+func (m *MockSubscriptionRepository) GetTags(ctx context.Context, linkID, chatID int64) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTags", ctx, linkId, chatId)
+	ret := m.ctrl.Call(m, "GetTags", ctx, linkID, chatID)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTags indicates an expected call of GetTags.
-func (mr *MockSubscriptionRepositoryMockRecorder) GetTags(ctx, linkId, chatId any) *gomock.Call {
+func (mr *MockSubscriptionRepositoryMockRecorder) GetTags(ctx, linkID, chatID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTags", reflect.TypeOf((*MockSubscriptionRepository)(nil).GetTags), ctx, linkId, chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTags", reflect.TypeOf((*MockSubscriptionRepository)(nil).GetTags), ctx, linkID, chatID)
 }
 
 // Save mocks base method.
