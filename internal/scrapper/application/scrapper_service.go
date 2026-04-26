@@ -2,11 +2,12 @@ package application
 
 import (
 	"context"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"fmt"
 	"log/slog"
-)
+	"sync"
 
-const batchSize = 100
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+)
 
 type UpdateNotifier interface {
 	SendUpdate(ctx context.Context, update domain.LinkUpdate) error
@@ -17,7 +18,11 @@ type ScrapperService struct {
 	subRepo  domain.SubscriptionRepository
 	fetcher  *FetcherService
 	notifier UpdateNotifier
-	logger   *slog.Logger
+
+	batchSize     int
+	fetchersCount int
+
+	logger *slog.Logger
 }
 
 func NewScrapperService(
@@ -25,26 +30,55 @@ func NewScrapperService(
 	subRepo domain.SubscriptionRepository,
 	fetcher *FetcherService,
 	notifier UpdateNotifier,
+	batchSize int,
+	fetchersCount int,
 	logger *slog.Logger,
-) *ScrapperService {
-	return &ScrapperService{
-		linkRepo: linkRepo,
-		subRepo:  subRepo,
-		fetcher:  fetcher,
-		notifier: notifier,
-		logger:   logger,
+) (*ScrapperService, error) {
+	if batchSize <= 0 {
+		return nil, fmt.Errorf("batchSize must be positive, got %d", batchSize)
 	}
+
+	if fetchersCount <= 0 {
+		return nil, fmt.Errorf("fetchersCount must be positive, got %d", fetchersCount)
+	}
+
+	return &ScrapperService{
+		linkRepo:      linkRepo,
+		subRepo:       subRepo,
+		fetcher:       fetcher,
+		notifier:      notifier,
+		batchSize:     batchSize,
+		fetchersCount: fetchersCount,
+		logger:        logger,
+	}, nil
 }
 
 func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 	service.logger.Info("started checking all links for updates")
 
+	jobs := make(chan domain.Link, service.batchSize)
+
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	defer close(jobs)
+
+	for range service.fetchersCount {
+		wg.Go(func() {
+			for link := range jobs {
+				service.processLink(ctx, link)
+			}
+		})
+	}
+
 	offset := 0
 
 	for {
-		links, err := service.linkRepo.GetBatch(ctx, batchSize, offset)
+		links, err := service.linkRepo.GetBatch(ctx, service.batchSize, offset)
 		if err != nil {
-			service.logger.Error("failed to get batch of links", slog.String("error", err.Error()))
+			service.logger.Error("failed to get batch of links",
+				slog.String("error", err.Error()),
+				slog.String("context", "scrapperService.linkRepo.GetBatch"),
+			)
 			return err
 		}
 
@@ -53,10 +87,15 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 		}
 
 		for _, link := range links {
-			service.processLink(ctx, link)
+			select {
+			case <-ctx.Done():
+				service.logger.Warn("context cancelled, stopping updates")
+				return ctx.Err()
+			case jobs <- link:
+			}
 		}
 
-		offset += batchSize
+		offset += service.batchSize
 	}
 
 	service.logger.Info("finished checking updates")
@@ -64,9 +103,12 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 }
 
 func (service *ScrapperService) processLink(ctx context.Context, link domain.Link) {
-	subscriptions, err := service.subRepo.GetByLinkId(ctx, link.ID)
+	subscriptions, err := service.subRepo.GetByLinkID(ctx, link.ID)
 	if err != nil {
-		service.logger.Error("failed to get subscriptions", slog.Int64("link_id", link.ID))
+		service.logger.Error("failed to get subscriptions",
+			slog.String("context", "scrapperService.subRepo.GetByLinkId"),
+			slog.Int64("link_id", link.ID),
+			slog.String("error", err.Error()))
 		return
 	}
 
@@ -89,7 +131,7 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 					slog.String("error", err.Error()),
 					slog.Int64("link_id", link.ID),
 					slog.Any("chat_ids", update.TgChatIDs),
-					slog.String("context", "ScrapperService.processLink"),
+					slog.String("context", "scrapperService.notifier.SendUpdate"),
 				)
 			}
 		} else {
@@ -98,34 +140,74 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 		return
 	}
 
-	result, err := service.fetcher.Fetch(ctx, link.URL)
+	events, err := service.fetcher.Fetch(ctx, link.URL, link.LastUpdated)
 	if err != nil {
-		service.logger.Error("failed to fetch link", slog.String("url", link.URL), slog.String("error", err.Error()))
+		service.logger.Error("failed to fetch link",
+			slog.String("url", link.URL),
+			slog.String("error", err.Error()),
+			slog.String("context", "scrapperService.fetcher.Fetch"),
+		)
+		update := domain.LinkUpdate{
+			URL:         link.URL,
+			Description: "couldn't fetch your link :(",
+			TgChatIDs:   chatIDs,
+		}
+		err := service.notifier.SendUpdate(ctx, update)
+		if err != nil {
+			service.logger.Error("failed to send update",
+				slog.String("error", err.Error()),
+				slog.Int64("link_id", link.ID),
+				slog.Any("chat_ids", update.TgChatIDs),
+				slog.String("context", "scrapperService.notifier.SendUpdate"),
+			)
+		}
+
 		return
 	}
 
-	if result.UpdatedAt.After(link.LastUpdated) {
-		service.logger.Info("found update for link", slog.String("url", link.URL))
+	if len(events) == 0 {
+		return
+	}
 
+	service.logger.Info("found update for link",
+		slog.String("url", link.URL),
+		slog.Int("count", len(events)),
+	)
+
+	for _, event := range events {
 		if len(chatIDs) > 0 {
 			update := domain.LinkUpdate{
 				ID:          link.ID,
 				URL:         link.URL,
-				Description: result.Description,
+				Description: event.Description(),
+				Preview:     event.Preview(),
 				TgChatIDs:   chatIDs,
 			}
 
+			service.logger.Debug("update",
+				slog.String("url", update.URL),
+				slog.String("description", update.Description),
+				slog.String("preview", update.Preview),
+			)
+
 			err = service.notifier.SendUpdate(ctx, update)
 			if err != nil {
-				service.logger.Error("failed to notify bot", slog.String("error", err.Error()))
+				service.logger.Error("failed to notify bot",
+					slog.String("error", err.Error()),
+					slog.String("context", "scrapperService.notifier.SendUpdate"),
+				)
 				return
 			}
 		}
 
-		link.LastUpdated = result.UpdatedAt
+		link.LastUpdated = event.UpdatedAt()
 		_, err = service.linkRepo.Save(ctx, link)
 		if err != nil {
-			service.logger.Error("failed to update link in DB", slog.Int64("link_id", link.ID))
+			service.logger.Error("failed to update link in DB",
+				slog.Int64("link_id", link.ID),
+				slog.String("error", err.Error()),
+				slog.String("context", "scrapperService.linkRepo.Save"),
+			)
 		}
 	}
 }

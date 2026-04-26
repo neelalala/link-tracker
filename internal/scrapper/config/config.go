@@ -2,29 +2,52 @@ package config
 
 import (
 	"fmt"
-	"github.com/byrnedo/typesafe-config/parse"
 	"time"
+
+	"github.com/byrnedo/typesafe-config/parse"
 )
 
 type Protocol string
 
 const (
-	HTTP Protocol = "http"
-	GRPC Protocol = "grpc"
+	ProtocolHTTP Protocol = "http"
+	ProtocolGRPC Protocol = "grpc"
 )
 
 func (protocol Protocol) Validate() error {
 	switch protocol {
-	case HTTP, GRPC:
+	case ProtocolHTTP, ProtocolGRPC:
 		return nil
 	default:
 		return fmt.Errorf("invalid protocol: %q. Allowed values are 'http' or 'grpc'", protocol)
 	}
 }
 
+type AccessType string
+
+const (
+	AccessTypeBUILDER AccessType = "BUILDER"
+	AccessTypeSQL     AccessType = "SQL"
+)
+
+func (accessType AccessType) Validate() error {
+	switch accessType {
+	case AccessTypeBUILDER, AccessTypeSQL:
+		return nil
+	default:
+		return fmt.Errorf("invalid access type: %q. Allowed values are 'SQL' or 'BUILDER'", accessType)
+	}
+}
+
 type LoggerConfig struct {
 	File  string `config:"file,"`
 	Level string `config:"level,ERROR"`
+}
+
+type DatabaseConfig struct {
+	MigrationsDirUrl string     `config:"migrations-dir-url"`
+	URL              string     `config:"url"`
+	AccessType       AccessType `config:"access-type,BUILDER"`
 }
 
 type SchedulerConfig struct {
@@ -42,11 +65,21 @@ type ServerConfig struct {
 	Protocol Protocol `config:"protocol"`
 }
 
+type FetchersConfig struct {
+	PreviewLimit     int           `config:"preview-limit,200"`
+	Timeout          time.Duration `config:"timeout"`
+	Concurrency      int           `config:"concurrency,1"`
+	Batch            int           `config:"batch,100"`
+	StackOverflowKey string        `config:"stackoverflow-key"`
+}
+
 type Config struct {
 	Logger     LoggerConfig     `config:"logger"`
 	Scheduler  SchedulerConfig  `config:"scheduler"`
 	BotService BotServiceConfig `config:"bot-service"`
 	Server     ServerConfig     `config:"server"`
+	Database   DatabaseConfig   `config:"database"`
+	Fetchers   FetchersConfig   `config:"fetchers"`
 }
 
 func Load(configPath string) (*Config, error) {

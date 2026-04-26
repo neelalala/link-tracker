@@ -3,6 +3,7 @@ package notifier
 import (
 	"context"
 	"fmt"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	pb "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/proto/bot"
 	"google.golang.org/grpc"
@@ -38,6 +39,7 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 		Id:          update.ID,
 		Url:         update.URL,
 		Description: update.Description,
+		Preview:     update.Preview,
 		TgChatIds:   update.TgChatIDs,
 	}
 

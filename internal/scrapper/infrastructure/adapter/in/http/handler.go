@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
 type linkResponse struct {
@@ -27,12 +27,12 @@ type apiErrorResponse struct {
 }
 
 type Handler struct {
-	service *application.SubscriptionService
+	service SubscriptionService
 
 	logger *slog.Logger
 }
 
-func NewHandler(service *application.SubscriptionService, logger *slog.Logger) *Handler {
+func NewHandler(service SubscriptionService, logger *slog.Logger) *Handler {
 	return &Handler{
 		service: service,
 		logger:  logger,
@@ -304,7 +304,7 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, request *http.Req
 			)
 			return
 		}
-		if errors.Is(err, application.ErrUrlNotSupported) {
+		if errors.Is(err, domain.ErrURLNotSupported) {
 			handler.writeError(w, http.StatusUnprocessableEntity,
 				"Link not supported",
 				"unprocessable_entity",

@@ -3,24 +3,33 @@ package telegram
 import (
 	"context"
 	"errors"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/telegram"
 	"log/slog"
 	"time"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/out/http/telegram"
 )
+
+type CommandService interface {
+	HandleCommand(ctx context.Context, msg domain.Message) (string, error)
+	GetCommandsInfo() []domain.CommandInfo
+}
+
+type DialogService interface {
+	HandleMessage(ctx context.Context, msg domain.Message) (string, error)
+}
 
 type Poller struct {
 	tgClient       *telegram.Client
-	commandService *application.CommandService
-	dialogService  *application.DialogService
+	commandService CommandService
+	dialogService  DialogService
 	logger         *slog.Logger
 	timeout        time.Duration
 }
 
 func NewPoller(
-	commandService *application.CommandService,
-	dialogService *application.DialogService,
+	commandService CommandService,
+	dialogService DialogService,
 	tgClient *telegram.Client,
 	logger *slog.Logger,
 	timeout time.Duration,
@@ -53,12 +62,18 @@ func (poller *Poller) Start(ctx context.Context) {
 		default:
 		}
 
-		requestCtx, cancel := context.WithTimeout(ctx, poller.timeout)
+		pollCtx, cancelPoll := context.WithTimeout(ctx, poller.timeout)
 
-		updates, err := poller.tgClient.GetUpdates(requestCtx)
+		updates, err := poller.tgClient.GetUpdates(pollCtx)
+
+		cancelPoll()
+
 		if err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				cancel()
+			if errors.Is(err, context.DeadlineExceeded) {
+				continue
+			}
+
+			if errors.Is(err, context.Canceled) {
 				return
 			}
 
@@ -66,13 +81,13 @@ func (poller *Poller) Start(ctx context.Context) {
 				slog.String("error", err.Error()),
 				slog.String("context", "tgClient.GetUpdates"),
 			)
-			cancel()
-			//time.Sleep(1 * time.Second)
+
+			time.Sleep(1 * time.Second)
 			continue
 		}
 
 		for _, update := range updates {
-			err := poller.handleMessage(requestCtx, update)
+			err := poller.handleMessage(ctx, update)
 			if err != nil {
 				poller.logger.Error("Failed to handle update",
 					slog.String("error", err.Error()),
@@ -80,7 +95,6 @@ func (poller *Poller) Start(ctx context.Context) {
 				)
 			}
 		}
-		cancel()
 	}
 }
 

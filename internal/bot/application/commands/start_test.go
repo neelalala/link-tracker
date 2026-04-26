@@ -3,11 +3,12 @@ package commands
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/mocks"
 	"go.uber.org/mock/gomock"
-	"testing"
 )
 
 func TestStartCommand_Execute(t *testing.T) {

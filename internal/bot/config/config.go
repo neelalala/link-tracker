@@ -2,8 +2,9 @@ package config
 
 import (
 	"fmt"
-	"github.com/byrnedo/typesafe-config/parse"
 	"time"
+
+	"github.com/byrnedo/typesafe-config/parse"
 )
 
 type Protocol string
@@ -20,6 +21,27 @@ func (protocol Protocol) Validate() error {
 	default:
 		return fmt.Errorf("invalid protocol: %q. Allowed values are 'http' or 'grpc'", protocol)
 	}
+}
+
+type AccessType string
+
+const (
+	AccessTypeBUILDER AccessType = "BUILDER"
+	AccessTypeSQL     AccessType = "SQL"
+)
+
+func (accessType AccessType) Validate() error {
+	switch accessType {
+	case AccessTypeBUILDER, AccessTypeSQL:
+		return nil
+	default:
+		return fmt.Errorf("invalid access type: %q. Allowed values are 'SQL' or 'BUILDER'", accessType)
+	}
+}
+
+type DatabaseConfig struct {
+	URL        string     `config:"url"`
+	AccessType AccessType `config:"access-type,BUILDER"`
 }
 
 type TelegramConfig struct {
@@ -48,6 +70,7 @@ type Config struct {
 	Logger          LoggerConfig          `config:"logger"`
 	ScrapperService ScrapperServiceConfig `config:"scrapper-service"`
 	Server          ServerConfig          `config:"server"`
+	Database        DatabaseConfig        `config:"database"`
 }
 
 func Load(configPath string) (*Config, error) {

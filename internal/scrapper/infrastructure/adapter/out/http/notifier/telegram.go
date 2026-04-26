@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"log/slog"
 	"net/http"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
 const (
@@ -16,27 +18,36 @@ const (
 type Bot struct {
 	url        string
 	httpClient *http.Client
+	log        *slog.Logger
 }
 
-func NewBot(url string) *Bot {
+func NewBot(url string, log *slog.Logger) *Bot {
 	return &Bot{
 		url:        url,
 		httpClient: &http.Client{},
+		log:        log,
 	}
 }
 
 func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
+	bot.log.Debug("sending update to bot",
+		slog.String("url", update.URL),
+		slog.String("description", update.Description),
+		slog.String("preview", update.Preview),
+	)
 	type requestJson struct {
 		Id          int64   `json:"id"`
 		Url         string  `json:"url"`
 		Description string  `json:"description"`
+		Preview     string  `json:"preview"`
 		TgChatIds   []int64 `json:"tgChatIds"`
 	}
 
-	var reqJson = requestJson{
+	reqJson := requestJson{
 		Id:          update.ID,
 		Url:         update.URL,
 		Description: update.Description,
+		Preview:     update.Preview,
 		TgChatIds:   update.TgChatIDs,
 	}
 
