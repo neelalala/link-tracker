@@ -70,6 +70,7 @@ func (subRepo *SubscriptionRepository) GetByChatID(ctx context.Context, chatID i
 			),
 		).
 		Where(goqu.Ex{"s.chat_id": chatID}).
+		Order(goqu.I("s.link_id").Asc()).
 		ToSQL()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
@@ -89,6 +90,7 @@ func (subRepo *SubscriptionRepository) GetByLinkID(ctx context.Context, linkID i
 			),
 		).
 		Where(goqu.Ex{"s.link_id": linkID}).
+		Order(goqu.I("s.chat_id").Asc()).
 		ToSQL()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
@@ -132,6 +134,7 @@ func (subRepo *SubscriptionRepository) scanSubscriptions(
 	defer rows.Close()
 
 	subsMap := make(map[int64]*domain.Subscription)
+	var orderedKeys []int64
 
 	for rows.Next() {
 		var chatID, linkID int64
@@ -150,6 +153,7 @@ func (subRepo *SubscriptionRepository) scanSubscriptions(
 				Tags:   make([]string, 0),
 			}
 			subsMap[key] = sub
+			orderedKeys = append(orderedKeys, key)
 		}
 
 		if tag != nil {
@@ -162,8 +166,8 @@ func (subRepo *SubscriptionRepository) scanSubscriptions(
 	}
 
 	result := make([]domain.Subscription, 0, len(subsMap))
-	for _, sub := range subsMap {
-		result = append(result, *sub)
+	for _, key := range orderedKeys {
+		result = append(result, *subsMap[key])
 	}
 
 	return result, nil

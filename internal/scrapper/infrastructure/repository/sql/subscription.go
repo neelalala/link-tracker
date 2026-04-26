@@ -88,7 +88,8 @@ func (subRepo *SubscriptionRepository) GetByChatID(ctx context.Context, chatID i
 			st.tag
 		FROM subscriptions s
 		LEFT JOIN subscription_tags st ON s.chat_id = st.chat_id AND s.link_id = st.link_id
-		WHERE s.chat_id = $1;
+		WHERE s.chat_id = $1
+		ORDER BY s.link_id ASC;
 	`
 
 	rows, err := subRepo.pool.Query(ctx, query, chatID)
@@ -147,7 +148,8 @@ func (subRepo *SubscriptionRepository) GetByLinkID(ctx context.Context, linkID i
 			st.tag
 		FROM subscriptions s
 		LEFT JOIN subscription_tags st ON s.chat_id = st.chat_id AND s.link_id = st.link_id
-		WHERE s.link_id = $1;
+		WHERE s.link_id = $1
+		ORDER BY s.chat_id ASC;
 	`
 
 	rows, err := subRepo.pool.Query(ctx, query, linkID)
