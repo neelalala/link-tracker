@@ -3,26 +3,24 @@ package application
 import (
 	"context"
 	"errors"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
 var ErrNotACommand = errors.New("message is not a command")
 
 type CommandService struct {
-	scrapper    domain.Scrapper
-	sessionRepo domain.SessionRepository
-	commands    map[string]domain.Command
+	scrapper domain.Scrapper
+	commands map[string]domain.Command
 }
 
 func NewCommandService(
 	scrapper domain.Scrapper,
-	sessionRepo domain.SessionRepository,
 	commands []domain.Command,
 ) *CommandService {
 	service := &CommandService{
-		scrapper:    scrapper,
-		sessionRepo: sessionRepo,
-		commands:    make(map[string]domain.Command),
+		scrapper: scrapper,
+		commands: make(map[string]domain.Command),
 	}
 
 	for _, command := range commands {

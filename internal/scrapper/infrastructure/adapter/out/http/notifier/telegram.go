@@ -5,8 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"net/http"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
 const (
@@ -33,7 +34,7 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 		TgChatIds   []int64 `json:"tgChatIds"`
 	}
 
-	var reqJson = requestJson{
+	reqJson := requestJson{
 		Id:          update.ID,
 		Url:         update.URL,
 		Description: update.Description,

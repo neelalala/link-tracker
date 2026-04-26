@@ -2,22 +2,13 @@ package application
 
 import (
 	"context"
-	"errors"
-	"time"
-)
 
-var (
-	ErrUrlNotSupported = errors.New("url not supported")
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
-
-type FetchResult struct {
-	UpdatedAt   time.Time
-	Description string
-}
 
 type LinkFetcher interface {
 	CanHandle(url string) bool
-	Fetch(ctx context.Context, url string) (FetchResult, error)
+	Fetch(ctx context.Context, url string) (domain.FetchResult, error)
 }
 
 type FetcherService struct {
@@ -39,11 +30,11 @@ func (service *FetcherService) CanHandle(url string) bool {
 	return false
 }
 
-func (service *FetcherService) Fetch(ctx context.Context, url string) (FetchResult, error) {
+func (service *FetcherService) Fetch(ctx context.Context, url string) (domain.FetchResult, error) {
 	for _, linkFetcher := range service.linkFetchers {
 		if linkFetcher.CanHandle(url) {
 			return linkFetcher.Fetch(ctx, url)
 		}
 	}
-	return FetchResult{}, ErrUrlNotSupported
+	return domain.FetchResult{}, domain.ErrURLNotSupported
 }

@@ -4,26 +4,34 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
+	"log/slog"
+	"net"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	pb "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/proto/scrapper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"log/slog"
-	"net"
 )
+
+type SubscriptionService interface {
+	RegisterChat(ctx context.Context, chatID int64) error
+	DeleteChat(ctx context.Context, chatID int64) error
+	GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error)
+	AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error)
+	RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error)
+}
 
 type Server struct {
 	pb.UnimplementedScrapperServiceServer
 	port       uint16
 	grpcServer *grpc.Server
-	service    *application.SubscriptionService
+	service    SubscriptionService
 	logger     *slog.Logger
 }
 
-func NewServer(port uint16, service *application.SubscriptionService, logger *slog.Logger) *Server {
+func NewServer(port uint16, service SubscriptionService, logger *slog.Logger) *Server {
 	grpcServer := grpc.NewServer()
 
 	server := &Server{
@@ -147,7 +155,7 @@ func (server *Server) AddLink(ctx context.Context, request *pb.AddLinkRequest) (
 		if errors.Is(err, domain.ErrAlreadySubscribed) {
 			return nil, status.Errorf(codes.AlreadyExists, "link %s already tracked", linkUrl)
 		}
-		if errors.Is(err, application.ErrUrlNotSupported) {
+		if errors.Is(err, domain.ErrURLNotSupported) {
 			return nil, status.Errorf(codes.Unimplemented, "link %s not supported", linkUrl)
 		}
 

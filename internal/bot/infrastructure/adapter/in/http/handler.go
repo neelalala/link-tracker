@@ -3,10 +3,11 @@ package http
 import (
 	"encoding/json"
 	"errors"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"io"
 	"log/slog"
 	"net/http"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
 const BodyBytesLimit = 1 << 20

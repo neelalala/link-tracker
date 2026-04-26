@@ -3,6 +3,7 @@ package scrapper
 import (
 	"context"
 	"fmt"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	pb "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/api/proto/scrapper"
 	"google.golang.org/grpc"
@@ -96,7 +97,7 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 		case codes.AlreadyExists:
 			return domain.TrackedLink{}, domain.ErrAlreadySubscribed
 		case codes.Unimplemented:
-			return domain.TrackedLink{}, domain.ErrUrlNotSupported
+			return domain.TrackedLink{}, domain.ErrURLNotSupported
 		default:
 			return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected error: %w", err)
 		}

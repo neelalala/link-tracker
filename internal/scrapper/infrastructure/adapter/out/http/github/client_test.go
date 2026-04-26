@@ -2,10 +2,11 @@ package github
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClient_Fetch_Resilience(t *testing.T) {
@@ -45,7 +46,6 @@ func TestClient_Fetch_Resilience(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "application/vnd.github+json", r.Header.Get("Accept"))
 

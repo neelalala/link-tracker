@@ -8,4 +8,5 @@ var (
 	ErrLinkNotFound          = errors.New("link not found")
 	ErrAlreadySubscribed     = errors.New("already subscribed")
 	ErrNotSubscribed         = errors.New("not subscribed")
+	ErrURLNotSupported       = errors.New("url not supported")
 )
