@@ -1,4 +1,4 @@
-package scrapper
+package http
 
 import (
 	"bytes"
