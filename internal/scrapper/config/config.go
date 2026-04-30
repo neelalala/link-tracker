@@ -73,6 +73,11 @@ type FetchersConfig struct {
 	StackOverflowKey string        `config:"stackoverflow-key"`
 }
 
+type KafkaConfig struct {
+	Brokers []string `config:"brokers"`
+	Topic   string   `config:"topic,link-updates"`
+}
+
 type Config struct {
 	Logger     LoggerConfig     `config:"logger"`
 	Scheduler  SchedulerConfig  `config:"scheduler"`
@@ -80,6 +85,8 @@ type Config struct {
 	Server     ServerConfig     `config:"server"`
 	Database   DatabaseConfig   `config:"database"`
 	Fetchers   FetchersConfig   `config:"fetchers"`
+	UseQueue   bool             `config:"use-queue,false"`
+	Kafka      KafkaConfig      `config:"kafka"`
 }
 
 func Load(configPath string) (*Config, error) {
