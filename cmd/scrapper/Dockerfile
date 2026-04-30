@@ -40,6 +40,6 @@ COPY cmd/scrapper/scrapper.conf ./scrapper.conf
 COPY --from=builder /app/migrations/ ./migrations
 COPY --from=builder /bin/scrapper /app/scrapper
 
-EXPOSE 63342
+EXPOSE 63343
 
 ENTRYPOINT ["/app/scrapper"]
