@@ -18,11 +18,7 @@ type Notifier struct {
 }
 
 func NewNotifier(brokers []string, topic string, log *slog.Logger) (*Notifier, error) {
-	config := sarama.NewConfig()
-	config.Producer.Return.Successes = true
-	config.Producer.Return.Errors = true
-	config.Producer.RequiredAcks = sarama.WaitForAll
-	config.Producer.Retry.Max = 5
+	config := newConfig()
 
 	producer, err := sarama.NewSyncProducer(brokers, config)
 	if err != nil {
