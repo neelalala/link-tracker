@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,7 +18,19 @@ func main() {
 	cfgPath := flag.String("config", "scrapper.conf", "path to config file")
 	flag.Parse()
 
-	app, cleanup := application.NewApp(ctx, *cfgPath, os.Stdout)
-	defer cleanup()
-	app.Start(ctx)
+	app, err := application.NewApp(ctx, *cfgPath, os.Stdout)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		if err := app.Start(ctx); err != nil {
+			log.Printf("App stopped: %v", err)
+			stop()
+		}
+	}()
+
+	<-ctx.Done()
+
+	app.Shutdown()
 }
