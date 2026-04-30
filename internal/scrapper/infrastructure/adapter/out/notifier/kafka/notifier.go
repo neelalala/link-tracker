@@ -41,7 +41,22 @@ func (n *Notifier) SendUpdate(ctx context.Context, update domain.LinkUpdate) err
 		"update", update,
 		"topic", n.topic,
 	)
-	bytes, err := json.Marshal(update)
+
+	var updateJSON = struct {
+		ID          int64   `json:"id"`
+		URL         string  `json:"url"`
+		Description string  `json:"description"`
+		Preview     string  `json:"preview"`
+		TgChatIds   []int64 `json:"tgChatIds"`
+	}{
+		ID:          update.ID,
+		URL:         update.URL,
+		Description: update.Description,
+		Preview:     update.Preview,
+		TgChatIds:   update.TgChatIDs,
+	}
+
+	bytes, err := json.Marshal(updateJSON)
 	if err != nil {
 		return err
 	}
