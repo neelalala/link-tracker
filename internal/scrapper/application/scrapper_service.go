@@ -11,6 +11,7 @@ import (
 
 type UpdateNotifier interface {
 	SendUpdate(ctx context.Context, update domain.LinkUpdate) error
+	Close() error
 }
 
 type ScrapperService struct {
