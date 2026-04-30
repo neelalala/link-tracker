@@ -14,19 +14,15 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type LinkUpdateHandler interface {
-	HandleUpdate(ctx context.Context, update domain.LinkUpdate) error
-}
-
 type Server struct {
 	pb.UnimplementedBotServiceServer
 	port          uint16
 	grpcServer    *grpc.Server
-	updateHandler LinkUpdateHandler
+	updateHandler domain.LinkUpdateHandler
 	logger        *slog.Logger
 }
 
-func NewServer(port uint16, updateHandler LinkUpdateHandler, logger *slog.Logger) *Server {
+func NewServer(port uint16, updateHandler domain.LinkUpdateHandler, logger *slog.Logger) *Server {
 	grpcServer := grpc.NewServer()
 
 	srv := &Server{
@@ -40,29 +36,33 @@ func NewServer(port uint16, updateHandler LinkUpdateHandler, logger *slog.Logger
 	return srv
 }
 
-func (server *Server) Start(ctx context.Context) error {
+func (server *Server) Start() error {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", server.port))
 	if err != nil {
 		return fmt.Errorf("failed to listen on port %d: %w", server.port, err)
 	}
 
-	errCh := make(chan error, 1)
+	server.logger.Info("gRPC server is running", slog.Int("port", int(server.port)))
+	if err := server.grpcServer.Serve(listener); err != nil {
+		return err
+	}
+	return nil
+}
 
+func (server *Server) Stop(ctx context.Context) error {
+	server.logger.Info("Shutting down gRPC server...")
+
+	stopped := make(chan struct{})
 	go func() {
-		server.logger.Info("gRPC server is running", slog.Int("port", int(server.port)))
-		if err := server.grpcServer.Serve(listener); err != nil {
-			errCh <- err
-		}
+		server.grpcServer.GracefulStop()
+		close(stopped)
 	}()
 
 	select {
-	case err := <-errCh:
-		return fmt.Errorf("grpc server failed: %w", err)
-
 	case <-ctx.Done():
-		server.logger.Info("shutting down gRPC server gracefully...")
-		server.grpcServer.GracefulStop()
-
+		server.grpcServer.Stop()
+		return ctx.Err()
+	case <-stopped:
 		return nil
 	}
 }

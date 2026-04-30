@@ -13,11 +13,11 @@ import (
 const BodyBytesLimit = 1 << 20
 
 type Handler struct {
-	updateHandler LinkUpdateHandler
+	updateHandler domain.LinkUpdateHandler
 	logger        *slog.Logger
 }
 
-func NewHandler(updateHandler LinkUpdateHandler, logger *slog.Logger) *Handler {
+func NewHandler(updateHandler domain.LinkUpdateHandler, logger *slog.Logger) *Handler {
 	return &Handler{
 		updateHandler: updateHandler,
 		logger:        logger,

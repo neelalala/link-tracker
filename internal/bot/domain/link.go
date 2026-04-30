@@ -1,5 +1,9 @@
 package domain
 
+import (
+	"context"
+)
+
 type TrackedLink struct {
 	ID   int64
 	URL  string
@@ -12,4 +16,8 @@ type LinkUpdate struct {
 	Description string
 	Preview     string
 	TgChatIDs   []int64
+}
+
+type LinkUpdateHandler interface {
+	HandleUpdate(ctx context.Context, update LinkUpdate) error
 }

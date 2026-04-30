@@ -23,7 +23,8 @@ import (
 )
 
 type APIServer interface {
-	Start(ctx context.Context) error
+	Start() error
+	Stop(ctx context.Context) error
 }
 
 type Poller interface {
@@ -150,7 +151,7 @@ func (app *App) Start(ctx context.Context) {
 
 	g.Go(func() error {
 		app.slogger.Info("Starting bot API server...")
-		return app.server.Start(gCtx)
+		return app.server.Start()
 	})
 
 	g.Go(func() error {
