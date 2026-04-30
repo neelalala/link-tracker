@@ -25,7 +25,8 @@ import (
 )
 
 type APIServer interface {
-	Start(ctx context.Context) error
+	Start() error
+	Stop(ctx context.Context) error
 }
 
 type App struct {
@@ -135,19 +136,24 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	return app, nil
 }
 
-func (a *App) Start(ctx context.Context) error {
+func (a *App) Start() error {
 	a.scheduler.Start()
 	a.log.Info("scheduler started")
 
 	a.log.Info("starting scrapper api server...")
-	if err := a.server.Start(ctx); err != nil {
+	if err := a.server.Start(); err != nil {
 		return fmt.Errorf("api server stopped with error: %w", err)
 	}
 
 	return nil
 }
-func (a *App) Shutdown() {
+func (a *App) Shutdown(ctx context.Context) {
 	a.log.Info("shutting down scrapper...")
+
+	err := a.server.Stop(ctx)
+	if err != nil {
+		a.log.Error("error shutting down scrapper", slog.String("error", err.Error()))
+	}
 
 	for i := len(a.closers) - 1; i >= 0; i-- {
 		if err := a.closers[i](); err != nil {

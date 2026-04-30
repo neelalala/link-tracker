@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 )
@@ -24,7 +25,7 @@ func main() {
 	}
 
 	go func() {
-		if err := app.Start(ctx); err != nil {
+		if err := app.Start(); err != nil {
 			log.Printf("App stopped: %v", err)
 			stop()
 		}
@@ -32,5 +33,9 @@ func main() {
 
 	<-ctx.Done()
 
-	app.Shutdown()
+	shutdownCtx, shutdownStop := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownStop()
+
+	app.Shutdown(shutdownCtx)
+	log.Println("App stopped")
 }

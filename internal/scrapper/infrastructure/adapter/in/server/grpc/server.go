@@ -28,7 +28,7 @@ type Server struct {
 	port       uint16
 	grpcServer *grpc.Server
 	service    SubscriptionService
-	logger     *slog.Logger
+	log        *slog.Logger
 }
 
 func NewServer(port uint16, service SubscriptionService, logger *slog.Logger) *Server {
@@ -38,36 +38,41 @@ func NewServer(port uint16, service SubscriptionService, logger *slog.Logger) *S
 		port:       port,
 		grpcServer: grpcServer,
 		service:    service,
-		logger:     logger,
+		log:        logger,
 	}
 
 	pb.RegisterScrapperServiceServer(grpcServer, server)
 	return server
 }
 
-func (server *Server) Start(ctx context.Context) error {
+func (server *Server) Start() error {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", server.port))
 	if err != nil {
 		return fmt.Errorf("failed to listen on port %d: %w", server.port, err)
 	}
 
-	errCh := make(chan error, 1)
+	server.log.Info("gRPC server is running", slog.Int("port", int(server.port)))
+	if err := server.grpcServer.Serve(listener); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func (server *Server) Stop(ctx context.Context) error {
+	server.log.Info("Shutting down gRPC server...")
+
+	stopped := make(chan struct{})
 	go func() {
-		server.logger.Info("gRPC server is running", slog.Int("port", int(server.port)))
-		if err := server.grpcServer.Serve(listener); err != nil {
-			errCh <- err
-		}
+		server.grpcServer.GracefulStop()
+		close(stopped)
 	}()
 
 	select {
-	case err := <-errCh:
-		return fmt.Errorf("grpc server failed: %w", err)
-
 	case <-ctx.Done():
-		server.logger.Info("shutting down gRPC server gracefully...")
-		server.grpcServer.GracefulStop()
-
+		server.grpcServer.Stop()
+		return ctx.Err()
+	case <-stopped:
 		return nil
 	}
 }
@@ -79,7 +84,7 @@ func (server *Server) RegisterChat(ctx context.Context, request *pb.RegisterChat
 			return nil, status.Errorf(codes.AlreadyExists, "chat with id %d already registered", request.GetId())
 		}
 
-		server.logger.Error(
+		server.log.Error(
 			"failed to register chat",
 			slog.Int64("chat_id", request.GetId()),
 			slog.String("error", err.Error()),
@@ -98,7 +103,7 @@ func (server *Server) DeleteChat(ctx context.Context, request *pb.DeleteChatRequ
 			return nil, status.Errorf(codes.NotFound, "chat with id %d not registered", request.GetId())
 		}
 
-		server.logger.Error(
+		server.log.Error(
 			"failed to delete chat",
 			slog.Int64("chat_id", request.GetId()),
 			slog.String("error", err.Error()),
@@ -118,7 +123,7 @@ func (server *Server) GetLinks(ctx context.Context, request *pb.GetLinksRequest)
 			return nil, status.Errorf(codes.NotFound, "chat with id %d not registered", chatId)
 		}
 
-		server.logger.Error(
+		server.log.Error(
 			"failed to get tracked links",
 			slog.Int64("chat_id", chatId),
 			slog.String("error", err.Error()),
@@ -159,7 +164,7 @@ func (server *Server) AddLink(ctx context.Context, request *pb.AddLinkRequest) (
 			return nil, status.Errorf(codes.Unimplemented, "link %s not supported", linkUrl)
 		}
 
-		server.logger.Error(
+		server.log.Error(
 			"failed to add link",
 			slog.Int64("chat_id", chatId),
 			slog.String("link", linkUrl),
@@ -189,7 +194,7 @@ func (server *Server) RemoveLink(ctx context.Context, req *pb.RemoveLinkRequest)
 			return nil, status.Errorf(codes.NotFound, "link %s not tracked in chat %d", linkUrl, chatId)
 		}
 
-		server.logger.Error(
+		server.log.Error(
 			"failed to remove link",
 			slog.Int64("chat_id", chatId),
 			slog.String("link", linkUrl),

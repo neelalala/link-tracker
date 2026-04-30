@@ -7,7 +7,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
 	"net/http"
-	"time"
 )
 
 type SubscriptionService interface {
@@ -20,10 +19,12 @@ type SubscriptionService interface {
 
 type Server struct {
 	httpServer *http.Server
+	port       uint16
+	log        *slog.Logger
 }
 
-func NewServer(port uint16, service SubscriptionService, logger *slog.Logger) *Server {
-	handler := NewHandler(service, logger)
+func NewServer(port uint16, service SubscriptionService, log *slog.Logger) *Server {
+	handler := NewHandler(service, log)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /tg-chat/{id}", handler.HandlePostTgChat)
 	mux.HandleFunc("DELETE /tg-chat/{id}", handler.HandleDeleteTgChat)
@@ -38,30 +39,20 @@ func NewServer(port uint16, service SubscriptionService, logger *slog.Logger) *S
 
 	return &Server{
 		httpServer: server,
+		port:       port,
+		log:        log,
 	}
 }
 
-func (server *Server) Start(ctx context.Context) error {
-	errCh := make(chan error, 1)
-
-	go func() {
-		if err := server.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- err
-		}
-	}()
-
-	select {
-	case err := <-errCh:
-		return fmt.Errorf("http server failed: %w", err)
-
-	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := server.httpServer.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("http server shutdown failed: %w", err)
-		}
-
-		return nil
+func (server *Server) Start() error {
+	server.log.Info("HTTP server is running", slog.Int("port", int(server.port)))
+	if err := server.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
 	}
+	return nil
+}
+
+func (server *Server) Stop(ctx context.Context) error {
+	server.log.Info("Shutting down HTTP server...")
+	return server.httpServer.Shutdown(ctx)
 }
