@@ -32,6 +32,11 @@ type Poller interface {
 	Start(ctx context.Context)
 }
 
+type ScrapperClient interface {
+	domain.Scrapper
+	Close() error
+}
+
 type App struct {
 	server UpdateListener
 	poller Poller
@@ -81,6 +86,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creation scrapper client: %v", err)
 	}
+	app.onClose(scrapper.Close)
 
 	dbPool, err := pgxpool.New(context.Background(), cfg.Database.URL)
 	if err != nil {
@@ -165,7 +171,7 @@ func buildListener(cfg *config.Config, notifier *NotifierService, log *slog.Logg
 	}
 }
 
-func buildScrapperClient(cfg *config.Config) (domain.Scrapper, error) {
+func buildScrapperClient(cfg *config.Config) (ScrapperClient, error) {
 	switch cfg.ScrapperService.Protocol {
 	case config.HTTP:
 		scrapper := scrapperhttp.NewClient(cfg.ScrapperService.URL)

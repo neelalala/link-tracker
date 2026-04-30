@@ -28,6 +28,10 @@ func NewClient(url string) *Client {
 	}
 }
 
+func (client *Client) Close() error {
+	return nil
+}
+
 func (client *Client) RegisterChat(ctx context.Context, chatId int64) error {
 	query := fmt.Sprintf("%s/%s/%d", client.baseURL, tgChatEndpoint, chatId)
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, nil)
