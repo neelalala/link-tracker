@@ -65,12 +65,19 @@ type ServerConfig struct {
 	Protocol Protocol `config:"protocol"`
 }
 
+type KafkaConfig struct {
+	Brokers []string `config:"brokers"`
+	Topic   string   `config:"topic,link-updates"`
+}
+
 type Config struct {
 	Telegram        TelegramConfig        `config:"telegram"`
 	Logger          LoggerConfig          `config:"logger"`
 	ScrapperService ScrapperServiceConfig `config:"scrapper-service"`
 	Server          ServerConfig          `config:"server"`
 	Database        DatabaseConfig        `config:"database"`
+	UseQueue        bool                  `config:"use-queue,false"`
+	Kafka           KafkaConfig           `config:"kafka"`
 }
 
 func Load(configPath string) (*Config, error) {
