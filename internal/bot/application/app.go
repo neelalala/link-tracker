@@ -56,6 +56,8 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 		return nil, fmt.Errorf("error loading config: %v", err)
 	}
 
+	fmt.Printf("Loaded Config: %+v\n", cfg)
+
 	app := &App{}
 
 	if cfg.Logger.File != "" {
@@ -83,7 +85,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 	}
 	app.server = listener
 
-	scrapper, err := buildScrapperClient(cfg)
+	scrapper, err := buildScrapperClient(cfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creation scrapper client: %v", err)
 	}
@@ -98,7 +100,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 		return nil
 	})
 
-	sessionRepo, err := buildRepos(cfg, dbPool)
+	sessionRepo, err := buildRepos(cfg, dbPool, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating session repository: %v", err)
 	}
@@ -158,7 +160,16 @@ func (app *App) Shutdown(ctx context.Context) {
 
 func buildListener(cfg *config.Config, notifier *NotifierService, log *slog.Logger) (UpdateListener, error) {
 	if cfg.UseQueue {
-		kafka, err := kafka.NewListener(cfg.Kafka.Brokers, cfg.Kafka.ConsumerGroup, cfg.Kafka.Topic, notifier, log)
+		log.Info("using queue as listener")
+		kafka, err := kafka.NewListener(
+			cfg.Kafka.Brokers,
+			cfg.Kafka.ConsumerGroup,
+			cfg.Kafka.Topic,
+			cfg.Kafka.DLQTopic,
+			cfg.Kafka.Retries,
+			notifier,
+			log,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error creating kafka listener: %v", err)
 		}
@@ -166,9 +177,11 @@ func buildListener(cfg *config.Config, notifier *NotifierService, log *slog.Logg
 	}
 	switch cfg.Server.Protocol {
 	case config.HTTP:
+		log.Info("using http server as listener")
 		server := http.NewServer(cfg.Server.Port, notifier, log)
 		return server, nil
 	case config.GRPC:
+		log.Info("using grpc server as listener")
 		server := grpc.NewServer(cfg.Server.Port, notifier, log)
 		return server, nil
 	default:
@@ -176,12 +189,14 @@ func buildListener(cfg *config.Config, notifier *NotifierService, log *slog.Logg
 	}
 }
 
-func buildScrapperClient(cfg *config.Config) (ScrapperClient, error) {
+func buildScrapperClient(cfg *config.Config, log *slog.Logger) (ScrapperClient, error) {
 	switch cfg.ScrapperService.Protocol {
 	case config.HTTP:
+		log.Info("using http scrapper client")
 		scrapper := scrapperhttp.NewClient(cfg.ScrapperService.URL)
 		return scrapper, nil
 	case config.GRPC:
+		log.Info("using grpc scrapper client")
 		scrapper, err := scrappergrpc.NewClient(cfg.ScrapperService.URL)
 		if err != nil {
 			return nil, fmt.Errorf("error creating scrapper: %v", err)
@@ -192,12 +207,14 @@ func buildScrapperClient(cfg *config.Config) (ScrapperClient, error) {
 	}
 }
 
-func buildRepos(cfg *config.Config, dbPool *pgxpool.Pool) (domain.SessionRepository, error) {
+func buildRepos(cfg *config.Config, dbPool *pgxpool.Pool, log *slog.Logger) (domain.SessionRepository, error) {
 	switch cfg.Database.AccessType {
 	case config.AccessTypeSQL:
+		log.Info("using raw sql database access type")
 		sessionRepo := sql.NewSessionRepository(dbPool)
 		return sessionRepo, nil
 	case config.AccessTypeBUILDER:
+		log.Info("using sql builder database access type")
 		sessionRepo := sqlbuilder.NewSessionRepository(dbPool)
 		return sessionRepo, nil
 	default:

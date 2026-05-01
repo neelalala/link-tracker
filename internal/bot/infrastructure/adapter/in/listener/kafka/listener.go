@@ -11,15 +11,26 @@ import (
 
 type Listener struct {
 	consumer sarama.ConsumerGroup
+	producer sarama.SyncProducer
 	handler  sarama.ConsumerGroupHandler
 	topic    string
+
+	retries int
 
 	cancel context.CancelFunc
 	done   chan struct{}
 	log    *slog.Logger
 }
 
-func NewListener(brokers []string, consumerGroup, topic string, updateHandler domain.LinkUpdateHandler, log *slog.Logger) (*Listener, error) {
+func NewListener(
+	brokers []string,
+	consumerGroup,
+	topic string,
+	dlqTopic string,
+	retries int,
+	updateHandler domain.LinkUpdateHandler,
+	log *slog.Logger,
+) (*Listener, error) {
 	config := newConfig()
 
 	consumer, err := sarama.NewConsumerGroup(brokers, consumerGroup, config)
@@ -27,12 +38,20 @@ func NewListener(brokers []string, consumerGroup, topic string, updateHandler do
 		return nil, err
 	}
 
-	handler := NewHandler(updateHandler, log)
+	producer, err := sarama.NewSyncProducer(brokers, config)
+	if err != nil {
+		consumer.Close()
+		return nil, fmt.Errorf("failed to create producer for dlq: %w", err)
+	}
+
+	handler := NewHandler(updateHandler, producer, dlqTopic, retries, log)
 
 	return &Listener{
 		consumer: consumer,
+		producer: producer,
 		handler:  handler,
 		topic:    topic,
+		retries:  retries,
 		done:     make(chan struct{}),
 		log:      log,
 	}, nil
@@ -72,5 +91,10 @@ func (listener *Listener) Stop(ctx context.Context) error {
 	if err := listener.consumer.Close(); err != nil {
 		return fmt.Errorf("failed to close kafka consumer: %w", err)
 	}
+
+	if err := listener.producer.Close(); err != nil {
+		return fmt.Errorf("failed to close kafka producer: %w", err)
+	}
+
 	return nil
 }

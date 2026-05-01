@@ -9,6 +9,11 @@ func newConfig(opts ...func(*sarama.Config)) *sarama.Config {
 
 	cfg.Version = sarama.V4_0_0_0
 
+	cfg.Producer.Partitioner = sarama.NewHashPartitioner
+	cfg.Producer.Return.Successes = true
+	cfg.Producer.RequiredAcks = sarama.WaitForAll
+	cfg.Producer.Compression = sarama.CompressionGZIP
+
 	cfg.Consumer.Offsets.Initial = sarama.OffsetNewest
 	cfg.Consumer.Offsets.AutoCommit.Enable = false
 
