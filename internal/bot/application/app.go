@@ -12,6 +12,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/commands"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/listener/kafka"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/listener/server/grpc"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/listener/server/http"
 	intelegram "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/telegram"
@@ -157,7 +158,11 @@ func (app *App) Shutdown(ctx context.Context) {
 
 func buildListener(cfg *config.Config, notifier *NotifierService, log *slog.Logger) (UpdateListener, error) {
 	if cfg.UseQueue {
-
+		kafka, err := kafka.NewListener(cfg.Kafka.Brokers, cfg.Kafka.ConsumerGroup, cfg.Kafka.Topic, notifier, log)
+		if err != nil {
+			return nil, fmt.Errorf("error creating kafka listener: %v", err)
+		}
+		return kafka, nil
 	}
 	switch cfg.Server.Protocol {
 	case config.HTTP:
