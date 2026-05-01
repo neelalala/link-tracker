@@ -76,7 +76,7 @@ type Config struct {
 	ScrapperService ScrapperServiceConfig `config:"scrapper-service"`
 	Server          ServerConfig          `config:"server"`
 	Database        DatabaseConfig        `config:"database"`
-	UseQueue        bool                  `config:"use-queue,false"`
+	UseQueue        bool                  `config:"use-queue,true"`
 	Kafka           KafkaConfig           `config:"kafka"`
 }
 

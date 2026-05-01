@@ -85,7 +85,7 @@ type Config struct {
 	Server     ServerConfig     `config:"server"`
 	Database   DatabaseConfig   `config:"database"`
 	Fetchers   FetchersConfig   `config:"fetchers"`
-	UseQueue   bool             `config:"use-queue,false"`
+	UseQueue   bool             `config:"use-queue,true"`
 	Kafka      KafkaConfig      `config:"kafka"`
 }
 
