@@ -1,0 +1,20 @@
+package kafka
+
+import (
+	"github.com/IBM/sarama"
+)
+
+func newConfig(opts ...func(*sarama.Config)) *sarama.Config {
+	cfg := sarama.NewConfig()
+
+	cfg.Version = sarama.V4_0_0_0
+
+	cfg.Consumer.Offsets.Initial = sarama.OffsetNewest
+	cfg.Consumer.Offsets.AutoCommit.Enable = false
+
+	for _, o := range opts {
+		o(cfg)
+	}
+
+	return cfg
+}
