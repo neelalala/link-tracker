@@ -14,6 +14,7 @@ COPY cmd/scrapper ./cmd/scrapper
 COPY internal/scrapper ./internal/scrapper
 COPY docs/scrapper.proto ./docs/
 COPY docs/bot.proto ./docs/
+COPY migrations ./migrations
 
 RUN mkdir -p pkg/api/proto/scrapper
 
@@ -36,8 +37,9 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY cmd/scrapper/scrapper.conf ./scrapper.conf
+COPY --from=builder /app/migrations/ ./migrations
 COPY --from=builder /bin/scrapper /app/scrapper
 
-EXPOSE 63342
+EXPOSE 63343
 
 ENTRYPOINT ["/app/scrapper"]

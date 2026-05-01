@@ -3,10 +3,12 @@ services:
     build:
       context: .
       dockerfile: cmd/bot/Dockerfile
+    restart: unless-stopped
     env_file:
       - .env
     depends_on:
-      - scrapper
+      postgres:
+        condition: service_healthy
     environment:
       - BOT_API_PORT=63342
       - SCRAPPER_URL="scrapper:63343"
@@ -17,6 +19,10 @@ services:
     build:
       context: .
       dockerfile: cmd/scrapper/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -25,6 +31,90 @@ services:
       - BOT_API_PROTOCOL="grpc"
       - SCRAPPER_API_PROTOCOL="grpc"
 
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres_container
+    env_file:
+      - .env
+    ports:
+      - "5430:5432"
+    volumes:
+      - ./pgdata:${PGDATA}
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  kafka-1:
+    image: apache/kafka:latest
+    container_name: kafka-1
+    ports:
+      - "9092:9092"
+    env_file:
+      - kafka_common.env
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1:9092
+
+  kafka-2:
+    image: apache/kafka:latest
+    container_name: kafka-2
+    ports:
+      - "9094:9092"
+    env_file:
+      - kafka_common.env
+    environment:
+      - KAFKA_NODE_ID=2
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-2:9092
+
+  kafka-3:
+    image: apache/kafka:latest
+    container_name: kafka-3
+    ports:
+      - "9095:9092"
+    env_file:
+      - kafka_common.env
+    environment:
+      - KAFKA_NODE_ID=3
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-3:9092
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+
+  kafka-init:
+    image: apache/kafka:latest
+    container_name: kafka-init
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    command: >
+      bash -c "
+        echo 'Waiting for Kafka cluster to be ready...';
+        sleep 10;
+        ./opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic link-updates --partitions 3 --replication-factor 3 --bootstrap-server kafka-1:9092
+        ./opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic link-updates-dlq --partitions 3 --replication-factor 3 --bootstrap-server kafka-1:9092
+        echo 'Topics created successfully!';
+        "
+
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  pgdata:
+    driver: local

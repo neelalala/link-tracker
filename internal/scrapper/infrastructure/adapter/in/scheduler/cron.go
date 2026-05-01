@@ -2,42 +2,43 @@ package scheduler
 
 import (
 	"context"
-	"github.com/go-co-op/gocron/v2"
 	"time"
+
+	"github.com/go-co-op/gocron/v2"
 )
 
-type Cron struct {
-	scheduler gocron.Scheduler
+type Scheduler struct {
+	cron gocron.Scheduler
 
 	baseCtx context.Context
 	cancel  context.CancelFunc
 }
 
-func NewCron(ctx context.Context) (*Cron, error) {
-	scheduler, err := gocron.NewScheduler()
+func New(ctx context.Context) (*Scheduler, error) {
+	cron, err := gocron.NewScheduler()
 	if err != nil {
 		return nil, err
 	}
 
 	cronCtx, cancel := context.WithCancel(ctx)
 
-	cron := &Cron{
-		scheduler: scheduler,
-		baseCtx:   cronCtx,
-		cancel:    cancel,
+	scheduler := &Scheduler{
+		cron:    cron,
+		baseCtx: cronCtx,
+		cancel:  cancel,
 	}
 
-	return cron, nil
+	return scheduler, nil
 }
 
-func (cron *Cron) Schedule(interval time.Duration, jobTimeout time.Duration, jobFunc func(ctx context.Context)) error {
+func (scheduler *Scheduler) Schedule(interval time.Duration, jobTimeout time.Duration, jobFunc func(ctx context.Context)) error {
 	wrapperFunc := func() {
-		ctx, cancel := context.WithTimeout(cron.baseCtx, jobTimeout)
+		ctx, cancel := context.WithTimeout(scheduler.baseCtx, jobTimeout)
 		defer cancel()
 		jobFunc(ctx)
 	}
 
-	_, err := cron.scheduler.NewJob(
+	_, err := scheduler.cron.NewJob(
 		gocron.DurationJob(interval),
 		gocron.NewTask(wrapperFunc),
 	)
@@ -47,13 +48,13 @@ func (cron *Cron) Schedule(interval time.Duration, jobTimeout time.Duration, job
 	return nil
 }
 
-func (cron *Cron) Start() {
-	cron.scheduler.Start()
+func (scheduler *Scheduler) Start() {
+	scheduler.cron.Start()
 }
 
-func (cron *Cron) Shutdown() error {
-	cron.cancel()
-	err := cron.scheduler.Shutdown()
+func (scheduler *Scheduler) Shutdown() error {
+	scheduler.cancel()
+	err := scheduler.cron.Shutdown()
 	if err != nil {
 		return err
 	}

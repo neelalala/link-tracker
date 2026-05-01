@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS sessions;
+
+DROP TABLE IF EXISTS subscription_tags;
+
+DROP TABLE IF EXISTS subscriptions;
+
+DROP TABLE IF EXISTS links;
+
+DROP TABLE IF EXISTS chats;

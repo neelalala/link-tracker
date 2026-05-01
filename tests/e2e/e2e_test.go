@@ -5,6 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/byrnedo/typesafe-config/parse"
 	"github.com/docker/go-connections/nat"
 	"github.com/joho/godotenv"
@@ -13,11 +19,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"io"
-	"net/http"
-	"strconv"
-	"testing"
-	"time"
 )
 
 type TelegramConfig struct {
@@ -59,6 +60,38 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 	require.NoErrorf(t, err, "failed to create network: %v", err)
 
 	defer newNetwork.Remove(ctx)
+
+	const (
+		dbUser = "testuser"
+		dbPass = "testpass"
+		dbName = "scrapper_test"
+	)
+
+	pgReq := testcontainers.ContainerRequest{
+		Image:        "postgres:15-alpine",
+		ExposedPorts: []string{"5432/tcp"},
+		Networks:     []string{newNetwork.Name},
+		NetworkAliases: map[string][]string{
+			newNetwork.Name: {"postgres_db"},
+		},
+		Env: map[string]string{
+			"POSTGRES_USER":     dbUser,
+			"POSTGRES_PASSWORD": dbPass,
+			"POSTGRES_DB":       dbName,
+		},
+		WaitingFor: wait.ForLog("database system is ready to accept connections").
+			WithOccurrence(2).
+			WithStartupTimeout(30 * time.Second),
+	}
+
+	pgContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: pgReq,
+		Started:          true,
+	})
+	require.NoErrorf(t, err, "Failed to start PostgreSQL container: %v", err)
+	defer pgContainer.Terminate(ctx)
+
+	dbURL := fmt.Sprintf("postgres://%s:%s@postgres_db:5432/%s?sslmode=disable", dbUser, dbPass, dbName)
 
 	botReq := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
@@ -102,6 +135,7 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 		Env: map[string]string{
 			"SCRAPPER_API_PORT":     strconv.Itoa(SCRAPPER_API_PORT),
 			"BOT_URL":               BOT_URL,
+			"DATABASE_URL":          dbURL,
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
 		},
