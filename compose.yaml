@@ -107,7 +107,8 @@ services:
         echo 'Waiting for Kafka cluster to be ready...';
         sleep 10;
         ./opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic link-updates --partitions 3 --replication-factor 3 --bootstrap-server kafka-1:9092
-        echo 'Topic created successfully!';
+        ./opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic link-updates-dlq --partitions 3 --replication-factor 3 --bootstrap-server kafka-1:9092
+        echo 'Topics created successfully!';
         "
 
 networks:

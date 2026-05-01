@@ -68,7 +68,9 @@ type ServerConfig struct {
 type KafkaConfig struct {
 	Brokers       []string `config:"brokers"`
 	Topic         string   `config:"topic,link-updates"`
+	DLQTopic      string   `config:"dlq-topic,link-updates-dlq"`
 	ConsumerGroup string   `config:"consumer-group,bot-group-1"`
+	Retries       int      `config:"retries,5"`
 }
 
 type Config struct {
