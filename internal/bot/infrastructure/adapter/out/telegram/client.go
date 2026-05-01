@@ -74,7 +74,10 @@ func (client *Client) SendMessage(ctx context.Context, chatID int64, text string
 		return err
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
+	sendCtx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(sendCtx, http.MethodPost, query, bytes.NewReader(reqBody))
 	if err != nil {
 		return err
 	}
@@ -113,7 +116,10 @@ func (client *Client) SendMessage(ctx context.Context, chatID int64, text string
 func (client *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) {
 	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, client.url, int(client.timeout.Seconds()), client.offset)
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
+	getCtx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(getCtx, http.MethodGet, query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +205,10 @@ func (client *Client) SetMyCommands(ctx context.Context, cmds []domain.CommandIn
 		return err
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
+	setCtx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(setCtx, http.MethodPost, query, bytes.NewReader(reqBody))
 	if err != nil {
 		return err
 	}
