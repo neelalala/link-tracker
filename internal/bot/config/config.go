@@ -66,8 +66,9 @@ type ServerConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers []string `config:"brokers"`
-	Topic   string   `config:"topic,link-updates"`
+	Brokers       []string `config:"brokers"`
+	Topic         string   `config:"topic,link-updates"`
+	ConsumerGroup string   `config:"consumer-group,bot-group-1"`
 }
 
 type Config struct {
