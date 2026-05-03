@@ -77,6 +77,11 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 		return nil
 	})
 
+	transactor, err := buildTransactor(cfg, dbPool)
+	if err != nil {
+		return nil, fmt.Errorf("error creating transactor: %v", err)
+	}
+
 	chatRepo, linkRepo, subRepo, err := buildRepos(cfg, dbPool)
 	if err != nil {
 		return nil, fmt.Errorf("error creating repository: %v", err)
@@ -85,7 +90,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	fetchers := buildFetchers(cfg)
 	fetcher := NewFetcherService(fetchers)
 
-	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, fetcher, log)
+	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
 
 	server, err := buildAPIServer(cfg, subsService, log)
 	if err != nil {
@@ -109,6 +114,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 		linkRepo,
 		subRepo,
 		fetcher,
+		transactor,
 		notifier,
 		cfg.Fetchers.Batch,
 		cfg.Fetchers.Concurrency,
@@ -184,6 +190,19 @@ func buildNotifier(cfg *config.Config, log *slog.Logger) (UpdateNotifier, error)
 		return notifier, nil
 	default:
 		return nil, fmt.Errorf("unsupported notifier protocol: %s", cfg.BotService.Protocol)
+	}
+}
+
+func buildTransactor(cfg *config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
+	switch cfg.Database.AccessType {
+	case config.AccessTypeSQL:
+		transactor := sql.NewTransactor(dbPool)
+		return transactor, nil
+	case config.AccessTypeBUILDER:
+		transactor := sqlbuilder.NewTransactor(dbPool)
+		return transactor, nil
+	default:
+		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
 	}
 }
 
