@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS outbox (
+    id BIGSERIAL PRIMARY KEY,
+    topic VARCHAR(255) NOT NULL,
+    payload TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+    CONSTRAINT valid_status CHECK (
+        status IN ('PENDING', 'SENT', 'FAILED')
+    )
+);
