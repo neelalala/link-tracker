@@ -36,8 +36,10 @@ func (linkRepo *LinkRepository) Save(ctx context.Context, link domain.Link) (dom
 		return domain.Link{}, fmt.Errorf("failed to build query: %w", err)
 	}
 
+	db := GetDB(ctx, linkRepo.pool)
+
 	var saved domain.Link
-	err = linkRepo.pool.QueryRow(ctx, query, args...).Scan(&saved.ID, &saved.URL, &saved.LastUpdated)
+	err = db.QueryRow(ctx, query, args...).Scan(&saved.ID, &saved.URL, &saved.LastUpdated)
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("failed to save link: %w", err)
 	}
@@ -54,8 +56,10 @@ func (linkRepo *LinkRepository) GetByID(ctx context.Context, id int64) (domain.L
 		return domain.Link{}, fmt.Errorf("failed to build query: %w", err)
 	}
 
+	db := GetDB(ctx, linkRepo.pool)
+
 	var link domain.Link
-	err = linkRepo.pool.QueryRow(ctx, query, args...).Scan(
+	err = db.QueryRow(ctx, query, args...).Scan(
 		&link.ID,
 		&link.URL,
 		&link.LastUpdated,
@@ -79,8 +83,10 @@ func (linkRepo *LinkRepository) GetByURL(ctx context.Context, url string) (domai
 		return domain.Link{}, fmt.Errorf("failed to build query: %w", err)
 	}
 
+	db := GetDB(ctx, linkRepo.pool)
+
 	var link domain.Link
-	err = linkRepo.pool.QueryRow(ctx, query, args...).Scan(
+	err = db.QueryRow(ctx, query, args...).Scan(
 		&link.ID,
 		&link.URL,
 		&link.LastUpdated,
@@ -103,7 +109,9 @@ func (linkRepo *LinkRepository) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("failed to build query: %w", err)
 	}
 
-	cmdTag, err := linkRepo.pool.Exec(ctx, query, args...)
+	db := GetDB(ctx, linkRepo.pool)
+
+	cmdTag, err := db.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to delete link: %w", err)
 	}
@@ -126,7 +134,9 @@ func (linkRepo *LinkRepository) GetBatch(ctx context.Context, limit int, offset 
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
 
-	rows, err := linkRepo.pool.Query(ctx, query, args...)
+	db := GetDB(ctx, linkRepo.pool)
+
+	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get batch of links: %w", err)
 	}
