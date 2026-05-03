@@ -22,6 +22,10 @@ type Transactor struct {
 	pool *pgxpool.Pool
 }
 
+func NewTransactor(pool *pgxpool.Pool) *Transactor {
+	return &Transactor{pool}
+}
+
 func (transactor *Transactor) WithinTransaction(ctx context.Context, fn func(context.Context) error) error {
 	if _, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
 		return fn(ctx)
