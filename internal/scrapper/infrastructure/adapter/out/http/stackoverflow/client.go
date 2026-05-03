@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	"net/http"
 	"strings"
 	"time"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
 const (
@@ -34,12 +35,12 @@ func (client *Client) CanHandle(url string) bool {
 	return strings.HasPrefix(url, client.baseURL)
 }
 
-func (client *Client) Fetch(ctx context.Context, url string) (application.FetchResult, error) {
+func (client *Client) Fetch(ctx context.Context, url string) (domain.FetchResult, error) {
 	path := strings.TrimPrefix(url, client.baseURL)
 	parts := strings.Split(path, "/")
 
 	if len(parts) == 0 || parts[0] == "" {
-		return application.FetchResult{}, fmt.Errorf("invalid stackoverflow url: %s", url)
+		return domain.FetchResult{}, fmt.Errorf("invalid stackoverflow url: %s", url)
 	}
 
 	questionID := parts[0]
@@ -48,18 +49,18 @@ func (client *Client) Fetch(ctx context.Context, url string) (application.FetchR
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
 	if err != nil {
-		return application.FetchResult{}, err
+		return domain.FetchResult{}, err
 	}
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return application.FetchResult{}, err
+		return domain.FetchResult{}, err
 	}
 
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return application.FetchResult{}, fmt.Errorf("stackoverflow api returned status: %d for %s", response.StatusCode, query)
+		return domain.FetchResult{}, fmt.Errorf("stackoverflow api returned status: %d for %s", response.StatusCode, query)
 	}
 
 	var responseJson struct {
@@ -70,16 +71,16 @@ func (client *Client) Fetch(ctx context.Context, url string) (application.FetchR
 	}
 
 	if err := json.NewDecoder(response.Body).Decode(&responseJson); err != nil {
-		return application.FetchResult{}, err
+		return domain.FetchResult{}, err
 	}
 
 	if len(responseJson.Items) == 0 {
-		return application.FetchResult{}, fmt.Errorf("question not found for url: %s", url)
+		return domain.FetchResult{}, fmt.Errorf("question not found for url: %s", url)
 	}
 
 	questionData := responseJson.Items[0]
 
-	return application.FetchResult{
+	return domain.FetchResult{
 		UpdatedAt:   time.Unix(questionData.LastActivityDate, 0),
 		Description: fmt.Sprintf("Question '%s' was updated", questionData.Title),
 	}, nil

@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
-	"log/slog"
 )
 
 const (
@@ -18,8 +18,6 @@ const (
 	dialogServiceUnexpectedError     = "Something went wrong. Please try again"
 	dialogServiceTrackLinkSaved      = "Link saved! Now send tags separated by commas (e.g., work, bug). Or send 'skip' to add without tags."
 )
-
-var ErrBadSessionState = fmt.Errorf("unknown session state")
 
 type StateHandler func(context.Context, domain.Session, domain.Message) (string, error)
 
@@ -65,7 +63,7 @@ func (service *DialogService) HandleMessage(ctx context.Context, msg domain.Mess
 	if !ok {
 		session.Reset()
 		_ = service.sessionRepo.Save(ctx, session)
-		return dialogServiceErrorUnknownState, ErrBadSessionState
+		return dialogServiceErrorUnknownState, domain.ErrBadSessionState
 	}
 
 	return handler(ctx, session, msg)
@@ -118,7 +116,7 @@ func (service *DialogService) handleWaitingForTags(ctx context.Context, session 
 			return "You are already tracking this link", nil
 		case errors.Is(err, domain.ErrChatNotRegistered):
 			return "You are not registered yet. Use /start", nil
-		case errors.Is(err, domain.ErrUrlNotSupported):
+		case errors.Is(err, domain.ErrURLNotSupported):
 			return "This link is not supported yet", nil
 		}
 

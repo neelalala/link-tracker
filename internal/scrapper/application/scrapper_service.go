@@ -2,8 +2,9 @@ package application
 
 import (
 	"context"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
 const batchSize = 100
@@ -44,7 +45,10 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 	for {
 		links, err := service.linkRepo.GetBatch(ctx, batchSize, offset)
 		if err != nil {
-			service.logger.Error("failed to get batch of links", slog.String("error", err.Error()))
+			service.logger.Error("failed to get batch of links",
+				slog.String("error", err.Error()),
+				slog.String("context", "scrapperService.linkRepo.GetBatch"),
+			)
 			return err
 		}
 
@@ -64,9 +68,12 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 }
 
 func (service *ScrapperService) processLink(ctx context.Context, link domain.Link) {
-	subscriptions, err := service.subRepo.GetByLinkId(ctx, link.ID)
+	subscriptions, err := service.subRepo.GetByLinkID(ctx, link.ID)
 	if err != nil {
-		service.logger.Error("failed to get subscriptions", slog.Int64("link_id", link.ID))
+		service.logger.Error("failed to get subscriptions",
+			slog.String("context", "scrapperService.subRepo.GetByLinkId"),
+			slog.Int64("link_id", link.ID),
+			slog.String("error", err.Error()))
 		return
 	}
 
@@ -89,7 +96,7 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 					slog.String("error", err.Error()),
 					slog.Int64("link_id", link.ID),
 					slog.Any("chat_ids", update.TgChatIDs),
-					slog.String("context", "ScrapperService.processLink"),
+					slog.String("context", "scrapperService.notifier.SendUpdate"),
 				)
 			}
 		} else {
@@ -100,7 +107,11 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 
 	result, err := service.fetcher.Fetch(ctx, link.URL)
 	if err != nil {
-		service.logger.Error("failed to fetch link", slog.String("url", link.URL), slog.String("error", err.Error()))
+		service.logger.Error("failed to fetch link",
+			slog.String("url", link.URL),
+			slog.String("error", err.Error()),
+			slog.String("context", "scrapperService.fetcher.Fetch"),
+		)
 		return
 	}
 
@@ -117,7 +128,10 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 
 			err = service.notifier.SendUpdate(ctx, update)
 			if err != nil {
-				service.logger.Error("failed to notify bot", slog.String("error", err.Error()))
+				service.logger.Error("failed to notify bot",
+					slog.String("error", err.Error()),
+					slog.String("context", "scrapperService.notifier.SendUpdate"),
+				)
 				return
 			}
 		}
@@ -125,7 +139,11 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 		link.LastUpdated = result.UpdatedAt
 		_, err = service.linkRepo.Save(ctx, link)
 		if err != nil {
-			service.logger.Error("failed to update link in DB", slog.Int64("link_id", link.ID))
+			service.logger.Error("failed to update link in DB",
+				slog.Int64("link_id", link.ID),
+				slog.String("error", err.Error()),
+				slog.String("context", "scrapperService.linkRepo.Save"),
+			)
 		}
 	}
 }

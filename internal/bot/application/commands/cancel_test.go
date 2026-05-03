@@ -3,13 +3,14 @@ package commands
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/mocks"
 	"go.uber.org/mock/gomock"
-	"io"
-	"log/slog"
-	"testing"
 )
 
 func discardLogger() *slog.Logger {
