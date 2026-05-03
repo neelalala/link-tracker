@@ -15,9 +15,12 @@ type LinkValidator interface {
 }
 
 type SubscriptionService struct {
-	chatRepo      domain.ChatRepository
-	linkRepo      domain.LinkRepository
-	subRepo       domain.SubscriptionRepository
+	chatRepo domain.ChatRepository
+	linkRepo domain.LinkRepository
+	subRepo  domain.SubscriptionRepository
+
+	transactor domain.Transactor
+
 	linkValidator LinkValidator
 	logger        *slog.Logger
 }
@@ -26,6 +29,7 @@ func NewSubscriptionService(
 	chatRepo domain.ChatRepository,
 	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,
+	transactor domain.Transactor,
 	linkValidator LinkValidator,
 	logger *slog.Logger,
 ) *SubscriptionService {
@@ -33,6 +37,7 @@ func NewSubscriptionService(
 		chatRepo:      chatRepo,
 		linkRepo:      linkRepo,
 		subRepo:       subRepo,
+		transactor:    transactor,
 		linkValidator: linkValidator,
 		logger:        logger,
 	}
@@ -72,47 +77,52 @@ func (service *SubscriptionService) GetTrackedLinks(ctx context.Context, chatID 
 }
 
 func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error) {
+	if !service.linkValidator.CanHandle(url) {
+		return domain.TrackedLink{}, fmt.Errorf("%w: %s", domain.ErrURLNotSupported, url)
+	}
+
 	_, err := service.chatRepo.GetByID(ctx, chatID)
 	if err != nil {
 		return domain.TrackedLink{}, err
 	}
 
-	if !service.linkValidator.CanHandle(url) {
-		return domain.TrackedLink{}, fmt.Errorf("%w: %s", domain.ErrURLNotSupported, url)
-	}
-
-	link, err := service.linkRepo.GetByURL(ctx, url)
-	if err != nil {
-		if !errors.Is(err, domain.ErrLinkNotFound) {
-			return domain.TrackedLink{}, err
-		}
-		link, err = service.linkRepo.Save(ctx, domain.Link{
-			URL:         url,
-			LastUpdated: time.Now(),
-		})
+	var link domain.Link
+	err = service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		link, err = service.linkRepo.GetByURL(ctx, url)
 		if err != nil {
-			return domain.TrackedLink{}, err
+			if !errors.Is(err, domain.ErrLinkNotFound) {
+				return err
+			}
+			link, err = service.linkRepo.Save(ctx, domain.Link{
+				URL:         url,
+				LastUpdated: time.Now(),
+			})
+			if err != nil {
+				return err
+			}
 		}
-	}
-	if exists, _ := service.subRepo.Exists(ctx, chatID, link.ID); exists {
-		return domain.TrackedLink{}, domain.ErrAlreadySubscribed
-	}
+		if exists, _ := service.subRepo.Exists(ctx, chatID, link.ID); exists {
+			return domain.ErrAlreadySubscribed
+		}
 
-	subscription := domain.Subscription{
-		ChatID: chatID,
-		LinkID: link.ID,
-		Tags:   tags,
-	}
+		subscription := domain.Subscription{
+			ChatID: chatID,
+			LinkID: link.ID,
+			Tags:   tags,
+		}
 
-	err = service.subRepo.Save(ctx, subscription)
-	if err != nil {
-		return domain.TrackedLink{}, err
-	}
+		err = service.subRepo.Save(ctx, subscription)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 
 	return domain.TrackedLink{
 		ID:   link.ID,
 		URL:  link.URL,
-		Tags: subscription.Tags,
+		Tags: tags,
 	}, nil
 }
 

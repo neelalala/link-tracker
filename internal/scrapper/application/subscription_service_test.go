@@ -15,17 +15,23 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/mocks"
 )
 
-type MockLinkValidator struct {
+type mockLinkValidator struct {
 	Can []bool
 }
 
-func (m *MockLinkValidator) CanHandle(url string) bool {
+func (m *mockLinkValidator) CanHandle(url string) bool {
 	if len(m.Can) == 0 {
 		return false
 	}
 	can := m.Can[0]
 	m.Can = m.Can[1:]
 	return can
+}
+
+type mockTransactor struct{}
+
+func (m mockTransactor) WithinTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
 }
 
 func testLogger() *slog.Logger {
@@ -39,9 +45,9 @@ func TestSubscriptionService_AddLink_NewLinkCreatedAndSaved(t *testing.T) {
 	mockChatRepo := mocks.NewMockChatRepository(ctrl)
 	mockLinkRepo := mocks.NewMockLinkRepository(ctrl)
 	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
-	mockValidator := &MockLinkValidator{Can: []bool{true}}
+	mockValidator := &mockLinkValidator{Can: []bool{true}}
 
-	service := NewSubscriptionService(mockChatRepo, mockLinkRepo, mockSubRepo, mockValidator, testLogger())
+	service := NewSubscriptionService(mockChatRepo, mockLinkRepo, mockSubRepo, mockTransactor{}, mockValidator, testLogger())
 
 	ctx := context.Background()
 	chatID := int64(123)
@@ -83,9 +89,9 @@ func TestSubscriptionService_AddLink_ExistingLinkJustSubscribed(t *testing.T) {
 	mockChatRepo := mocks.NewMockChatRepository(ctrl)
 	mockLinkRepo := mocks.NewMockLinkRepository(ctrl)
 	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
-	mockValidator := &MockLinkValidator{Can: []bool{true}}
+	mockValidator := &mockLinkValidator{Can: []bool{true}}
 
-	service := NewSubscriptionService(mockChatRepo, mockLinkRepo, mockSubRepo, mockValidator, testLogger())
+	service := NewSubscriptionService(mockChatRepo, mockLinkRepo, mockSubRepo, mockTransactor{}, mockValidator, testLogger())
 
 	ctx := context.Background()
 	chatID := int64(123)
@@ -125,9 +131,9 @@ func TestSubscriptionService_AddLink_UnsupportedURL(t *testing.T) {
 	mockChatRepo := mocks.NewMockChatRepository(ctrl)
 	mockLinkRepo := mocks.NewMockLinkRepository(ctrl)
 	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
-	mockValidator := &MockLinkValidator{Can: []bool{false}}
+	mockValidator := &mockLinkValidator{Can: []bool{false}}
 
-	service := NewSubscriptionService(mockChatRepo, mockLinkRepo, mockSubRepo, mockValidator, testLogger())
+	service := NewSubscriptionService(mockChatRepo, mockLinkRepo, mockSubRepo, mockTransactor{}, mockValidator, testLogger())
 
 	ctx := context.Background()
 	chatID := int64(123)
