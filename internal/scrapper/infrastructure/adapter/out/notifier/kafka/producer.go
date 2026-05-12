@@ -11,13 +11,13 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-type Notifier struct {
-	producer sarama.SyncProducer
-	topic    string
-	log      *slog.Logger
+type Producer struct {
+	sync  sarama.SyncProducer
+	topic string
+	log   *slog.Logger
 }
 
-func NewNotifier(brokers []string, topic string, log *slog.Logger) (*Notifier, error) {
+func NewProducer(brokers []string, topic string, log *slog.Logger) (*Producer, error) {
 	config := newConfig()
 
 	producer, err := sarama.NewSyncProducer(brokers, config)
@@ -25,17 +25,17 @@ func NewNotifier(brokers []string, topic string, log *slog.Logger) (*Notifier, e
 		return nil, err
 	}
 
-	return &Notifier{
-		producer: producer,
-		topic:    topic,
-		log:      log,
+	return &Producer{
+		sync:  producer,
+		topic: topic,
+		log:   log,
 	}, nil
 }
 
-func (n *Notifier) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
-	n.log.Info("Sending update",
+func (producer *Producer) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
+	producer.log.Info("Sending update",
 		"update", update,
-		"topic", n.topic,
+		"topic", producer.topic,
 	)
 
 	var updateJSON = struct {
@@ -58,26 +58,26 @@ func (n *Notifier) SendUpdate(ctx context.Context, update domain.LinkUpdate) err
 	}
 
 	msg := &sarama.ProducerMessage{
-		Topic: n.topic,
+		Topic: producer.topic,
 		Key:   sarama.StringEncoder(strconv.FormatInt(update.ID, 10)),
 		Value: sarama.ByteEncoder(bytes),
 	}
 
-	partition, offset, err := n.producer.SendMessage(msg)
+	partition, offset, err := producer.sync.SendMessage(msg)
 	if err != nil {
 		return err
 	}
 
-	n.log.Info("Update sent",
-		"topic", n.topic,
+	producer.log.Info("Update sent",
+		"topic", producer.topic,
 		"partition", partition,
 		"offset", offset)
 	return nil
 }
 
-func (n *Notifier) Close() error {
-	if err := n.producer.Close(); err != nil {
-		return fmt.Errorf("failed to close kafka producer: %w", err)
+func (producer *Producer) Close() error {
+	if err := producer.sync.Close(); err != nil {
+		return fmt.Errorf("failed to close kafka sync producer: %w", err)
 	}
 	return nil
 }

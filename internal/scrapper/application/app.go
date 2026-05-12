@@ -172,7 +172,7 @@ func (a *App) Shutdown(ctx context.Context) {
 
 func buildNotifier(cfg *config.Config, log *slog.Logger) (UpdateNotifier, error) {
 	if cfg.UseQueue {
-		notifier, err := kafka.NewNotifier(cfg.Kafka.Brokers, cfg.Kafka.Topic, log)
+		notifier, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.Topic, log)
 		if err != nil {
 			return nil, err
 		}
