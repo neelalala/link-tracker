@@ -73,9 +73,16 @@ type FetchersConfig struct {
 	StackOverflowKey string        `config:"stackoverflow-key"`
 }
 
+type KafkaWorkerConfig struct {
+	Count      int           `config:"count,1"`
+	Interval   time.Duration `config:"interval,1m"`
+	EventLimit int           `config:"event-limit,10"`
+}
+
 type KafkaConfig struct {
-	Brokers []string `config:"brokers"`
-	Topic   string   `config:"topic,link-updates"`
+	Brokers []string          `config:"brokers"`
+	Topic   string            `config:"topic,link-updates"`
+	Workers KafkaWorkerConfig `config:"workers"`
 }
 
 type Config struct {
