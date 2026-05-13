@@ -21,12 +21,9 @@ func (update LinkUpdateJSON) Validate() validation.Problems {
 		problems.Add("url", "must not be empty")
 	}
 
-	if update.Description == "" {
-		problems.Add("description", "must not be empty")
-	}
-
-	if update.Preview == "" {
-		problems.Add("preview", "must not be empty")
+	if update.Description == "" && update.Preview == "" {
+		problems.Add("description", "either description or preview must be set")
+		problems.Add("preview", "either description or preview must be set")
 	}
 
 	if len(update.TgChatIDs) == 0 {
