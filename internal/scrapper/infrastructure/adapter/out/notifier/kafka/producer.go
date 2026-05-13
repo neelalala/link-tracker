@@ -40,6 +40,8 @@ func (producer *Producer) SendEvents(ctx context.Context) error {
 		return fmt.Errorf("cannot get pending messages: %w", err)
 	}
 
+	producer.log.Debug("Sending events", "events_count", len(events))
+
 	for _, event := range events {
 		msg := &sarama.ProducerMessage{
 			Topic: event.Topic,

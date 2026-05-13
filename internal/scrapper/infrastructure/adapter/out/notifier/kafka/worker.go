@@ -32,6 +32,7 @@ func (worker *Worker) Start() {
 		case <-worker.ctx.Done():
 			return
 		case <-ticker.C:
+			worker.log.Debug("Worker tick")
 			err := worker.producer.SendEvents(worker.ctx)
 			if err != nil {
 				worker.log.Error("Failed to send events to Kafka", "error", err)
