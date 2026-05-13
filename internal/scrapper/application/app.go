@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"slices"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/config"
@@ -161,8 +162,8 @@ func (a *App) Shutdown(ctx context.Context) {
 		a.log.Error("error shutting down scrapper", slog.String("error", err.Error()))
 	}
 
-	for i := len(a.closers) - 1; i >= 0; i-- {
-		if err := a.closers[i](); err != nil {
+	for _, closer := range slices.Backward(a.closers) {
+		if err := closer(); err != nil {
 			a.log.Error("error during cleanup", slog.String("error", err.Error()))
 		}
 	}
