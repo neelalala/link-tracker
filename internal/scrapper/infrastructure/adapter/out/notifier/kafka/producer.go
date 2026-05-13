@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -12,12 +11,14 @@ import (
 )
 
 type Producer struct {
-	sync  sarama.SyncProducer
-	topic string
+	sync    sarama.SyncProducer
+	outRepo domain.OutboxRepository
+
+	limit int
 	log   *slog.Logger
 }
 
-func NewProducer(brokers []string, topic string, log *slog.Logger) (*Producer, error) {
+func NewProducer(brokers []string, outRepo domain.OutboxRepository, limit int, log *slog.Logger) (*Producer, error) {
 	config := newConfig()
 
 	producer, err := sarama.NewSyncProducer(brokers, config)
@@ -26,52 +27,53 @@ func NewProducer(brokers []string, topic string, log *slog.Logger) (*Producer, e
 	}
 
 	return &Producer{
-		sync:  producer,
-		topic: topic,
-		log:   log,
+		sync:    producer,
+		outRepo: outRepo,
+		limit:   limit,
+		log:     log,
 	}, nil
 }
 
-func (producer *Producer) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
-	producer.log.Info("Sending update",
-		"update", update,
-		"topic", producer.topic,
-	)
-
-	var updateJSON = struct {
-		ID          int64   `json:"id"`
-		URL         string  `json:"url"`
-		Description string  `json:"description"`
-		Preview     string  `json:"preview"`
-		TgChatIds   []int64 `json:"tgChatIds"`
-	}{
-		ID:          update.ID,
-		URL:         update.URL,
-		Description: update.Description,
-		Preview:     update.Preview,
-		TgChatIds:   update.TgChatIDs,
-	}
-
-	bytes, err := json.Marshal(updateJSON)
+func (producer *Producer) SendEvents(ctx context.Context) error {
+	events, err := producer.outRepo.GetPending(ctx, producer.limit)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get pending messages: %w", err)
 	}
 
-	msg := &sarama.ProducerMessage{
-		Topic: producer.topic,
-		Key:   sarama.StringEncoder(strconv.FormatInt(update.ID, 10)),
-		Value: sarama.ByteEncoder(bytes),
+	for _, event := range events {
+		msg := &sarama.ProducerMessage{
+			Topic: event.Topic,
+			Key:   sarama.StringEncoder(strconv.FormatInt(event.ID, 10)),
+			Value: sarama.ByteEncoder(event.Payload),
+		}
+
+		partition, offset, err := producer.sync.SendMessage(msg)
+		if err != nil {
+			producer.log.Error("Failed to send event to kafka",
+				"error", err,
+				"topic", event.Topic,
+				"event_id", event.ID,
+			)
+			continue
+		}
+
+		err = producer.outRepo.UpdateStatus(ctx, event.ID, domain.OutboxStatusSent)
+		if err != nil {
+			producer.log.Error("Failed to update status for event",
+				"error", err,
+				"topic", event.Topic,
+				"event_id", event.ID,
+			)
+			continue
+		}
+
+		producer.log.Info("Event sent",
+			"topic", event.Topic,
+			"partition", partition,
+			"offset", offset,
+		)
 	}
 
-	partition, offset, err := producer.sync.SendMessage(msg)
-	if err != nil {
-		return err
-	}
-
-	producer.log.Info("Update sent",
-		"topic", producer.topic,
-		"partition", partition,
-		"offset", offset)
 	return nil
 }
 
