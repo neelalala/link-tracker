@@ -109,6 +109,7 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 			"SCRAPPER_URL":          SCRAPPER_URL,
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
+			"USE_QUEUE":             "false",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", BOT_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
@@ -138,6 +139,7 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 			"DATABASE_URL":          dbURL,
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
+			"USE_QUEUE":             "false",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
