@@ -21,6 +21,17 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const (
+	BOT_API_PORT      = 63342
+	BOT_URL           = "bot:63342"
+	SCRAPPER_API_PORT = 63343
+	SCRAPPER_URL      = "scrapper:63343"
+
+	dbUser = "testuser"
+	dbPass = "testpass"
+	dbName = "scrapper_test"
+)
+
 type TelegramConfig struct {
 	Token string `config:"token"`
 }
@@ -43,36 +54,13 @@ func Load(botConfig string) (*Config, error) {
 	return cfg, nil
 }
 
-func TestEndToEnd_ScrapperAndBot(t *testing.T) {
-	cfg, err := Load("../../cmd/bot/bot.conf")
-	require.NoErrorf(t, err, "error loading config: %v", err)
-
-	const (
-		BOT_API_PORT      = 63342
-		BOT_URL           = "bot:63342"
-		SCRAPPER_API_PORT = 63343
-		SCRAPPER_URL      = "scrapper:63343"
-	)
-
-	ctx := context.Background()
-
-	newNetwork, err := network.New(ctx)
-	require.NoErrorf(t, err, "failed to create network: %v", err)
-
-	defer newNetwork.Remove(ctx)
-
-	const (
-		dbUser = "testuser"
-		dbPass = "testpass"
-		dbName = "scrapper_test"
-	)
-
+func loadPostgresContainer(ctx context.Context, net *testcontainers.DockerNetwork) (testcontainers.Container, error) {
 	pgReq := testcontainers.ContainerRequest{
 		Image:        "postgres:17-alpine",
 		ExposedPorts: []string{"5432/tcp"},
-		Networks:     []string{newNetwork.Name},
+		Networks:     []string{net.Name},
 		NetworkAliases: map[string][]string{
-			newNetwork.Name: {"postgres_db"},
+			net.Name: {"postgres_db"},
 		},
 		Env: map[string]string{
 			"POSTGRES_USER":     dbUser,
@@ -84,24 +72,22 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 			WithStartupTimeout(30 * time.Second),
 	}
 
-	pgContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: pgReq,
 		Started:          true,
 	})
-	require.NoErrorf(t, err, "Failed to start PostgreSQL container: %v", err)
-	defer pgContainer.Terminate(ctx)
+}
 
-	dbURL := fmt.Sprintf("postgres://%s:%s@postgres_db:5432/%s?sslmode=disable", dbUser, dbPass, dbName)
-
+func loadBotContainer(ctx context.Context, net *testcontainers.DockerNetwork, cfg *Config) (testcontainers.Container, error) {
 	botReq := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
 			Context:    "../../",
 			Dockerfile: "cmd/bot/Dockerfile",
 		},
 		ExposedPorts: []string{fmt.Sprintf("%d/tcp", BOT_API_PORT)},
-		Networks:     []string{newNetwork.Name},
+		Networks:     []string{net.Name},
 		NetworkAliases: map[string][]string{
-			newNetwork.Name: {"bot"},
+			net.Name: {"bot"},
 		},
 		Env: map[string]string{
 			"APP_TELEGRAM_TOKEN":    cfg.Telegram.Token,
@@ -114,23 +100,22 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", BOT_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
 
-	botContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: botReq,
 		Started:          true,
 	})
-	require.NoErrorf(t, err, "failed to start bot container: %v", err)
+}
 
-	defer botContainer.Terminate(ctx)
-
+func loadScrapperContainer(ctx context.Context, net *testcontainers.DockerNetwork, dbURL string) (testcontainers.Container, error) {
 	scrapperReq := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
 			Context:    "../../",
 			Dockerfile: "cmd/scrapper/Dockerfile",
 		},
 		ExposedPorts: []string{fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT)},
-		Networks:     []string{newNetwork.Name},
+		Networks:     []string{net.Name},
 		NetworkAliases: map[string][]string{
-			newNetwork.Name: {"scrapper"},
+			net.Name: {"scrapper"},
 		},
 
 		Env: map[string]string{
@@ -144,12 +129,34 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
 
-	scrapperContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: scrapperReq,
 		Started:          true,
 	})
-	require.NoErrorf(t, err, "failed to start scrapper container: %v", err)
+}
 
+func TestEndToEnd_BotScrapperHTTP(t *testing.T) {
+	cfg, err := Load("../../cmd/bot/bot.conf")
+	require.NoErrorf(t, err, "error loading config: %v", err)
+
+	ctx := context.Background()
+
+	newNetwork, err := network.New(ctx)
+	require.NoErrorf(t, err, "failed to create network: %v", err)
+	defer newNetwork.Remove(ctx)
+
+	pgContainer, err := loadPostgresContainer(ctx, newNetwork)
+	require.NoErrorf(t, err, "Failed to start PostgreSQL container: %v", err)
+	defer pgContainer.Terminate(ctx)
+
+	dbURL := fmt.Sprintf("postgres://%s:%s@postgres_db:5432/%s?sslmode=disable", dbUser, dbPass, dbName)
+
+	botContainer, err := loadBotContainer(ctx, newNetwork, cfg)
+	require.NoErrorf(t, err, "failed to start bot container: %v", err)
+	defer botContainer.Terminate(ctx)
+
+	scrapperContainer, err := loadScrapperContainer(ctx, newNetwork, dbURL)
+	require.NoErrorf(t, err, "failed to start scrapper container: %v", err)
 	defer scrapperContainer.Terminate(ctx)
 
 	scrapperHost, _ := scrapperContainer.Host(ctx)
