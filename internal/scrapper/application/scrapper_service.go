@@ -178,38 +178,41 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 	)
 
 	for _, event := range events {
-		if len(chatIDs) > 0 {
-			update := domain.LinkUpdate{
-				ID:          link.ID,
-				URL:         link.URL,
-				Description: event.Description(),
-				Preview:     event.Preview(),
-				TgChatIDs:   chatIDs,
-			}
+		err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+			if len(chatIDs) > 0 {
+				update := domain.LinkUpdate{
+					ID:          link.ID,
+					URL:         link.URL,
+					Description: event.Description(),
+					Preview:     event.Preview(),
+					TgChatIDs:   chatIDs,
+				}
 
-			service.logger.Debug("update",
-				slog.String("url", update.URL),
-				slog.String("description", update.Description),
-				slog.String("preview", update.Preview),
-			)
-
-			err = service.notifier.SendUpdate(ctx, update)
-			if err != nil {
-				service.logger.Error("failed to notify bot",
-					slog.String("error", err.Error()),
-					slog.String("context", "scrapperService.notifier.SendUpdate"),
+				service.logger.Info("update",
+					slog.String("url", update.URL),
+					slog.String("description", update.Description),
+					slog.String("preview", update.Preview),
 				)
-				return
-			}
-		}
 
-		link.LastUpdated = event.UpdatedAt()
-		_, err = service.linkRepo.Save(ctx, link)
+				err = service.notifier.SendUpdate(ctx, update)
+				if err != nil {
+					return fmt.Errorf("failed to send update: %w", err)
+				}
+			}
+
+			link.LastUpdated = event.UpdatedAt()
+			_, err = service.linkRepo.Save(ctx, link)
+			if err != nil {
+				return fmt.Errorf("failed to save link: %w", err)
+			}
+
+			return nil
+		})
+
 		if err != nil {
-			service.logger.Error("failed to update link in DB",
-				slog.Int64("link_id", link.ID),
-				slog.String("error", err.Error()),
-				slog.String("context", "scrapperService.linkRepo.Save"),
+			service.logger.Error("failed to process event",
+				"url", link.URL,
+				"error", err,
 			)
 		}
 	}
