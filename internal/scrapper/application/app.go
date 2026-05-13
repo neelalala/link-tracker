@@ -62,13 +62,19 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	}
 
 	log := logger.NewLogger(cfg.Logger.Level, out)
+
+	log.Info("Info messages are enabled")
+	log.Debug("Debug messages are enabled")
+
 	app.log = log
 
+	log.Debug("running migrations")
 	err = database.RunMigrationsFromFile(cfg.Database.URL, cfg.Database.MigrationsDirUrl, log)
 	if err != nil {
 		return nil, fmt.Errorf("error running migrations: %v", err)
 	}
 
+	log.Debug("Creating db pool")
 	dbPool, err := pgxpool.New(context.Background(), cfg.Database.URL)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to database: %v", err)
@@ -78,38 +84,48 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 		return nil
 	})
 
+	log.Debug("Building transactor")
 	transactor, err := buildTransactor(cfg, dbPool)
 	if err != nil {
 		return nil, fmt.Errorf("error creating transactor: %v", err)
 	}
 
+	log.Debug("Building repositories")
 	chatRepo, linkRepo, subRepo, err := buildRepos(cfg, dbPool)
 	if err != nil {
 		return nil, fmt.Errorf("error creating repository: %v", err)
 	}
 
+	log.Debug("Building fetchers")
 	fetchers := buildFetchers(cfg)
+
+	log.Debug("Building fetcher service")
 	fetcher := NewFetcherService(fetchers)
 
+	log.Debug("Building subscription service")
 	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
 
+	log.Debug("Building API server")
 	server, err := buildAPIServer(cfg, subsService, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating API server: %v", err)
 	}
 	app.server = server
 
+	log.Debug("Building notification service")
 	notifier, err := buildNotifier(ctx, cfg, dbPool, app, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating notifier: %v", err)
 	}
 
+	log.Debug("Creating scheduler")
 	scheduler, err := cron.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error creating scheduler: %v", err)
 	}
 	app.scheduler = scheduler
 
+	log.Debug("Building scrapper service")
 	scrapperService, err := NewScrapperService(
 		linkRepo,
 		subRepo,
@@ -118,8 +134,10 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 		notifier,
 		cfg.Fetchers.Batch,
 		cfg.Fetchers.Concurrency,
-		log)
+		log,
+	)
 
+	log.Debug("Creating scheduler job")
 	err = scheduler.Schedule(
 		cfg.Scheduler.FetchInterval,
 		cfg.Scheduler.FetchTimeout,
@@ -143,6 +161,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 }
 
 func (a *App) Start() error {
+	a.log.Debug("Starting application")
 	a.scheduler.Start()
 	a.log.Info("scheduler started")
 
@@ -178,6 +197,7 @@ func buildNotifier(
 	log *slog.Logger,
 ) (UpdateNotifier, error) {
 	if cfg.UseQueue {
+		log.Debug("Building kafka")
 		return buildKafka(ctx, cfg, dbPool, app, log)
 	}
 	switch cfg.BotService.Protocol {
@@ -203,6 +223,7 @@ func buildKafka(
 	app *App,
 	log *slog.Logger,
 ) (UpdateNotifier, error) {
+	log.Debug("Building outbox repository")
 	var outRepo domain.OutboxRepository
 	switch cfg.Database.AccessType {
 	case config.AccessTypeSQL:
@@ -213,14 +234,17 @@ func buildKafka(
 		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
 	}
 
+	log.Debug("Building kafka producer")
 	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, outRepo, cfg.Kafka.Workers.EventLimit, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kafka producer: %v", err)
 	}
 	app.onClose(producer.Close)
 
+	log.Debug("Running workers")
 	runWorkers(ctx, cfg, producer, log)
 
+	log.Debug("Building kafka notifier")
 	notifier := kafka.NewNotifier(outRepo, cfg.Kafka.Topic, log)
 
 	return notifier, nil
@@ -229,7 +253,7 @@ func buildKafka(
 func runWorkers(ctx context.Context, cfg *config.Config, producer *kafka.Producer, log *slog.Logger) {
 	for range cfg.Kafka.Workers.Count {
 		worker := kafka.NewWorker(ctx, producer, cfg.Kafka.Workers.Interval, log)
-		worker.Start()
+		go worker.Start()
 	}
 }
 
