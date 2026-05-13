@@ -68,7 +68,7 @@ func TestEndToEnd_ScrapperAndBot(t *testing.T) {
 	)
 
 	pgReq := testcontainers.ContainerRequest{
-		Image:        "postgres:15-alpine",
+		Image:        "postgres:17-alpine",
 		ExposedPorts: []string{"5432/tcp"},
 		Networks:     []string{newNetwork.Name},
 		NetworkAliases: map[string][]string{
