@@ -51,7 +51,7 @@ func (outboxRepo *OutboxRepository) Add(ctx context.Context, topic string, paylo
 }
 
 func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status domain.OutboxStatus, limit int) ([]domain.Outbox, error) {
-	query, args, err := psql.Select("id", "topic", "payload", "status", "crated_at", "updated_at").
+	query, args, err := psql.Select("id", "topic", "payload", "status", "created_at", "updated_at").
 		From(goqu.T("outbox")).
 		Where(goqu.C("status").Eq(status)).
 		Order(goqu.C("created_at").Asc()).
@@ -103,7 +103,7 @@ func (outboxRepo *OutboxRepository) GetFailed(ctx context.Context, limit int) ([
 
 func (outboxRepo *OutboxRepository) UpdateStatus(ctx context.Context, id int64, status domain.OutboxStatus) error {
 	query, args, err := psql.Update(goqu.T("outbox")).
-		Set(goqu.Record{"status": status, "updated_at": "CURRENT_TIMESTAMP"}).
+		Set(goqu.Record{"status": status, "updated_at": goqu.L("CURRENT_TIMESTAMP")}).
 		Where(goqu.C("id").Eq(id)).
 		ToSQL()
 	if err != nil {
