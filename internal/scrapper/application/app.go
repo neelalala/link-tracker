@@ -99,11 +99,10 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	}
 	app.server = server
 
-	notifier, err := buildNotifier(cfg, log)
+	notifier, err := buildNotifier(ctx, cfg, dbPool, app, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating notifier: %v", err)
 	}
-	app.onClose(notifier.Close)
 
 	scheduler, err := cron.New(ctx)
 	if err != nil {
@@ -171,13 +170,15 @@ func (a *App) Shutdown(ctx context.Context) {
 	a.log.Info("scrapper successfully stopped")
 }
 
-func buildNotifier(cfg *config.Config, log *slog.Logger) (UpdateNotifier, error) {
+func buildNotifier(
+	ctx context.Context,
+	cfg *config.Config,
+	dbPool *pgxpool.Pool,
+	app *App,
+	log *slog.Logger,
+) (UpdateNotifier, error) {
 	if cfg.UseQueue {
-		notifier, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.Topic, log)
-		if err != nil {
-			return nil, err
-		}
-		return notifier, nil
+		return buildKafka(ctx, cfg, dbPool, app, log)
 	}
 	switch cfg.BotService.Protocol {
 	case config.ProtocolHTTP:
@@ -188,9 +189,47 @@ func buildNotifier(cfg *config.Config, log *slog.Logger) (UpdateNotifier, error)
 		if err != nil {
 			return nil, err
 		}
+		app.onClose(notifier.Close)
 		return notifier, nil
 	default:
 		return nil, fmt.Errorf("unsupported notifier protocol: %s", cfg.BotService.Protocol)
+	}
+}
+
+func buildKafka(
+	ctx context.Context,
+	cfg *config.Config,
+	dbPool *pgxpool.Pool,
+	app *App,
+	log *slog.Logger,
+) (UpdateNotifier, error) {
+	var outRepo domain.OutboxRepository
+	switch cfg.Database.AccessType {
+	case config.AccessTypeSQL:
+		outRepo = sql.NewOutboxRepository(dbPool)
+	case config.AccessTypeBUILDER:
+		outRepo = sqlbuilder.NewOutboxRepository(dbPool)
+	default:
+		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
+	}
+
+	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, outRepo, cfg.Kafka.Workers.EventLimit, log)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kafka producer: %v", err)
+	}
+	app.onClose(producer.Close)
+
+	runWorkers(ctx, cfg, producer, log)
+
+	notifier := kafka.NewNotifier(outRepo, cfg.Kafka.Topic, log)
+
+	return notifier, nil
+}
+
+func runWorkers(ctx context.Context, cfg *config.Config, producer *kafka.Producer, log *slog.Logger) {
+	for range cfg.Kafka.Workers.Count {
+		worker := kafka.NewWorker(ctx, producer, cfg.Kafka.Workers.Interval, log)
+		worker.Start()
 	}
 }
 
