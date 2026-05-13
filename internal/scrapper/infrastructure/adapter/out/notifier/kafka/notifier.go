@@ -60,7 +60,3 @@ func (notifier *Notifier) SendUpdate(ctx context.Context, update domain.LinkUpda
 
 	return nil
 }
-
-func (notifier *Notifier) Close() error {
-	return nil
-}

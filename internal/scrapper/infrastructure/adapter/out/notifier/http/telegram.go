@@ -76,7 +76,3 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 
 	return nil
 }
-
-func (bot *Bot) Close() error {
-	return nil
-}
