@@ -88,7 +88,7 @@ func loadBotContainer(ctx context.Context, net *testcontainers.DockerNetwork, cf
 			net.Name: {"bot"},
 		},
 		Env: map[string]string{
-			"APP_TELEGRAM_TOKEN":    cfg.Telegram.Token,
+			"TELEGRAM_TOKEN":        cfg.Telegram.Token,
 			"BOT_API_PORT":          strconv.Itoa(BOT_API_PORT),
 			"SCRAPPER_URL":          fmt.Sprintf("scrapper:%d", SCRAPPER_API_PORT),
 			"BOT_API_PROTOCOL":      "http",
