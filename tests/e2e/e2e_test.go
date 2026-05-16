@@ -23,9 +23,7 @@ import (
 
 const (
 	BOT_API_PORT      = 63342
-	BOT_URL           = "bot:63342"
 	SCRAPPER_API_PORT = 63343
-	SCRAPPER_URL      = "scrapper:63343"
 
 	dbUser = "testuser"
 	dbPass = "testpass"
@@ -92,7 +90,7 @@ func loadBotContainer(ctx context.Context, net *testcontainers.DockerNetwork, cf
 		Env: map[string]string{
 			"APP_TELEGRAM_TOKEN":    cfg.Telegram.Token,
 			"BOT_API_PORT":          strconv.Itoa(BOT_API_PORT),
-			"SCRAPPER_URL":          SCRAPPER_URL,
+			"SCRAPPER_URL":          fmt.Sprintf("scrapper:%d", SCRAPPER_API_PORT),
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
 			"USE_QUEUE":             "false",
@@ -120,7 +118,7 @@ func loadScrapperContainer(ctx context.Context, net *testcontainers.DockerNetwor
 
 		Env: map[string]string{
 			"SCRAPPER_API_PORT":     strconv.Itoa(SCRAPPER_API_PORT),
-			"BOT_URL":               BOT_URL,
+			"BOT_URL":               fmt.Sprintf("bot:%d", BOT_API_PORT),
 			"DATABASE_URL":          dbURL,
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
