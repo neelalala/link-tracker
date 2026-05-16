@@ -144,7 +144,7 @@ func TestEndToEnd_BotScrapperHTTP(t *testing.T) {
 	defer newNetwork.Remove(ctx)
 
 	pgContainer, err := loadPostgresContainer(ctx, newNetwork)
-	require.NoErrorf(t, err, "Failed to start PostgreSQL container: %v", err)
+	require.NoErrorf(t, err, "failed to start PostgreSQL container: %v", err)
 	defer pgContainer.Terminate(ctx)
 
 	dbURL := fmt.Sprintf("postgres://%s:%s@postgres_db:5432/%s?sslmode=disable", dbUser, dbPass, dbName)
