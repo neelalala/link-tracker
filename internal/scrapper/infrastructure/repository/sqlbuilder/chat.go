@@ -31,7 +31,9 @@ func (chatRepo *ChatRepository) Create(ctx context.Context, id int64) error {
 		return fmt.Errorf("failed to build query: %w", err)
 	}
 
-	_, err = chatRepo.pool.Exec(ctx, query, args...)
+	db := GetDB(ctx, chatRepo.pool)
+
+	_, err = db.Exec(ctx, query, args...)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -55,8 +57,10 @@ func (chatRepo *ChatRepository) GetByID(ctx context.Context, id int64) (domain.C
 		return domain.Chat{}, fmt.Errorf("failed to build query: %w", err)
 	}
 
+	db := GetDB(ctx, chatRepo.pool)
+
 	var saved domain.Chat
-	err = chatRepo.pool.QueryRow(ctx, query, args...).Scan(&saved.ID)
+	err = db.QueryRow(ctx, query, args...).Scan(&saved.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Chat{}, fmt.Errorf("%w: chat with id %d not found", domain.ErrChatNotRegistered, id)
@@ -76,7 +80,9 @@ func (chatRepo *ChatRepository) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("failed to build query: %w", err)
 	}
 
-	cmdTag, err := chatRepo.pool.Exec(ctx, query, args...)
+	db := GetDB(ctx, chatRepo.pool)
+
+	cmdTag, err := db.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to delete chat with id %d: %w", id, err)
 	}

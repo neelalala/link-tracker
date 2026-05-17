@@ -29,8 +29,10 @@ func (linkRepo *LinkRepository) Save(ctx context.Context, link domain.Link) (dom
 		RETURNING id, url, last_updated
 	`
 
+	db := GetDB(ctx, linkRepo.pool)
+
 	var saved domain.Link
-	err := linkRepo.pool.QueryRow(ctx, query, link.URL, link.LastUpdated).Scan(
+	err := db.QueryRow(ctx, query, link.URL, link.LastUpdated).Scan(
 		&saved.ID,
 		&saved.URL,
 		&saved.LastUpdated,
@@ -45,8 +47,10 @@ func (linkRepo *LinkRepository) Save(ctx context.Context, link domain.Link) (dom
 func (linkRepo *LinkRepository) GetByID(ctx context.Context, id int64) (domain.Link, error) {
 	query := `SELECT id, url, last_updated FROM links WHERE id = $1`
 
+	db := GetDB(ctx, linkRepo.pool)
+
 	var link domain.Link
-	err := linkRepo.pool.QueryRow(ctx, query, id).Scan(
+	err := db.QueryRow(ctx, query, id).Scan(
 		&link.ID,
 		&link.URL,
 		&link.LastUpdated,
@@ -64,8 +68,10 @@ func (linkRepo *LinkRepository) GetByID(ctx context.Context, id int64) (domain.L
 func (linkRepo *LinkRepository) GetByURL(ctx context.Context, url string) (domain.Link, error) {
 	query := `SELECT id, url, last_updated FROM links WHERE url = $1`
 
+	db := GetDB(ctx, linkRepo.pool)
+
 	var link domain.Link
-	err := linkRepo.pool.QueryRow(ctx, query, url).Scan(
+	err := db.QueryRow(ctx, query, url).Scan(
 		&link.ID,
 		&link.URL,
 		&link.LastUpdated,
@@ -83,7 +89,9 @@ func (linkRepo *LinkRepository) GetByURL(ctx context.Context, url string) (domai
 func (linkRepo *LinkRepository) Delete(ctx context.Context, id int64) error {
 	query := `DELETE FROM links WHERE id = $1`
 
-	cmdTag, err := linkRepo.pool.Exec(ctx, query, id)
+	db := GetDB(ctx, linkRepo.pool)
+
+	cmdTag, err := db.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete link: %w", err)
 	}
@@ -103,7 +111,9 @@ func (linkRepo *LinkRepository) GetBatch(ctx context.Context, limit int, offset 
 		LIMIT $1 OFFSET $2
 	`
 
-	rows, err := linkRepo.pool.Query(ctx, query, limit, offset)
+	db := GetDB(ctx, linkRepo.pool)
+
+	rows, err := db.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get batch of links: %w", err)
 	}
