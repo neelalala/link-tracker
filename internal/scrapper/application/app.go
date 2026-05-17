@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"log/slog"
@@ -91,10 +92,16 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, func()) {
 		cfg.Fetchers.StackOverflowKey,
 	)
 
+	transactor, err := buildTransactor(cfg, dbPool)
+	if err != nil {
+		slogger.Error("unable to create transactor", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
 	fetchers := []domain.LinkFetcher{githubClient, stackoverflowClient}
 	fetcher := NewFetcherService(fetchers)
 
-	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, fetcher, slogger)
+	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, slogger)
 
 	var server APIServer
 	switch cfg.Server.Protocol {
@@ -138,6 +145,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, func()) {
 		linkRepo,
 		subRepo,
 		fetcher,
+		transactor,
 		botNotifier,
 		cfg.Fetchers.Batch,
 		cfg.Fetchers.Concurrency,
@@ -191,4 +199,17 @@ func (a *App) Start(ctx context.Context) {
 	}
 
 	a.slogger.Info("scrapper successfully stopped")
+}
+
+func buildTransactor(cfg *config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
+	switch cfg.Database.AccessType {
+	case config.AccessTypeSQL:
+		transactor := sql.NewTransactor(dbPool)
+		return transactor, nil
+	case config.AccessTypeBUILDER:
+		transactor := sqlbuilder.NewTransactor(dbPool)
+		return transactor, nil
+	default:
+		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
+	}
 }
