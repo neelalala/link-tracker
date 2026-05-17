@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +27,7 @@ func TestSubscriptionRepository_Integration(t *testing.T) {
 		username   = "testuser"
 		password   = "testpass"
 		database   = "scrapper_test"
-		migrations = "file://../../migrations"
+		migrations = "file://../../../migrations"
 	)
 
 	req := testcontainers.ContainerRequest{

@@ -27,7 +27,7 @@ func TestLinkRepository_Integration(t *testing.T) {
 		username   = "testuser"
 		password   = "testpass"
 		database   = "scrapper_test"
-		migrations = "file://../../migrations"
+		migrations = "file://../../../migrations"
 	)
 
 	req := testcontainers.ContainerRequest{
