@@ -158,7 +158,7 @@ func (app *App) Shutdown(ctx context.Context) {
 	app.log.Info("bot successfully stopped")
 }
 
-func buildListener(cfg *config.Config, notifier *NotifierService, log *slog.Logger) (UpdateListener, error) {
+func buildListener(cfg *config.Config, notifier domain.LinkUpdateHandler, log *slog.Logger) (UpdateListener, error) {
 	if cfg.UseQueue {
 		log.Info("using queue as listener")
 		kafka, err := kafka.NewListener(
