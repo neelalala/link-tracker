@@ -14,10 +14,11 @@ type UpdateNotifier interface {
 }
 
 type ScrapperService struct {
-	linkRepo domain.LinkRepository
-	subRepo  domain.SubscriptionRepository
-	fetcher  *FetcherService
-	notifier UpdateNotifier
+	linkRepo   domain.LinkRepository
+	subRepo    domain.SubscriptionRepository
+	fetcher    *FetcherService
+	transactor domain.Transactor
+	notifier   UpdateNotifier
 
 	batchSize     int
 	fetchersCount int
@@ -29,6 +30,7 @@ func NewScrapperService(
 	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,
 	fetcher *FetcherService,
+	transactor domain.Transactor,
 	notifier UpdateNotifier,
 	batchSize int,
 	fetchersCount int,
@@ -46,6 +48,7 @@ func NewScrapperService(
 		linkRepo:      linkRepo,
 		subRepo:       subRepo,
 		fetcher:       fetcher,
+		transactor:    transactor,
 		notifier:      notifier,
 		batchSize:     batchSize,
 		fetchersCount: fetchersCount,
