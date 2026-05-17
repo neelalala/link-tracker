@@ -146,10 +146,16 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 
 		fmt.Fprintf(w, `[
 			{
-				"title": "New PR",
+				"title": "New PR1",
 				"user": {"login": "alice"},
-			"body_text": "long pr body: %s",
+				"body_text": "long pr body: %s",
 				"created_at": "2026-04-11T12:00:00Z"
+			},
+			{
+				"title": "New PR2",
+				"user": {"login": "alice"},
+				"body_text": "normal pr body: fix preview len test",
+				"created_at": "2026-05-17T12:00:00Z"
 			}
 		]`, strings.Repeat("1234", 100))
 	})
@@ -159,10 +165,16 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 
 		fmt.Fprintf(w, `[
 			{
-				"title": "New Issue",
+				"title": "New Issue1",
 				"user": {"login": "charlie"},
-			"body_text": "long issue body: %s",
+				"body_text": "long issue body: %s",
 				"created_at": "2026-04-11T12:00:00Z"
+			},
+			{
+				"title": "New Issue2",
+				"user": {"login": "charlie"},
+				"body_text": "normal issue body: tests are bad...",
+				"created_at": "2026-05-17T12:00:00Z"
 			}
 		]`, strings.Repeat("1234", 100))
 	})
@@ -176,9 +188,9 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 	updates, err := client.Fetch(context.Background(), url, since)
 
 	require.NoError(t, err)
-	require.Len(t, updates, 2)
+	require.Len(t, updates, 4)
 
 	for _, update := range updates {
-		assert.LessOrEqual(t, 200, len([]rune(update.Preview())))
+		assert.GreaterOrEqual(t, 200, len([]rune(update.Preview())))
 	}
 }
