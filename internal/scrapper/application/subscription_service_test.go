@@ -139,8 +139,6 @@ func TestSubscriptionService_AddLink_UnsupportedURL(t *testing.T) {
 	chatID := int64(123)
 	url := "https://unsupported.com/page"
 
-	mockChatRepo.EXPECT().GetByID(ctx, chatID).Return(domain.Chat{ID: chatID}, nil)
-
 	_, err := service.AddLink(ctx, chatID, url, nil)
 
 	require.ErrorIs(t, err, domain.ErrURLNotSupported)
