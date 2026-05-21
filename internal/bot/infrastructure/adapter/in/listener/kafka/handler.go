@@ -158,7 +158,7 @@ func (h *Handler) bytesToLinkUpdate(value []byte) (domain.LinkUpdate, error) {
 
 	linkUpdate, err := mapper.LinkUpdateFromNative(native)
 	if err != nil {
-		return domain.LinkUpdate{}, fmt.Errorf("error decoding native from bytes: %w", err)
+		return domain.LinkUpdate{}, fmt.Errorf("error mapping native to domain LinkUpdate: %w", err)
 	}
 
 	return linkUpdate, nil
