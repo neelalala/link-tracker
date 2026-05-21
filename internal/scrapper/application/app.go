@@ -49,8 +49,6 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Loaded Config: %+v\n", cfg)
-
 	app := &App{}
 
 	if cfg.Logger.File != "" {

@@ -56,8 +56,6 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 		return nil, fmt.Errorf("error loading config: %v", err)
 	}
 
-	fmt.Printf("Loaded Config: %+v\n", cfg)
-
 	app := &App{}
 
 	if cfg.Logger.File != "" {
