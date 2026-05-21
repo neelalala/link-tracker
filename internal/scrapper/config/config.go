@@ -80,9 +80,11 @@ type KafkaWorkerConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers []string          `config:"brokers"`
-	Topic   string            `config:"topic,link-updates"`
-	Workers KafkaWorkerConfig `config:"workers"`
+	Brokers           []string          `config:"brokers"`
+	SchemaRegistryURL string            `config:"schema-registry-url"`
+	Topic             string            `config:"topic,link-updates"`
+	SchemaPath        string            `config:"schema-path"`
+	Workers           KafkaWorkerConfig `config:"workers"`
 }
 
 type Config struct {
