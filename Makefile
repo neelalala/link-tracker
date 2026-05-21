@@ -1,5 +1,9 @@
 COVERAGE_FILE ?= coverage.out
 
+container_runtime := $(shell which podman || which docker)
+
+$(info using ${container_runtime})
+
 # Get all directories in cmd/ as available modules
 MODULES := $(notdir $(wildcard cmd/*))
 
@@ -30,3 +34,12 @@ $(addprefix build_,$(MODULES)):
 test:
 	@go test -coverpkg='github.com/es-debug/backend-academy-2024-go-template/...' --race -count=1 -coverprofile='$(COVERAGE_FILE)' ./...
 	@go tool cover -func='$(COVERAGE_FILE)' | grep ^total | tr -s '\t'
+
+up: down
+	${container_runtime} compose up --build -d
+
+down:
+	${container_runtime} compose down
+
+clean:
+	${container_runtime} compose down -v
