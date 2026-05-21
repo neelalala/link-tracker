@@ -31,7 +31,7 @@ type Handler struct {
 func NewHandler(
 	updateHandler domain.LinkUpdateHandler,
 	producer sarama.SyncProducer,
-	dqlTopic string,
+	dlqTopic string,
 	retries int,
 	registryURL string,
 	log *slog.Logger,
@@ -39,7 +39,7 @@ func NewHandler(
 	return &Handler{
 		updateHandler: updateHandler,
 		producer:      producer,
-		dlqTopic:      dqlTopic,
+		dlqTopic:      dlqTopic,
 		retries:       retries,
 		srClient:      srclient.NewSchemaRegistryClient(registryURL),
 		log:           log,
