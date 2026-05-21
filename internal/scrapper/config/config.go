@@ -77,6 +77,7 @@ type KafkaWorkerConfig struct {
 	Count      int           `config:"count,1"`
 	Interval   time.Duration `config:"interval,1m"`
 	EventLimit int           `config:"event-limit,10"`
+	MaxRetries int           `config:"max-retries,5"`
 }
 
 type KafkaConfig struct {
