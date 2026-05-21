@@ -29,8 +29,9 @@ type Producer struct {
 	outRepo  domain.OutboxRepository
 	registry map[string]topicSerializer
 
-	limit int
-	log   *slog.Logger
+	limit      int
+	maxRetries int
+	log        *slog.Logger
 }
 
 func NewProducer(
@@ -39,6 +40,7 @@ func NewProducer(
 	configs map[string]TopicConfig,
 	outRepo domain.OutboxRepository,
 	limit int,
+	maxRetries int,
 	log *slog.Logger,
 ) (*Producer, error) {
 	srClient := srclient.NewSchemaRegistryClient(registryURL)
@@ -64,11 +66,12 @@ func NewProducer(
 	}
 
 	return &Producer{
-		sync:     producer,
-		outRepo:  outRepo,
-		registry: registry,
-		limit:    limit,
-		log:      log,
+		sync:       producer,
+		outRepo:    outRepo,
+		registry:   registry,
+		limit:      limit,
+		maxRetries: maxRetries,
+		log:        log,
 	}, nil
 }
 
@@ -84,7 +87,7 @@ func (producer *Producer) SendEvents(ctx context.Context) error {
 		serializer, exists := producer.registry[event.Topic]
 		if !exists {
 			producer.log.Error("No schema config found for topic", "topic", event.Topic, "event_id", event.ID)
-			// dlq?
+			producer.markFailed(ctx, event)
 			continue
 		}
 
@@ -95,6 +98,7 @@ func (producer *Producer) SendEvents(ctx context.Context) error {
 				"event_id", event.ID,
 				"error", err.Error(),
 			)
+			producer.markFailed(ctx, event)
 			continue
 		}
 
@@ -111,18 +115,11 @@ func (producer *Producer) SendEvents(ctx context.Context) error {
 				"topic", event.Topic,
 				"event_id", event.ID,
 			)
+			producer.incrementRetries(ctx, event)
 			continue
 		}
 
-		err = producer.outRepo.UpdateStatus(ctx, event.ID, domain.OutboxStatusSent)
-		if err != nil {
-			producer.log.Error("Failed to update status for event",
-				"error", err,
-				"topic", event.Topic,
-				"event_id", event.ID,
-			)
-			continue
-		}
+		producer.markSent(ctx, event)
 
 		producer.log.Info("Event sent",
 			"topic", event.Topic,
@@ -139,6 +136,49 @@ func (producer *Producer) Close() error {
 		return fmt.Errorf("failed to close kafka sync producer: %w", err)
 	}
 	return nil
+}
+
+func (producer *Producer) incrementRetries(ctx context.Context, event domain.Outbox) {
+	retries, err := producer.outRepo.IncrementRetries(ctx, event.ID)
+	if err != nil {
+		producer.log.Error("Failed to increment retries",
+			"error", err,
+			"event_id", event.ID,
+		)
+		return
+	}
+
+	if retries >= producer.maxRetries {
+		producer.log.Warn("Event exceeded max retries, marking as FAILED",
+			"event_id", event.ID,
+			"retries", retries,
+			"max_retries", producer.maxRetries,
+		)
+		if err := producer.outRepo.UpdateStatus(ctx, event.ID, domain.OutboxStatusFailed); err != nil {
+			producer.log.Error("Failed to mark event as FAILED",
+				"error", err,
+				"event_id", event.ID,
+			)
+		}
+	}
+}
+
+func (producer *Producer) markSent(ctx context.Context, event domain.Outbox) {
+	if err := producer.outRepo.UpdateStatus(ctx, event.ID, domain.OutboxStatusSent); err != nil {
+		producer.log.Error("Failed to mark event as SENT",
+			"error", err,
+			"event_id", event.ID,
+		)
+	}
+}
+
+func (producer *Producer) markFailed(ctx context.Context, event domain.Outbox) {
+	if err := producer.outRepo.UpdateStatus(ctx, event.ID, domain.OutboxStatusFailed); err != nil {
+		producer.log.Error("Failed to mark event as FAILED",
+			"error", err,
+			"event_id", event.ID,
+		)
+	}
 }
 
 func getSchema(srClient *srclient.SchemaRegistryClient, topic, schemaString string, log *slog.Logger) (*srclient.Schema, error) {
