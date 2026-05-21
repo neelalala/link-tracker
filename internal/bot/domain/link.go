@@ -26,7 +26,7 @@ type LinkUpdateHandler interface {
 func (update LinkUpdate) Validate() validation.Problems {
 	problems := make(validation.Problems)
 
-	if update.ID <= 0 {
+	if update.ID < 0 {
 		problems.Add("id", "must be positive")
 	}
 
