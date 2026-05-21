@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -15,8 +16,7 @@ type Listener struct {
 	handler  sarama.ConsumerGroupHandler
 	topic    string
 
-	retries int
-
+	ctx    context.Context
 	cancel context.CancelFunc
 	done   chan struct{}
 	log    *slog.Logger
@@ -54,29 +54,29 @@ func NewListener(
 		log,
 	)
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return &Listener{
 		consumer: consumer,
 		producer: producer,
 		handler:  handler,
 		topic:    topic,
-		retries:  retries,
+		ctx:      ctx,
+		cancel:   cancel,
 		done:     make(chan struct{}),
 		log:      log,
 	}, nil
 }
 
 func (listener *Listener) Start() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	listener.cancel = cancel
-
 	defer close(listener.done)
 
 	for {
-		if err := listener.consumer.Consume(ctx, []string{listener.topic}, listener.handler); err != nil {
+		if err := listener.consumer.Consume(listener.ctx, []string{listener.topic}, listener.handler); err != nil {
 			return err
 		}
 
-		if ctx.Err() != nil {
+		if listener.ctx.Err() != nil {
 			return nil
 		}
 	}
@@ -96,13 +96,11 @@ func (listener *Listener) Stop(ctx context.Context) error {
 		listener.log.Warn("Kafka listener shutdown context exceeded")
 	}
 
-	if err := listener.consumer.Close(); err != nil {
-		return fmt.Errorf("failed to close kafka consumer: %w", err)
-	}
+	errConsumer := listener.consumer.Close()
 
-	if err := listener.producer.Close(); err != nil {
-		return fmt.Errorf("failed to close kafka producer: %w", err)
-	}
+	errProducer := listener.producer.Close()
 
-	return nil
+	err := errors.Join(errConsumer, errProducer)
+
+	return err
 }
