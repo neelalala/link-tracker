@@ -64,7 +64,6 @@ func (h *Handler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama
 
 			h.log.Info("message received",
 				"key", string(message.Key),
-				"value", string(message.Value),
 				"topic", message.Topic,
 				"partition", message.Partition,
 				"offset", message.Offset,
