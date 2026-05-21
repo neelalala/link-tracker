@@ -88,30 +88,20 @@ func (producer *Producer) SendEvents(ctx context.Context) error {
 			continue
 		}
 
-		nativeData, err := serializer.parse(event.Payload)
+		value, err := eventToBytes(serializer, event)
 		if err != nil {
-			producer.log.Error("Failed to parse payload", "error", err, "event_id", event.ID)
+			producer.log.Error("Failed to serialize event",
+				"topic", event.Topic,
+				"event_id", event.ID,
+				"error", err.Error(),
+			)
 			continue
 		}
-
-		avroBinary, err := serializer.codec.BinaryFromNative(nil, nativeData)
-		if err != nil {
-			producer.log.Error("Failed to encode avro", "error", err, "event_id", event.ID)
-			continue
-		}
-
-		schemaIDBytes := make([]byte, 4)
-		binary.BigEndian.PutUint32(schemaIDBytes, uint32(serializer.schemaID))
-
-		var recordValue []byte
-		recordValue = append(recordValue, byte(0))
-		recordValue = append(recordValue, schemaIDBytes...)
-		recordValue = append(recordValue, avroBinary...)
 
 		msg := &sarama.ProducerMessage{
 			Topic: event.Topic,
 			Key:   sarama.StringEncoder(strconv.FormatInt(event.ID, 10)),
-			Value: sarama.ByteEncoder(recordValue),
+			Value: sarama.ByteEncoder(value),
 		}
 
 		partition, offset, err := producer.sync.SendMessage(msg)
@@ -172,4 +162,26 @@ func getSchema(srClient *srclient.SchemaRegistryClient, topic, schemaString stri
 	}
 
 	return schema, nil
+}
+
+func eventToBytes(serializer topicSerializer, event domain.Outbox) ([]byte, error) {
+	nativeData, err := serializer.parse(event.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse payload: %v", err)
+	}
+
+	avroBinary, err := serializer.codec.BinaryFromNative(nil, nativeData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode avro: %v", err)
+	}
+
+	schemaIDBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(schemaIDBytes, uint32(serializer.schemaID))
+
+	var recordValue []byte
+	recordValue = append(recordValue, byte(0))
+	recordValue = append(recordValue, schemaIDBytes...)
+	recordValue = append(recordValue, avroBinary...)
+
+	return recordValue, nil
 }
