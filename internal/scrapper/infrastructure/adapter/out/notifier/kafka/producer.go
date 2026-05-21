@@ -49,15 +49,9 @@ func NewProducer(
 		if err != nil {
 			return nil, fmt.Errorf("failed to get schema for topic %s: %w", topic, err)
 		}
-
-		codec, err := goavro.NewCodec(cfg.SchemaString)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create codec for topic %s: %w", topic, err)
-		}
-
 		registry[topic] = topicSerializer{
 			schemaID: schema.ID(),
-			codec:    codec,
+			codec:    schema.Codec(),
 			parse:    cfg.ParseFunc,
 		}
 	}
