@@ -244,7 +244,7 @@ func TestScrapperKafka_Integration(t *testing.T) {
 		},
 	}
 
-	producer, err := scrapperkafka.NewProducer([]string{testBroker}, testRegistry, configs, outRepo, 50, log)
+	producer, err := scrapperkafka.NewProducer([]string{testBroker}, testRegistry, configs, outRepo, 50, 5, log)
 	require.NoErrorf(t, err, "Failed to create producer")
 	defer producer.Close()
 

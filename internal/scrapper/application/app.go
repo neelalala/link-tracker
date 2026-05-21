@@ -239,7 +239,7 @@ func buildKafka(
 	}
 
 	log.Debug("Building kafka producer")
-	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.SchemaRegistryURL, configs, outRepo, cfg.Kafka.Workers.EventLimit, log)
+	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.SchemaRegistryURL, configs, outRepo, cfg.Kafka.Workers.EventLimit, cfg.Kafka.Workers.MaxRetries, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kafka producer: %v", err)
 	}
