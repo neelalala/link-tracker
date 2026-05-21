@@ -2,21 +2,28 @@ package kafka
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/riferrei/srclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/listener/kafka/mapper"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/validation"
 )
+
+const avroMagicByte = 0x00
 
 type Handler struct {
 	updateHandler domain.LinkUpdateHandler
 	producer      sarama.SyncProducer
 	dlqTopic      string
 	retries       int
+
+	srClient *srclient.SchemaRegistryClient
 
 	log *slog.Logger
 }
@@ -26,12 +33,15 @@ func NewHandler(
 	producer sarama.SyncProducer,
 	dqlTopic string,
 	retries int,
-	log *slog.Logger) *Handler {
+	registryURL string,
+	log *slog.Logger,
+) *Handler {
 	return &Handler{
 		updateHandler: updateHandler,
 		producer:      producer,
 		dlqTopic:      dqlTopic,
 		retries:       retries,
+		srClient:      srclient.NewSchemaRegistryClient(registryURL),
 		log:           log,
 	}
 }
@@ -53,46 +63,37 @@ func (h *Handler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama
 			}
 
 			h.log.Info("message received",
-				slog.String("key", string(message.Key)),
-				slog.String("value", string(message.Value)),
-				slog.String("topic", message.Topic),
-				slog.Int("partition", int(message.Partition)),
-				slog.Int64("offset", message.Offset),
+				"key", string(message.Key),
+				"value", string(message.Value),
+				"topic", message.Topic,
+				"partition", message.Partition,
+				"offset", message.Offset,
 			)
 
-			var updateJSON LinkUpdateJSON
-
-			if err := json.Unmarshal(message.Value, &updateJSON); err != nil {
-				h.log.Error("failed to unmarshal update", slog.String("error", err.Error()))
+			update, err := h.bytesToLinkUpdate(message.Value)
+			if err != nil {
+				h.log.Error("failed to unmarshall update", "error", err)
 				h.sendToDLQ(message, fmt.Sprintf("unmarshal error: %v", err))
 				session.MarkMessage(message, "")
 				continue
 			}
 
-			if err := validation.Check(updateJSON); err != nil {
-				h.log.Error("failed to validate update", slog.String("error", err.Error()))
+			if err := validation.Check(update); err != nil {
+				h.log.Error("failed to validate update", "error", err)
 				h.sendToDLQ(message, fmt.Sprintf("validate error: %v", err))
 				session.MarkMessage(message, "")
 				continue
 			}
 
-			update := domain.LinkUpdate{
-				ID:          updateJSON.ID,
-				URL:         updateJSON.URL,
-				Description: updateJSON.Description,
-				Preview:     updateJSON.Preview,
-				TgChatIDs:   updateJSON.TgChatIDs,
-			}
-
-			err := h.handleUpdate(session.Context(), update)
+			err = h.handleUpdate(session.Context(), update)
 			if err != nil {
-				h.log.Error("failed to handle update", slog.String("error", err.Error()))
+				h.log.Error("failed to handle update", "error", err)
 				h.sendToDLQ(message, fmt.Sprintf("handle update error: %v", err))
 			}
 
 			session.MarkMessage(message, "")
 		case <-session.Context().Done():
-			return nil
+			return session.Context().Err()
 		}
 
 	}
@@ -130,12 +131,36 @@ func (h *Handler) sendToDLQ(msg *sarama.ConsumerMessage, reason string) {
 
 	partition, offset, err := h.producer.SendMessage(dlqMsg)
 	if err != nil {
-		h.log.Error("failed to send message to DLQ", slog.String("error", err.Error()))
+		h.log.Error("failed to send message to DLQ", "error", err)
 		return
 	}
 
 	h.log.Info("message sent to DLQ successfully",
-		slog.Int("dlq_partition", int(partition)),
-		slog.Int64("dlq_offset", offset),
+		"dlq_partition", partition,
+		"dlq_offset", offset,
 	)
+}
+
+func (h *Handler) bytesToLinkUpdate(value []byte) (domain.LinkUpdate, error) {
+	if len(value) <= 5 || value[0] != avroMagicByte {
+		return domain.LinkUpdate{}, errors.New("invalid link update serialization")
+	}
+
+	schemaID := binary.BigEndian.Uint32(value[1:5])
+	schema, err := h.srClient.GetSchema(int(schemaID))
+	if err != nil {
+		return domain.LinkUpdate{}, fmt.Errorf("error getting the schema: %w", err)
+	}
+
+	native, _, err := schema.Codec().NativeFromBinary(value[5:])
+	if err != nil {
+		return domain.LinkUpdate{}, fmt.Errorf("error decoding native from bytes: %w", err)
+	}
+
+	linkUpdate, err := mapper.LinkUpdateFromNative(native)
+	if err != nil {
+		return domain.LinkUpdate{}, fmt.Errorf("error decoding native from bytes: %w", err)
+	}
+
+	return linkUpdate, nil
 }
