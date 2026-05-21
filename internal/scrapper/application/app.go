@@ -19,6 +19,7 @@ import (
 	notifiergrpc "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/grpc"
 	notifierhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka/mapper"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sql"
@@ -234,8 +235,13 @@ func buildKafka(
 		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
 	}
 
+	configs, err := buildSchemaConfigs(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("error building schemas configs: %v", err)
+	}
+
 	log.Debug("Building kafka producer")
-	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, outRepo, cfg.Kafka.Workers.EventLimit, log)
+	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.SchemaRegistryURL, configs, outRepo, cfg.Kafka.Workers.EventLimit, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kafka producer: %v", err)
 	}
@@ -248,6 +254,26 @@ func buildKafka(
 	notifier := kafka.NewNotifier(outRepo, cfg.Kafka.Topic, log)
 
 	return notifier, nil
+}
+
+func buildSchemaConfigs(cfg *config.Config) (map[string]kafka.TopicConfig, error) {
+	schemaFile, err := os.Open(cfg.Kafka.SchemaPath)
+	if err != nil {
+		return nil, fmt.Errorf("error opening kafka schema file: %v", err)
+	}
+	defer schemaFile.Close()
+
+	schemaBytes, err := io.ReadAll(schemaFile)
+	if err != nil {
+		return nil, fmt.Errorf("error reading kafka schema file: %v", err)
+	}
+
+	return map[string]kafka.TopicConfig{
+		cfg.Kafka.Topic: {
+			SchemaString: string(schemaBytes),
+			ParseFunc:    mapper.LinkUpdate,
+		},
+	}, nil
 }
 
 func runWorkers(ctx context.Context, cfg *config.Config, producer *kafka.Producer, log *slog.Logger) {
