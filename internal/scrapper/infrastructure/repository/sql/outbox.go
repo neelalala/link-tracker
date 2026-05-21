@@ -22,7 +22,7 @@ func (outboxRepo *OutboxRepository) Add(ctx context.Context, topic string, paylo
 	query := `
 		INSERT INTO outbox (topic, payload)
 		VALUES ($1, $2)
-		RETURNING id, topic, payload, status, created_at, updated_at;
+		RETURNING id, topic, payload, status, retries, created_at, updated_at;
 	`
 
 	db := GetDB(ctx, outboxRepo.pool)
@@ -33,6 +33,7 @@ func (outboxRepo *OutboxRepository) Add(ctx context.Context, topic string, paylo
 		&saved.Topic,
 		&saved.Payload,
 		&saved.Status,
+		&saved.Retries,
 		&saved.CreatedAt,
 		&saved.UpdatedAt,
 	)
@@ -45,7 +46,7 @@ func (outboxRepo *OutboxRepository) Add(ctx context.Context, topic string, paylo
 
 func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status domain.OutboxStatus, limit int) ([]domain.Outbox, error) {
 	query := `
-		SELECT id, topic, payload, status, created_at, updated_at
+		SELECT id, topic, payload, status, retries, created_at, updated_at
 		FROM outbox
 		WHERE status = $1
 		ORDER BY created_at
@@ -69,6 +70,7 @@ func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status doma
 			&outbox.Topic,
 			&outbox.Payload,
 			&outbox.Status,
+			&outbox.Retries,
 			&outbox.CreatedAt,
 			&outbox.UpdatedAt,
 		); err != nil {
@@ -109,4 +111,23 @@ func (outboxRepo *OutboxRepository) UpdateStatus(ctx context.Context, id int64, 
 	}
 
 	return nil
+}
+
+func (outboxRepo *OutboxRepository) IncrementRetries(ctx context.Context, id int64) (int, error) {
+	query := `
+		UPDATE outbox
+		SET retries = retries + 1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1
+		RETURNING retries;
+	`
+
+	db := GetDB(ctx, outboxRepo.pool)
+
+	var retries int
+	err := db.QueryRow(ctx, query, id).Scan(&retries)
+	if err != nil {
+		return 0, fmt.Errorf("failed to increment outbox retries: %w", err)
+	}
+
+	return retries, nil
 }

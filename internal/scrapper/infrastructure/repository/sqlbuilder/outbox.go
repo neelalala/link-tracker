@@ -26,7 +26,7 @@ func (outboxRepo *OutboxRepository) Add(ctx context.Context, topic string, paylo
 				"payload": string(payload),
 			},
 		).
-		Returning("id", "topic", "payload", "status", "created_at", "updated_at").
+		Returning("id", "topic", "payload", "status", "retries", "created_at", "updated_at").
 		ToSQL()
 	if err != nil {
 		return domain.Outbox{}, fmt.Errorf("failed to build query: %w", err)
@@ -40,6 +40,7 @@ func (outboxRepo *OutboxRepository) Add(ctx context.Context, topic string, paylo
 		&saved.Topic,
 		&saved.Payload,
 		&saved.Status,
+		&saved.Retries,
 		&saved.CreatedAt,
 		&saved.UpdatedAt,
 	)
@@ -51,7 +52,7 @@ func (outboxRepo *OutboxRepository) Add(ctx context.Context, topic string, paylo
 }
 
 func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status domain.OutboxStatus, limit int) ([]domain.Outbox, error) {
-	query, args, err := psql.Select("id", "topic", "payload", "status", "created_at", "updated_at").
+	query, args, err := psql.Select("id", "topic", "payload", "status", "retries", "created_at", "updated_at").
 		From(goqu.T("outbox")).
 		Where(goqu.C("status").Eq(status)).
 		Order(goqu.C("created_at").Asc()).
@@ -78,6 +79,7 @@ func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status doma
 			&outbox.Topic,
 			&outbox.Payload,
 			&outbox.Status,
+			&outbox.Retries,
 			&outbox.CreatedAt,
 			&outbox.UpdatedAt,
 		); err != nil {
@@ -118,4 +120,28 @@ func (outboxRepo *OutboxRepository) UpdateStatus(ctx context.Context, id int64, 
 	}
 
 	return nil
+}
+
+func (outboxRepo *OutboxRepository) IncrementRetries(ctx context.Context, id int64) (int, error) {
+	query, args, err := psql.Update(goqu.T("outbox")).
+		Set(goqu.Record{
+			"retries":    goqu.L("retries + 1"),
+			"updated_at": goqu.L("CURRENT_TIMESTAMP"),
+		}).
+		Where(goqu.C("id").Eq(id)).
+		Returning("retries").
+		ToSQL()
+	if err != nil {
+		return 0, fmt.Errorf("failed to build query: %w", err)
+	}
+
+	db := GetDB(ctx, outboxRepo.pool)
+
+	var retries int
+	err = db.QueryRow(ctx, query, args...).Scan(&retries)
+	if err != nil {
+		return 0, fmt.Errorf("failed to increment outbox retries: %w", err)
+	}
+
+	return retries, nil
 }

@@ -18,6 +18,7 @@ type Outbox struct {
 	Topic     string
 	Payload   []byte
 	Status    OutboxStatus
+	Retries   int
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -27,4 +28,5 @@ type OutboxRepository interface {
 	GetPending(ctx context.Context, limit int) ([]Outbox, error)
 	GetFailed(ctx context.Context, limit int) ([]Outbox, error)
 	UpdateStatus(ctx context.Context, id int64, status OutboxStatus) error
+	IncrementRetries(ctx context.Context, id int64) (int, error)
 }
