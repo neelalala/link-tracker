@@ -22,6 +22,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      schema-registry:
+        condition: service_started
     restart: unless-stopped
     env_file:
       - .env
@@ -30,6 +32,7 @@ services:
       - SCRAPPER_API_PORT=63343
       - BOT_API_PROTOCOL="grpc"
       - SCRAPPER_API_PROTOCOL="grpc"
+      - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,localhost,127.0.0.1
 
   postgres:
     image: postgres:17-alpine
@@ -82,6 +85,22 @@ services:
       - KAFKA_NODE_ID=3
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-3:9092
 
+  schema-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: schema-registry
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'PLAINTEXT://kafka-1:9092,PLAINTEXT://kafka-2:9092,PLAINTEXT://kafka-3:9092'
+    depends_on:
+      kafka-1:
+        condition: service_started
+      kafka-2:
+        condition: service_started
+      kafka-3:
+        condition: service_started
+        
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
