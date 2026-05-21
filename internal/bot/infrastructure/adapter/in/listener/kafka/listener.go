@@ -24,10 +24,11 @@ type Listener struct {
 
 func NewListener(
 	brokers []string,
-	consumerGroup,
+	consumerGroup string,
 	topic string,
 	dlqTopic string,
 	retries int,
+	registryURL string,
 	updateHandler domain.LinkUpdateHandler,
 	log *slog.Logger,
 ) (*Listener, error) {
@@ -44,7 +45,14 @@ func NewListener(
 		return nil, fmt.Errorf("failed to create producer for dlq: %w", err)
 	}
 
-	handler := NewHandler(updateHandler, producer, dlqTopic, retries, log)
+	handler := NewHandler(
+		updateHandler,
+		producer,
+		dlqTopic,
+		retries,
+		registryURL,
+		log,
+	)
 
 	return &Listener{
 		consumer: consumer,

@@ -167,6 +167,7 @@ func buildListener(cfg *config.Config, notifier domain.LinkUpdateHandler, log *s
 			cfg.Kafka.Topic,
 			cfg.Kafka.DLQTopic,
 			cfg.Kafka.Retries,
+			cfg.Kafka.SchemaRegistryURL,
 			notifier,
 			log,
 		)
