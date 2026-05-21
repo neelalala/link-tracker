@@ -14,6 +14,7 @@ services:
       - SCRAPPER_URL="scrapper:63343"
       - BOT_API_PROTOCOL="grpc"
       - SCRAPPER_API_PROTOCOL="grpc"
+      - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,scrapper,postgres,localhost,127.0.0.1
 
   scrapper:
     build:
@@ -32,7 +33,7 @@ services:
       - SCRAPPER_API_PORT=63343
       - BOT_API_PROTOCOL="grpc"
       - SCRAPPER_API_PROTOCOL="grpc"
-      - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,localhost,127.0.0.1
+      - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,postgres,localhost,127.0.0.1
 
   postgres:
     image: postgres:17-alpine
