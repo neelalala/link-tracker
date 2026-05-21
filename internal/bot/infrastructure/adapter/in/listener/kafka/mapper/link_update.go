@@ -12,18 +12,41 @@ func LinkUpdateFromNative(native any) (domain.LinkUpdate, error) {
 
 	}
 
-	update := domain.LinkUpdate{
-		ID:          record["id"].(int64),
-		URL:         record["url"].(string),
-		Description: record["description"].(string),
-		Preview:     record["preview"].(string),
+	id, ok := record["id"].(int64)
+	if !ok {
+		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to int64 id")
 	}
 
-	if rawIDs, ok := record["tgChatIds"].([]any); ok {
-		update.TgChatIDs = make([]int64, len(rawIDs))
-		for i, val := range rawIDs {
-			update.TgChatIDs[i] = val.(int64)
-		}
+	url, ok := record["url"].(string)
+	if !ok {
+		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string url")
+	}
+
+	description, ok := record["description"].(string)
+	if !ok {
+		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string description")
+	}
+
+	preview, ok := record["preview"].(string)
+	if !ok {
+		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string preview")
+	}
+
+	update := domain.LinkUpdate{
+		ID:          id,
+		URL:         url,
+		Description: description,
+		Preview:     preview,
+	}
+
+	ids, ok := record["tgChatIds"].([]int64)
+	if !ok {
+		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to int64 ids")
+	}
+
+	update.TgChatIDs = make([]int64, len(ids))
+	for i, val := range ids {
+		update.TgChatIDs[i] = val
 	}
 
 	return update, nil
