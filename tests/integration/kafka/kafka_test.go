@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka/mapper"
 	"log/slog"
 	"os"
 	"testing"
@@ -82,6 +83,33 @@ func loadKafkaContainer(ctx context.Context, net *testcontainers.DockerNetwork) 
 			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR": "1",
 		},
 		WaitingFor: wait.ForLog("Kafka Server started").
+			WithStartupTimeout(60 * time.Second),
+	}
+
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func loadSchemaRegistryContainer(ctx context.Context, net *testcontainers.DockerNetwork) (testcontainers.Container, error) {
+	req := testcontainers.ContainerRequest{
+		Image:        "confluentinc/cp-schema-registry:latest",
+		ExposedPorts: []string{"8081:8081/tcp"},
+		Networks:     []string{net.Name},
+		NetworkAliases: map[string][]string{
+			net.Name: {"schema-registry"},
+		},
+		Env: map[string]string{
+			"SCHEMA_REGISTRY_HOST_NAME":                    "schema-registry",
+			"SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS": "PLAINTEXT://kafka:9092",
+		},
+		WaitingFor: wait.ForLog("Server started").
 			WithStartupTimeout(60 * time.Second),
 	}
 
@@ -181,6 +209,17 @@ func TestScrapperKafka_Integration(t *testing.T) {
 
 	require.NoError(t, createKafkaTopic(testBroker, topic))
 
+	srContainer, err := loadSchemaRegistryContainer(ctx, newNetwork)
+	require.NoError(t, err, "Failed to start Schema Registry container")
+	defer srContainer.Terminate(ctx)
+
+	srHost, err := srContainer.Host(ctx)
+	require.NoErrorf(t, err, "Failed to get schema registry host")
+	if srHost == "localhost" {
+		srHost = "127.0.0.1"
+	}
+	testRegistry := fmt.Sprintf("http://%s:8081", srHost)
+
 	m, err := migrate.New(migrations, dbURL)
 	require.NoErrorf(t, err, "Failed to create migrate instance")
 
@@ -195,7 +234,17 @@ func TestScrapperKafka_Integration(t *testing.T) {
 
 	outRepo := sql.NewOutboxRepository(pool)
 
-	producer, err := scrapperkafka.NewProducer([]string{testBroker}, outRepo, 50, log)
+	schemaString, err := os.ReadFile("../../../docs/link_update.avsc")
+	require.NoErrorf(t, err, "Failed to read schema from file %s", "docs/link_update.avsc")
+
+	configs := map[string]scrapperkafka.TopicConfig{
+		topic: {
+			SchemaString: string(schemaString),
+			ParseFunc:    mapper.LinkUpdateToNative,
+		},
+	}
+
+	producer, err := scrapperkafka.NewProducer([]string{testBroker}, testRegistry, configs, outRepo, 50, log)
 	require.NoErrorf(t, err, "Failed to create producer")
 	defer producer.Close()
 
@@ -208,6 +257,7 @@ func TestScrapperKafka_Integration(t *testing.T) {
 		topic,
 		topicDql,
 		retries,
+		testRegistry,
 		botNotifier,
 		log,
 	)
