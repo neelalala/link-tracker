@@ -10,7 +10,7 @@ type linkUpdate struct {
 	TgChatIDs   []int64 `json:"tgChatIds"`
 }
 
-func LinkUpdate(payload []byte) (map[string]any, error) {
+func LinkUpdateToNative(payload []byte) (map[string]any, error) {
 	var update linkUpdate
 	if err := json.Unmarshal(payload, &update); err != nil {
 		return nil, err

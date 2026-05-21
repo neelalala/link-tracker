@@ -271,7 +271,7 @@ func buildSchemaConfigs(cfg *config.Config) (map[string]kafka.TopicConfig, error
 	return map[string]kafka.TopicConfig{
 		cfg.Kafka.Topic: {
 			SchemaString: string(schemaBytes),
-			ParseFunc:    mapper.LinkUpdate,
+			ParseFunc:    mapper.LinkUpdateToNative,
 		},
 	}, nil
 }
