@@ -39,14 +39,18 @@ func LinkUpdateFromNative(native any) (domain.LinkUpdate, error) {
 		Preview:     preview,
 	}
 
-	ids, ok := record["tgChatIds"].([]int64)
+	ids, ok := record["tgChatIds"].([]any)
 	if !ok {
-		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to int64 ids")
+		return domain.LinkUpdate{}, fmt.Errorf("failed to cast tgChatIds to []any")
 	}
 
 	update.TgChatIDs = make([]int64, len(ids))
 	for i, val := range ids {
-		update.TgChatIDs[i] = val
+		id, ok := val.(int64)
+		if !ok {
+			return domain.LinkUpdate{}, fmt.Errorf("failed to cast tgChatIds[%d] to int64", i)
+		}
+		update.TgChatIDs[i] = id
 	}
 
 	return update, nil
