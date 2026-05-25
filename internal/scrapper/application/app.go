@@ -135,6 +135,9 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 		cfg.Fetchers.Concurrency,
 		log,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating scrapper: %v", err)
+	}
 
 	log.Debug("Creating scheduler job")
 	err = scheduler.Schedule(

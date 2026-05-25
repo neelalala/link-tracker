@@ -261,6 +261,7 @@ func TestScrapperKafka_Integration(t *testing.T) {
 		botNotifier,
 		log,
 	)
+	require.NoErrorf(t, err, "Failed to create listener")
 
 	go func() { listener.Start() }()
 	defer listener.Stop(ctx)
