@@ -57,13 +57,15 @@ func NewScrapperService(
 }
 
 func (service *ScrapperService) GetUpdates(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	service.logger.Info("started checking all links for updates")
 
 	jobs := make(chan domain.Link, service.batchSize)
 
 	var wg sync.WaitGroup
-	defer wg.Wait()
-	defer close(jobs)
 
 	for range service.fetchersCount {
 		wg.Go(func() {
@@ -82,6 +84,7 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 				slog.String("error", err.Error()),
 				slog.String("context", "scrapperService.linkRepo.GetBatch"),
 			)
+			close(jobs)
 			return err
 		}
 
@@ -93,6 +96,7 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				service.logger.Warn("context cancelled, stopping updates")
+				close(jobs)
 				return ctx.Err()
 			case jobs <- link:
 			}
@@ -100,6 +104,9 @@ func (service *ScrapperService) GetUpdates(ctx context.Context) error {
 
 		offset += service.batchSize
 	}
+
+	close(jobs)
+	wg.Wait()
 
 	service.logger.Info("finished checking updates")
 	return nil

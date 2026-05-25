@@ -171,7 +171,7 @@ func (subRepo *SubscriptionRepository) scanSubscriptions(
 }
 
 func (subRepo *SubscriptionRepository) Delete(ctx context.Context, chatID int64, linkID int64) (domain.Subscription, error) {
-	deleteSubQuery, args, err := psql.Delete("subscriptions").
+	query, args, err := psql.Delete("subscriptions").
 		Where(goqu.Ex{
 			"chat_id": chatID,
 			"link_id": linkID,
@@ -183,27 +183,16 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, chatID int64,
 
 	db := GetDB(ctx, subRepo.pool)
 
-	ct, err := db.Exec(ctx, deleteSubQuery, args...)
+	ct, err := db.Exec(ctx, query, args...)
 	if err != nil {
 		return domain.Subscription{}, fmt.Errorf("failed to delete subscription: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return domain.Subscription{}, fmt.Errorf("%w: link id = %d, chat id = %d", domain.ErrNotSubscribed, linkID, chatID)
-	}
-
-	deleteLinkQuery, linkArgs, err := psql.Delete("links").
-		Where(
-			goqu.Ex{"id": linkID},
-			goqu.L("NOT EXISTS (SELECT 1 FROM subscriptions WHERE link_id = ?)", linkID),
-		).
-		ToSQL()
-	if err != nil {
-		return domain.Subscription{}, fmt.Errorf("failed to build delete link query: %w", err)
-	}
-
-	_, err = db.Exec(ctx, deleteLinkQuery, linkArgs...)
-	if err != nil {
-		return domain.Subscription{}, fmt.Errorf("failed to cleanup orphaned link: %w", err)
+		return domain.Subscription{}, fmt.Errorf(
+			"%w: link id = %d, chat id = %d",
+			domain.ErrNotSubscribed,
+			linkID,
+			chatID)
 	}
 
 	sub := domain.Subscription{

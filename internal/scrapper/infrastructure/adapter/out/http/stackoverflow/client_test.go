@@ -164,9 +164,14 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 			fmt.Fprintf(w, `{
 				"items": [
 					{
-						"owner": {"display_name": "Test User"},
+						"owner": {"display_name": "Test User 1"},
 						"creation_date": 1775866000, 
-				"body": "long answer body: %s"
+						"body": "long answer body: %s"
+					},
+					{
+						"owner": {"display_name": "Test User 2"},
+						"creation_date": 1775966000, 
+						"body": "normal answer body: bad tests"
 					}
 				]
 			}`, strings.Repeat("1234", 100))
@@ -177,9 +182,14 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 			fmt.Fprintf(w, `{
 				"items": [
 					{
-						"owner": {"display_name": "Test User 2"},
+						"owner": {"display_name": "Test User 3"},
 						"creation_date": 1775869000,
-					"body": "long comment body: %s"
+						"body": "long comment body: %s"
+					},
+					{
+						"owner": {"display_name": "Test User 4"},
+						"creation_date": 1775966000,
+						"body": "normal comment body: this tests are fixed now"
 					}
 				]
 			}`, strings.Repeat("1234", 100))
@@ -199,9 +209,9 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 
 	require.NoError(t, err)
 
-	require.Len(t, updates, 2)
+	require.Len(t, updates, 4)
 
 	for _, update := range updates {
-		assert.LessOrEqual(t, 200, len([]rune(update.Preview())))
+		assert.GreaterOrEqual(t, 200, len([]rune(update.Preview())))
 	}
 }

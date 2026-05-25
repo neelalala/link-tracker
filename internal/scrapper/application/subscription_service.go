@@ -52,27 +52,36 @@ func (service *SubscriptionService) DeleteChat(ctx context.Context, chatID int64
 }
 
 func (service *SubscriptionService) GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error) {
-	_, err := service.chatRepo.GetByID(ctx, chatID)
+	var trackedLinks []domain.TrackedLink
+	err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		_, err := service.chatRepo.GetByID(ctx, chatID)
+		if err != nil {
+			return err
+		}
+
+		subscriptions, err := service.subRepo.GetByChatID(ctx, chatID)
+		if err != nil {
+			return err
+		}
+		trackedLinks = make([]domain.TrackedLink, len(subscriptions))
+		for i, sub := range subscriptions {
+			link, err := service.linkRepo.GetByID(ctx, sub.LinkID)
+			if err != nil {
+				return err
+			}
+
+			trackedLinks[i] = domain.TrackedLink{
+				ID:   link.ID,
+				URL:  link.URL,
+				Tags: sub.Tags,
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	subscriptions, err := service.subRepo.GetByChatID(ctx, chatID)
-	if err != nil {
-		return nil, err
-	}
-	trackedLinks := make([]domain.TrackedLink, len(subscriptions))
-	for i, sub := range subscriptions {
-		link, err := service.linkRepo.GetByID(ctx, sub.LinkID)
-		if err != nil {
-			return nil, err
-		}
-		trackedLinks[i] = domain.TrackedLink{
-			ID:   link.ID,
-			URL:  link.URL,
-			Tags: sub.Tags,
-		}
-	}
 	return trackedLinks, nil
 }
 
@@ -81,13 +90,13 @@ func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, u
 		return domain.TrackedLink{}, fmt.Errorf("%w: %s", domain.ErrURLNotSupported, url)
 	}
 
-	_, err := service.chatRepo.GetByID(ctx, chatID)
-	if err != nil {
-		return domain.TrackedLink{}, err
-	}
-
 	var link domain.Link
-	err = service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+	err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		_, err := service.chatRepo.GetByID(ctx, chatID)
+		if err != nil {
+			return err
+		}
+
 		link, err = service.linkRepo.GetByURL(ctx, url)
 		if err != nil {
 			if !errors.Is(err, domain.ErrLinkNotFound) {
@@ -119,6 +128,10 @@ func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, u
 		return nil
 	})
 
+	if err != nil {
+		return domain.TrackedLink{}, err
+	}
+
 	return domain.TrackedLink{
 		ID:   link.ID,
 		URL:  link.URL,
@@ -127,24 +140,33 @@ func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, u
 }
 
 func (service *SubscriptionService) RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error) {
-	_, err := service.chatRepo.GetByID(ctx, chatID)
+	var trackedLink domain.TrackedLink
+	err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		_, err := service.chatRepo.GetByID(ctx, chatID)
+		if err != nil {
+			return err
+		}
+
+		link, err := service.linkRepo.GetByURL(ctx, url)
+		if err != nil {
+			return err
+		}
+
+		subscription, err := service.subRepo.Delete(ctx, chatID, link.ID)
+		if err != nil {
+			return err
+		}
+
+		trackedLink.ID = link.ID
+		trackedLink.URL = link.URL
+		trackedLink.Tags = subscription.Tags
+
+		return nil
+	})
+
 	if err != nil {
 		return domain.TrackedLink{}, err
 	}
 
-	link, err := service.linkRepo.GetByURL(ctx, url)
-	if err != nil {
-		return domain.TrackedLink{}, err
-	}
-
-	subscription, err := service.subRepo.Delete(ctx, chatID, link.ID)
-	if err != nil {
-		return domain.TrackedLink{}, err
-	}
-
-	return domain.TrackedLink{
-		ID:   link.ID,
-		URL:  link.URL,
-		Tags: subscription.Tags,
-	}, nil
+	return trackedLink, nil
 }
