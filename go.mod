@@ -16,6 +16,7 @@ require (
 	github.com/riferrei/srclient v0.7.4
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.41.0
+	github.com/valkey-io/valkey-go v1.0.75
 	go.uber.org/mock v0.6.0
 	golang.org/x/sync v0.20.0
 	google.golang.org/grpc v1.79.2
