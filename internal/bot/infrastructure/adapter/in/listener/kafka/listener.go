@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/IBM/sarama"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 

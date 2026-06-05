@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"log/slog"
 	"net/http"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
 type SubscriptionService interface {

@@ -6,9 +6,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/mocks"
-	"go.uber.org/mock/gomock"
 )
 
 func TestTrackCommand_Execute(t *testing.T) {

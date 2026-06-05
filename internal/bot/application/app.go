@@ -3,12 +3,14 @@ package application
 import (
 	"context"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"log/slog"
 	"os"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/commands"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"

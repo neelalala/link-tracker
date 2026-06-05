@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/mocks"
-	"go.uber.org/mock/gomock"
 )
 
 var testUnexpectedError = errors.New("unexpected error")
