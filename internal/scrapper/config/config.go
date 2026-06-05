@@ -88,6 +88,16 @@ type KafkaConfig struct {
 	Workers           KafkaWorkerConfig `config:"workers"`
 }
 
+type ValkeyConfig struct {
+	Enabled         bool          `config:"enabled,true"`
+	Addresses       []string      `config:"addresses"`
+	Username        string        `config:"username,"`
+	Password        string        `config:"password,"`
+	TTL             time.Duration `config:"ttl,1h"`
+	KeyPrefix       string        `config:"key-prefix,scrapper:links:"`
+	ClientSideCache bool          `config:"client-side-cache,true"`
+}
+
 type Config struct {
 	Logger     LoggerConfig     `config:"logger"`
 	Scheduler  SchedulerConfig  `config:"scheduler"`
@@ -97,6 +107,7 @@ type Config struct {
 	Fetchers   FetchersConfig   `config:"fetchers"`
 	UseQueue   bool             `config:"use-queue,true"`
 	Kafka      KafkaConfig      `config:"kafka"`
+	Valkey     ValkeyConfig     `config:"valkey"`
 }
 
 func Load(configPath string) (*Config, error) {
