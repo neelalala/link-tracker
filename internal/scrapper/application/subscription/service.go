@@ -1,4 +1,4 @@
-package application
+package subscription
 
 import (
 	"context"
@@ -14,7 +14,7 @@ type LinkValidator interface {
 	CanHandle(url string) bool
 }
 
-type SubscriptionService struct {
+type Service struct {
 	chatRepo domain.ChatRepository
 	linkRepo domain.LinkRepository
 	subRepo  domain.SubscriptionRepository
@@ -32,8 +32,8 @@ func NewSubscriptionService(
 	transactor domain.Transactor,
 	linkValidator LinkValidator,
 	logger *slog.Logger,
-) *SubscriptionService {
-	return &SubscriptionService{
+) *Service {
+	return &Service{
 		chatRepo:      chatRepo,
 		linkRepo:      linkRepo,
 		subRepo:       subRepo,
@@ -43,15 +43,15 @@ func NewSubscriptionService(
 	}
 }
 
-func (service *SubscriptionService) RegisterChat(ctx context.Context, chatID int64) error {
+func (service *Service) RegisterChat(ctx context.Context, chatID int64) error {
 	return service.chatRepo.Create(ctx, chatID)
 }
 
-func (service *SubscriptionService) DeleteChat(ctx context.Context, chatID int64) error {
+func (service *Service) DeleteChat(ctx context.Context, chatID int64) error {
 	return service.chatRepo.Delete(ctx, chatID)
 }
 
-func (service *SubscriptionService) GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error) {
+func (service *Service) GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error) {
 	var trackedLinks []domain.TrackedLink
 	err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		_, err := service.chatRepo.GetByID(ctx, chatID)
@@ -85,7 +85,7 @@ func (service *SubscriptionService) GetTrackedLinks(ctx context.Context, chatID 
 	return trackedLinks, nil
 }
 
-func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error) {
+func (service *Service) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error) {
 	if !service.linkValidator.CanHandle(url) {
 		return domain.TrackedLink{}, fmt.Errorf("%w: %s", domain.ErrURLNotSupported, url)
 	}
@@ -139,7 +139,7 @@ func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, u
 	}, nil
 }
 
-func (service *SubscriptionService) RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error) {
+func (service *Service) RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error) {
 	var trackedLink domain.TrackedLink
 	err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		_, err := service.chatRepo.GetByID(ctx, chatID)

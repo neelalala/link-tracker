@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application/subscription"
 	"io"
 	"log/slog"
 	"os"
@@ -102,7 +103,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	fetcher := NewFetcherService(fetchers)
 
 	log.Debug("Building subscription service")
-	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
+	subsService := subscription.NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
 
 	log.Debug("Building API server")
 	server, err := buildAPIServer(cfg, subsService, log)
@@ -332,7 +333,7 @@ func buildFetchers(cfg *config.Config) []domain.LinkFetcher {
 	return []domain.LinkFetcher{githubClient, stackoverflowClient}
 }
 
-func buildAPIServer(cfg *config.Config, subsService *SubscriptionService, log *slog.Logger) (APIServer, error) {
+func buildAPIServer(cfg *config.Config, subsService *subscription.Service, log *slog.Logger) (APIServer, error) {
 	switch cfg.Server.Protocol {
 	case config.ProtocolHTTP:
 		server := serverhttp.NewServer(cfg.Server.Port, subsService, log)
