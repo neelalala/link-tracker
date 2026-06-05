@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
@@ -22,7 +23,8 @@ type Service struct {
 	transactor domain.Transactor
 
 	linkValidator LinkValidator
-	logger        *slog.Logger
+
+	log *slog.Logger
 }
 
 func NewSubscriptionService(
@@ -31,7 +33,7 @@ func NewSubscriptionService(
 	subRepo domain.SubscriptionRepository,
 	transactor domain.Transactor,
 	linkValidator LinkValidator,
-	logger *slog.Logger,
+	log *slog.Logger,
 ) *Service {
 	return &Service{
 		chatRepo:      chatRepo,
@@ -39,19 +41,31 @@ func NewSubscriptionService(
 		subRepo:       subRepo,
 		transactor:    transactor,
 		linkValidator: linkValidator,
-		logger:        logger,
+		log:           log,
 	}
 }
 
 func (service *Service) RegisterChat(ctx context.Context, chatID int64) error {
+	service.log.Info("registering new chat",
+		"context", "Service.RegisterChat",
+		"chatID", chatID,
+	)
 	return service.chatRepo.Create(ctx, chatID)
 }
 
 func (service *Service) DeleteChat(ctx context.Context, chatID int64) error {
+	service.log.Info("deleting chat",
+		"context", "Service.DeleteChat",
+		"chatID", chatID,
+	)
 	return service.chatRepo.Delete(ctx, chatID)
 }
 
 func (service *Service) GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error) {
+	service.log.Info("getting tracked links",
+		"context", "Service.GetTrackedLinks",
+		"chatID", chatID,
+	)
 	var trackedLinks []domain.TrackedLink
 	err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		_, err := service.chatRepo.GetByID(ctx, chatID)
@@ -86,6 +100,12 @@ func (service *Service) GetTrackedLinks(ctx context.Context, chatID int64) ([]do
 }
 
 func (service *Service) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error) {
+	service.log.Info("adding link",
+		"context", "Service.AddLink",
+		"chatID", chatID,
+		"url", url,
+		"tags", strings.Join(tags, ","),
+	)
 	if !service.linkValidator.CanHandle(url) {
 		return domain.TrackedLink{}, fmt.Errorf("%w: %s", domain.ErrURLNotSupported, url)
 	}
@@ -140,6 +160,11 @@ func (service *Service) AddLink(ctx context.Context, chatID int64, url string, t
 }
 
 func (service *Service) RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error) {
+	service.log.Info("removing link",
+		"context", "Service.RemoveLink",
+		"chatID", chatID,
+		"url", url,
+	)
 	var trackedLink domain.TrackedLink
 	err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		_, err := service.chatRepo.GetByID(ctx, chatID)

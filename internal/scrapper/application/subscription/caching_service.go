@@ -25,7 +25,7 @@ func NewCachingService(service *Service, cache LinksCache) *CachingService {
 	return &CachingService{
 		service: service,
 		cache:   cache,
-		log:     service.logger,
+		log:     service.log,
 	}
 }
 
