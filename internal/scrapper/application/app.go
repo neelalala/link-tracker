@@ -16,6 +16,7 @@ import (
 	cron "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/scheduler"
 	servergrpc "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/server/grpc"
 	serverhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/server/http"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/cache/valkey"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/github"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/stackoverflow"
 	notifiergrpc "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/grpc"
@@ -31,6 +32,14 @@ import (
 type APIServer interface {
 	Start() error
 	Stop(ctx context.Context) error
+}
+
+type SubscriptionService interface {
+	RegisterChat(ctx context.Context, chatID int64) error
+	DeleteChat(ctx context.Context, chatID int64) error
+	GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error)
+	AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error)
+	RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error)
 }
 
 type App struct {
@@ -104,7 +113,10 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	fetcher := NewFetcherService(fetchers)
 
 	log.Debug("Building subscription service")
-	subsService := subscription.NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
+	subsService, err := buildSubscriptionService(cfg, chatRepo, linkRepo, subRepo, transactor, fetcher, log, app)
+	if err != nil {
+		return nil, fmt.Errorf("error creating subscription service: %v", err)
+	}
 
 	log.Debug("Building API server")
 	server, err := buildAPIServer(cfg, subsService, log)
@@ -176,6 +188,7 @@ func (a *App) Start() error {
 
 	return nil
 }
+
 func (a *App) Shutdown(ctx context.Context) {
 	a.log.Info("shutting down scrapper...")
 
@@ -334,7 +347,7 @@ func buildFetchers(cfg *config.Config) []domain.LinkFetcher {
 	return []domain.LinkFetcher{githubClient, stackoverflowClient}
 }
 
-func buildAPIServer(cfg *config.Config, subsService *subscription.Service, log *slog.Logger) (APIServer, error) {
+func buildAPIServer(cfg *config.Config, subsService SubscriptionService, log *slog.Logger) (APIServer, error) {
 	switch cfg.Server.Protocol {
 	case config.ProtocolHTTP:
 		server := serverhttp.NewServer(cfg.Server.Port, subsService, log)
@@ -345,4 +358,37 @@ func buildAPIServer(cfg *config.Config, subsService *subscription.Service, log *
 	default:
 		return nil, fmt.Errorf("unsupported server protocol: %s", cfg.Server.Protocol)
 	}
+}
+
+func buildSubscriptionService(
+	cfg *config.Config,
+	chatRepo domain.ChatRepository,
+	linkRepo domain.LinkRepository,
+	subRepo domain.SubscriptionRepository,
+	transactor domain.Transactor,
+	fetcher domain.LinkFetcher,
+	log *slog.Logger,
+	app *App,
+) (SubscriptionService, error) {
+	service := subscription.NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
+
+	if !cfg.Valkey.Enabled {
+		return service, nil
+	}
+
+	cache, err := valkey.New(
+		cfg.Valkey.Addresses,
+		cfg.Valkey.Username,
+		cfg.Valkey.Password,
+		cfg.Valkey.TTL,
+		cfg.Valkey.KeyPrefix,
+		cfg.Valkey.ClientSideCache,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	app.onClose(cache.Close)
+
+	return subscription.NewCachingService(service, cache), nil
 }
