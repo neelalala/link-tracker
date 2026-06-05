@@ -123,6 +123,7 @@ func loadScrapperContainer(ctx context.Context, net *testcontainers.DockerNetwor
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
 			"USE_QUEUE":             "false",
+			"CACHE_ENABLED":         "false",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
