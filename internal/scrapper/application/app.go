@@ -215,7 +215,7 @@ func buildNotifier(
 	app *App,
 	log *slog.Logger,
 ) (UpdateNotifier, error) {
-	if cfg.UseQueue {
+	if cfg.Kafka.Enable {
 		log.Debug("Building kafka")
 		return buildKafka(ctx, cfg, dbPool, app, log)
 	}

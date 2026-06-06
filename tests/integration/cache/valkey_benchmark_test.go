@@ -138,6 +138,11 @@ func runRequests(t *testing.T, name string, svc application.SubscriptionService,
 }
 
 func TestListLoad(t *testing.T) {
+	bench := os.Getenv("BENCHMARK")
+	if bench == "" {
+		t.Skip("Skipping test because $BENCHMARK is not set")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

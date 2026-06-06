@@ -81,13 +81,13 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 
 	listener, err := buildListener(cfg, notifyService, log)
 	if err != nil {
-		return nil, fmt.Errorf("error creation update listener: %v", err)
+		return nil, fmt.Errorf("error creating update listener: %v", err)
 	}
 	app.server = listener
 
 	scrapper, err := buildScrapperClient(cfg, log)
 	if err != nil {
-		return nil, fmt.Errorf("error creation scrapper client: %v", err)
+		return nil, fmt.Errorf("error creating scrapper client: %v", err)
 	}
 	app.onClose(scrapper.Close)
 

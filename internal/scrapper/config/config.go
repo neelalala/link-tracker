@@ -89,6 +89,7 @@ type KafkaWorkerConfig struct {
 }
 
 type KafkaConfig struct {
+	Enable            bool              `yaml:"enable" env:"KAFKA_ENABLE" env-default:"true"`
 	Brokers           []string          `yaml:"brokers" env:"KAFKA_BROKERS"`
 	SchemaRegistryURL string            `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
 	Topic             string            `yaml:"topic" env:"KAFKA_TOPIC" env-default:"link-updates"`
@@ -111,7 +112,6 @@ type Config struct {
 	Server     ServerConfig     `yaml:"server"`
 	Database   DatabaseConfig   `yaml:"database"`
 	Fetchers   FetchersConfig   `yaml:"fetchers"`
-	UseQueue   bool             `yaml:"use-queue" env:"USE_QUEUE" env-default:"true"`
 	Kafka      KafkaConfig      `yaml:"kafka"`
 	Valkey     ValkeyConfig     `yaml:"valkey"`
 }
