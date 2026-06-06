@@ -4,7 +4,7 @@ import "errors"
 
 var (
 	ErrChatAlreadyRegistered = errors.New("chat already registered")
-	ErrChatNotRegistered     = errors.New("chat already exists")
+	ErrChatNotRegistered     = errors.New("chat not registered")
 	ErrLinkNotFound          = errors.New("link not found")
 	ErrAlreadySubscribed     = errors.New("already subscribed")
 	ErrNotSubscribed         = errors.New("not subscribed")
