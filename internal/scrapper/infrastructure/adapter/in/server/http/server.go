@@ -7,8 +7,16 @@ import (
 	"log/slog"
 	"net/http"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
+
+type SubscriptionService interface {
+	RegisterChat(ctx context.Context, chatID int64) error
+	DeleteChat(ctx context.Context, chatID int64) error
+	GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error)
+	AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error)
+	RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error)
+}
 
 type Server struct {
 	httpServer *http.Server
@@ -16,7 +24,7 @@ type Server struct {
 	log        *slog.Logger
 }
 
-func NewServer(port uint16, service application.SubscriptionService, log *slog.Logger) *Server {
+func NewServer(port uint16, service SubscriptionService, log *slog.Logger) *Server {
 	handler := NewHandler(service, log)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /tg-chat/{id}", handler.HandlePostTgChat)
