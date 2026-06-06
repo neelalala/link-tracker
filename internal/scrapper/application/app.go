@@ -370,7 +370,7 @@ func buildSubscriptionService(
 	log *slog.Logger,
 	app *App,
 ) (SubscriptionService, error) {
-	service := subscription.NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
+	service := subscription.NewService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
 
 	if !cfg.Valkey.Enabled {
 		return service, nil
@@ -378,8 +378,6 @@ func buildSubscriptionService(
 
 	cache, err := valkey.New(
 		cfg.Valkey.Addresses,
-		cfg.Valkey.Username,
-		cfg.Valkey.Password,
 		cfg.Valkey.TTL,
 		cfg.Valkey.KeyPrefix,
 		cfg.Valkey.ClientSideCache,

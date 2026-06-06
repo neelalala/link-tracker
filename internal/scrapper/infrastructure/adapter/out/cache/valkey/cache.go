@@ -27,7 +27,6 @@ type Cache struct {
 
 func New(
 	addresses []string,
-	username, password string,
 	ttl time.Duration,
 	keyPrefix string,
 	clientSideCaching bool,
@@ -35,8 +34,6 @@ func New(
 	client, err := valkey.NewClient(
 		valkey.ClientOption{
 			InitAddress:  addresses,
-			Username:     username,
-			Password:     password,
 			DisableCache: !clientSideCaching,
 		})
 	if err != nil {
@@ -72,14 +69,14 @@ func (cache *Cache) GetLinks(ctx context.Context, chatID int64) ([]domain.Tracke
 	}
 
 	if err := resp.Error(); err != nil {
+		if valkey.IsValkeyNil(err) {
+			return nil, false, nil
+		}
 		return nil, false, fmt.Errorf("error getting cache entry: %w", err)
 	}
 
 	body, err := resp.AsBytes()
 	if err != nil {
-		if valkey.IsValkeyNil(err) {
-			return nil, false, nil
-		}
 		return nil, false, fmt.Errorf("error reading cache body as bytes: %w", err)
 	}
 

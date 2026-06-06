@@ -27,7 +27,7 @@ type Service struct {
 	log *slog.Logger
 }
 
-func NewSubscriptionService(
+func NewService(
 	chatRepo domain.ChatRepository,
 	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,
