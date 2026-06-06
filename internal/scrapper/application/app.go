@@ -60,6 +60,8 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 		return nil, err
 	}
 
+	fmt.Printf("config: %+v\n", cfg)
+
 	app := &App{}
 
 	if cfg.Logger.File != "" {
@@ -79,7 +81,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	app.log = log
 
 	log.Debug("running migrations")
-	err = database.RunMigrationsFromFile(cfg.Database.URL, cfg.Database.MigrationsDirUrl, log)
+	err = database.RunMigrationsFromFile(cfg.Database.URL, cfg.Database.MigrationsDirURL, log)
 	if err != nil {
 		return nil, fmt.Errorf("error running migrations: %v", err)
 	}
@@ -155,8 +157,8 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 
 	log.Debug("Creating scheduler job")
 	err = scheduler.Schedule(
-		cfg.Scheduler.FetchInterval,
-		cfg.Scheduler.FetchTimeout,
+		cfg.Scheduler.JobInterval,
+		cfg.Scheduler.JobTimeout,
 		func(jobCtx context.Context) {
 			log.Info("fetch job started")
 			err := scrapperService.GetUpdates(jobCtx)
@@ -208,7 +210,7 @@ func (a *App) Shutdown(ctx context.Context) {
 
 func buildNotifier(
 	ctx context.Context,
-	cfg *config.Config,
+	cfg config.Config,
 	dbPool *pgxpool.Pool,
 	app *App,
 	log *slog.Logger,
@@ -235,7 +237,7 @@ func buildNotifier(
 
 func buildKafka(
 	ctx context.Context,
-	cfg *config.Config,
+	cfg config.Config,
 	dbPool *pgxpool.Pool,
 	app *App,
 	log *slog.Logger,
@@ -272,7 +274,7 @@ func buildKafka(
 	return notifier, nil
 }
 
-func buildSchemaConfigs(cfg *config.Config) (map[string]kafka.TopicConfig, error) {
+func buildSchemaConfigs(cfg config.Config) (map[string]kafka.TopicConfig, error) {
 	schemaFile, err := os.Open(cfg.Kafka.SchemaPath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening kafka schema file: %v", err)
@@ -292,14 +294,14 @@ func buildSchemaConfigs(cfg *config.Config) (map[string]kafka.TopicConfig, error
 	}, nil
 }
 
-func runWorkers(ctx context.Context, cfg *config.Config, producer *kafka.Producer, log *slog.Logger) {
+func runWorkers(ctx context.Context, cfg config.Config, producer *kafka.Producer, log *slog.Logger) {
 	for range cfg.Kafka.Workers.Count {
 		worker := kafka.NewWorker(ctx, producer, cfg.Kafka.Workers.Interval, log)
 		go worker.Start()
 	}
 }
 
-func buildTransactor(cfg *config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
+func buildTransactor(cfg config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
 	switch cfg.Database.AccessType {
 	case config.AccessTypeSQL:
 		transactor := sql.NewTransactor(dbPool)
@@ -312,7 +314,7 @@ func buildTransactor(cfg *config.Config, dbPool *pgxpool.Pool) (domain.Transacto
 	}
 }
 
-func buildRepos(cfg *config.Config, dbPool *pgxpool.Pool) (domain.ChatRepository, domain.LinkRepository, domain.SubscriptionRepository, error) {
+func buildRepos(cfg config.Config, dbPool *pgxpool.Pool) (domain.ChatRepository, domain.LinkRepository, domain.SubscriptionRepository, error) {
 	switch cfg.Database.AccessType {
 	case config.AccessTypeSQL:
 		chatRepo := sql.NewChatRepository(dbPool)
@@ -329,7 +331,7 @@ func buildRepos(cfg *config.Config, dbPool *pgxpool.Pool) (domain.ChatRepository
 	}
 }
 
-func buildFetchers(cfg *config.Config) []domain.LinkFetcher {
+func buildFetchers(cfg config.Config) []domain.LinkFetcher {
 	githubClient := github.NewClient(
 		github.BaseURL,
 		github.BaseApiURL,
@@ -347,7 +349,7 @@ func buildFetchers(cfg *config.Config) []domain.LinkFetcher {
 	return []domain.LinkFetcher{githubClient, stackoverflowClient}
 }
 
-func buildAPIServer(cfg *config.Config, subsService SubscriptionService, log *slog.Logger) (APIServer, error) {
+func buildAPIServer(cfg config.Config, subsService SubscriptionService, log *slog.Logger) (APIServer, error) {
 	switch cfg.Server.Protocol {
 	case config.ProtocolHTTP:
 		server := serverhttp.NewServer(cfg.Server.Port, subsService, log)
@@ -361,7 +363,7 @@ func buildAPIServer(cfg *config.Config, subsService SubscriptionService, log *sl
 }
 
 func buildSubscriptionService(
-	cfg *config.Config,
+	cfg config.Config,
 	chatRepo domain.ChatRepository,
 	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,

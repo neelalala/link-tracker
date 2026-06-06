@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: cmd/bot/Dockerfile
     restart: unless-stopped
+    volumes:
+      - ./cmd/bot/config.yaml:/app/config.yaml
     env_file:
       - .env
     depends_on:
@@ -11,9 +13,9 @@ services:
         condition: service_healthy
     environment:
       - BOT_API_PORT=63342
-      - SCRAPPER_URL="scrapper:63343"
-      - BOT_API_PROTOCOL="grpc"
-      - SCRAPPER_API_PROTOCOL="grpc"
+      - SCRAPPER_URL=scrapper:63343
+      - BOT_API_PROTOCOL=grpc
+      - SCRAPPER_API_PROTOCOL=grpc
       - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,scrapper,postgres,localhost,127.0.0.1
 
   scrapper:
@@ -28,13 +30,15 @@ services:
       valkey-cluster-init:
         condition: service_completed_successfully
     restart: unless-stopped
+    volumes:
+      - ./cmd/scrapper/config.yaml:/app/config.yaml
     env_file:
       - .env
     environment:
-      - BOT_URL="bot:63342"
+      - BOT_URL=bot:63342
       - SCRAPPER_API_PORT=63343
-      - BOT_API_PROTOCOL="grpc"
-      - SCRAPPER_API_PROTOCOL="grpc"
+      - BOT_API_PROTOCOL=grpc
+      - SCRAPPER_API_PROTOCOL=grpc
       - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,valkey-1,valkey-2,valkey-3,postgres,localhost,127.0.0.1
 
   postgres:

@@ -72,7 +72,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 	log := logger.NewLogger(cfg.Logger.Level, out)
 	app.log = log
 
-	tgClient, err := outtelegram.NewClient(cfg.Telegram.ApiUrl, cfg.Telegram.Token, cfg.Telegram.Timeout)
+	tgClient, err := outtelegram.NewClient(cfg.Telegram.ApiURL, cfg.Telegram.Token, cfg.Telegram.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("error creating telegram client: %v", err)
 	}
@@ -158,8 +158,8 @@ func (app *App) Shutdown(ctx context.Context) {
 	app.log.Info("bot successfully stopped")
 }
 
-func buildListener(cfg *config.Config, notifier domain.LinkUpdateHandler, log *slog.Logger) (UpdateListener, error) {
-	if cfg.UseQueue {
+func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *slog.Logger) (UpdateListener, error) {
+	if cfg.Kafka.Enable {
 		log.Info("using queue as listener")
 		kafka, err := kafka.NewListener(
 			cfg.Kafka.Brokers,
@@ -177,11 +177,11 @@ func buildListener(cfg *config.Config, notifier domain.LinkUpdateHandler, log *s
 		return kafka, nil
 	}
 	switch cfg.Server.Protocol {
-	case config.HTTP:
+	case config.ProtocolHTTP:
 		log.Info("using http server as listener")
 		server := http.NewServer(cfg.Server.Port, notifier, log)
 		return server, nil
-	case config.GRPC:
+	case config.ProtocolGRPC:
 		log.Info("using grpc server as listener")
 		server := grpc.NewServer(cfg.Server.Port, notifier, log)
 		return server, nil
@@ -190,13 +190,13 @@ func buildListener(cfg *config.Config, notifier domain.LinkUpdateHandler, log *s
 	}
 }
 
-func buildScrapperClient(cfg *config.Config, log *slog.Logger) (ScrapperClient, error) {
+func buildScrapperClient(cfg config.Config, log *slog.Logger) (ScrapperClient, error) {
 	switch cfg.ScrapperService.Protocol {
-	case config.HTTP:
+	case config.ProtocolHTTP:
 		log.Info("using http scrapper client")
 		scrapper := scrapperhttp.NewClient(cfg.ScrapperService.URL)
 		return scrapper, nil
-	case config.GRPC:
+	case config.ProtocolGRPC:
 		log.Info("using grpc scrapper client")
 		scrapper, err := scrappergrpc.NewClient(cfg.ScrapperService.URL)
 		if err != nil {
@@ -208,7 +208,7 @@ func buildScrapperClient(cfg *config.Config, log *slog.Logger) (ScrapperClient, 
 	}
 }
 
-func buildRepos(cfg *config.Config, dbPool *pgxpool.Pool, log *slog.Logger) (domain.SessionRepository, error) {
+func buildRepos(cfg config.Config, dbPool *pgxpool.Pool, log *slog.Logger) (domain.SessionRepository, error) {
 	switch cfg.Database.AccessType {
 	case config.AccessTypeSQL:
 		log.Info("using raw sql database access type")

@@ -37,7 +37,6 @@ FROM alpine:latest
 
 WORKDIR /app
 
-COPY cmd/scrapper/scrapper.conf ./scrapper.conf
 COPY --from=builder /app/migrations/ ./migrations
 COPY --from=builder /app/docs/ ./docs
 COPY --from=builder /bin/scrapper /app/scrapper

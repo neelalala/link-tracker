@@ -1,0 +1,23 @@
+telegram:
+  timeout: 15s
+
+logger:
+  level: INFO
+
+scrapper-service:
+  protocol: grpc
+
+database:
+  access-type: SQL
+
+kafka:
+  enable: true
+  brokers:
+    - "kafka-1:9092"
+    - "kafka-2:9092"
+    - "kafka-3:9092"
+  topic: link-updates
+  dlq-topic: link-updates-dlq
+  consumer-group: bot-group-1
+  retries: 3
+  schema-registry-url: http://schema-registry:8081
