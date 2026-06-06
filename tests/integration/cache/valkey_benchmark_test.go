@@ -185,9 +185,9 @@ func TestListLoad(t *testing.T) {
 
 	subService := subscription.NewService(chatRepo, linkRepo, subRepo, transactor, mockLinkValidator{}, log)
 
-	const chatID = int64(777)
+	const chatID = int64(1)
 	require.NoError(t, subService.RegisterChat(ctx, chatID))
-	for i := 0; i < seededLinks; i++ {
+	for i := range seededLinks {
 		url := fmt.Sprintf("https://github.com/neelalala/repo-%d", i)
 		_, err := subService.AddLink(ctx, chatID, url, []string{"tag1", "tag2"})
 		require.NoError(t, err)
@@ -227,7 +227,7 @@ func buildReport(scenarios []stats) string {
 
 	sb.WriteString("## Результаты\n\n")
 	sb.WriteString("| Сценарий | avg | p50 | p99 | RPS |\n")
-	sb.WriteString("|---|---|---|---|---|---|\n")
+	sb.WriteString("|---|---|---|---|---|\n")
 	for _, s := range scenarios {
 		fmt.Fprintf(sb, "| %s | %s | %s | %s | %.0f |\n",
 			s.name,

@@ -22,6 +22,7 @@ fetchers:
   batch: 500
 
 kafka:
+  enabled: true
   brokers:
     - kafka-1:9092
     - kafka-2:9092

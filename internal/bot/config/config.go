@@ -74,7 +74,7 @@ type ServerConfig struct {
 }
 
 type KafkaConfig struct {
-	Enable            bool     `yaml:"enable" env:"KAFKA_ENABLE" env-default:"true"`
+	Enable            bool     `yaml:"enabled" env:"KAFKA_ENABLED" env-default:"true"`
 	Brokers           []string `yaml:"brokers" env:"KAFKA_BROKERS"`
 	Topic             string   `yaml:"topic" env:"KAFKA_TOPIC" env-default:"link-updates"`
 	DLQTopic          string   `yaml:"dlq-topic" env:"KAFKA_DLQ_TOPIC" env-default:"link-updates-dlq"`

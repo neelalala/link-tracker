@@ -11,7 +11,7 @@ database:
   access-type: SQL
 
 kafka:
-  enable: true
+  enabled: true
   brokers:
     - "kafka-1:9092"
     - "kafka-2:9092"

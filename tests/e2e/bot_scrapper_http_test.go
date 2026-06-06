@@ -87,7 +87,7 @@ func loadBotContainer(ctx context.Context, net *testcontainers.DockerNetwork, cf
 			"SCRAPPER_URL":          fmt.Sprintf("scrapper:%d", SCRAPPER_API_PORT),
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
-			"KAFKA_ENABLE":          "false",
+			"KAFKA_ENABLED":         "false",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", BOT_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
@@ -116,7 +116,7 @@ func loadScrapperContainer(ctx context.Context, net *testcontainers.DockerNetwor
 			"DATABASE_URL":          dbURL,
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
-			"KAFKA_ENABLE":          "false",
+			"KAFKA_ENABLED":         "false",
 			"CACHE_ENABLED":         "false",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT))).WithStartupTimeout(30 * time.Second),

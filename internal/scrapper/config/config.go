@@ -89,7 +89,7 @@ type KafkaWorkerConfig struct {
 }
 
 type KafkaConfig struct {
-	Enable            bool              `yaml:"enable" env:"KAFKA_ENABLE" env-default:"true"`
+	Enable            bool              `yaml:"enabled" env:"KAFKA_ENABLED" env-default:"true"`
 	Brokers           []string          `yaml:"brokers" env:"KAFKA_BROKERS"`
 	SchemaRegistryURL string            `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
 	Topic             string            `yaml:"topic" env:"KAFKA_TOPIC" env-default:"link-updates"`

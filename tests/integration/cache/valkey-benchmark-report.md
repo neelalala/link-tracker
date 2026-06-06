@@ -9,7 +9,7 @@
 ## Результаты
 
 | Сценарий | avg | p50 | p99 | RPS |
-|---|---|---|---|---|---|
-| no-cache (db only) | 131.193ms | 124.53ms | 263.398ms | 381 |
-| valkey cache (no client-side) | 1.31ms | 1.131ms | 4.657ms | 38133 |
-| valkey client-side cache | 728µs | 91µs | 5.641ms | 66711 |
+|---|---|---|---|---|
+| no-cache (db only) | 170.713ms | 153.695ms | 408.773ms | 293 |
+| valkey cache (no client-side) | 1.38ms | 1.295ms | 3.423ms | 36191 |
+| valkey client-side cache | 732µs | 99µs | 7.793ms | 68184 |
