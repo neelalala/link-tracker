@@ -8,8 +8,8 @@
 - TTL кеша: **5m0s**
 ## Результаты
 
-| Сценарий | avg | p50 | p95 | p99 | RPS |
+| Сценарий | avg | p50 | p99 | RPS |
 |---|---|---|---|---|---|
-| no-cache (db only) | 136.535ms | 121.163ms | 220.309ms | 309.72ms | 366 |
-| valkey cache (no client-side) | 1.195ms | 1.063ms | 2.162ms | 3.67ms | 41794 |
-| valkey client-side cache | 607µs | 76µs | 283µs | 8.921ms | 82289 |
+| no-cache (db only) | 131.193ms | 124.53ms | 263.398ms | 381 |
+| valkey cache (no client-side) | 1.31ms | 1.131ms | 4.657ms | 38133 |
+| valkey client-side cache | 728µs | 91µs | 5.641ms | 66711 |

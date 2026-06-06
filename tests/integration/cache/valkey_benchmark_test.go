@@ -1,4 +1,4 @@
-package load
+package cache
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
@@ -80,14 +79,10 @@ func (s stats) throughput() float64 {
 	return float64(len(s.latencies)) / s.total.Seconds()
 }
 
-func loadPostgresContainer(ctx context.Context, net *testcontainers.DockerNetwork) (testcontainers.Container, error) {
+func loadPostgresContainer(ctx context.Context) (testcontainers.Container, error) {
 	pgReq := testcontainers.ContainerRequest{
 		Image:        "postgres:17-alpine",
 		ExposedPorts: []string{"5432/tcp"},
-		Networks:     []string{net.Name},
-		NetworkAliases: map[string][]string{
-			net.Name: {"postgres_db"},
-		},
 		Env: map[string]string{
 			"POSTGRES_USER":     dbUser,
 			"POSTGRES_PASSWORD": dbPass,
@@ -104,25 +99,7 @@ func loadPostgresContainer(ctx context.Context, net *testcontainers.DockerNetwor
 	})
 }
 
-func loadValkeyContainer(ctx context.Context, net *testcontainers.DockerNetwork) (testcontainers.Container, error) {
-	req := testcontainers.ContainerRequest{
-		Image:        "valkey/valkey:9-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		Networks:     []string{net.Name},
-		NetworkAliases: map[string][]string{
-			net.Name: {"valkey-1"},
-		},
-		WaitingFor: wait.ForListeningPort("6379/tcp").
-			WithStartupTimeout(60 * time.Second),
-	}
-
-	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-}
-
-func newCache(addr, keyPrefix string, clientSide bool) (*valkeycache.Cache, error) {
+func newCacheWithPrefix(addr, keyPrefix string, clientSide bool) (*valkeycache.Cache, error) {
 	return valkeycache.New([]string{addr}, cacheTTL, keyPrefix, clientSide)
 }
 
@@ -166,11 +143,7 @@ func TestListLoad(t *testing.T) {
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	newNetwork, err := network.New(ctx)
-	require.NoErrorf(t, err, "Failed to create network")
-	defer newNetwork.Remove(ctx)
-
-	pgContainer, err := loadPostgresContainer(ctx, newNetwork)
+	pgContainer, err := loadPostgresContainer(ctx)
 	require.NoErrorf(t, err, "Failed to start PostgreSQL container")
 	defer pgContainer.Terminate(ctx)
 
@@ -180,7 +153,7 @@ func TestListLoad(t *testing.T) {
 	require.NoError(t, err)
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort.Port(), dbName)
 
-	valkeyContainer, err := loadValkeyContainer(ctx, newNetwork)
+	valkeyContainer, err := loadValkeyContainer(ctx)
 	require.NoError(t, err, "Failed to start Valkey container")
 	defer valkeyContainer.Terminate(ctx)
 
@@ -217,14 +190,14 @@ func TestListLoad(t *testing.T) {
 
 	noCache := runRequests(t, "no-cache (db only)", subService, chatID)
 
-	cachePlain, err := newCache(valkeyURL, "load:plain:", false)
+	cachePlain, err := newCacheWithPrefix(valkeyURL, "load:plain:", false)
 	require.NoError(t, err)
 	defer cachePlain.Close()
 
 	svcPlain := subscription.NewCachingService(subService, cachePlain)
 	valkeyCache := runRequests(t, "valkey cache (no client-side)", svcPlain, chatID)
 
-	cacheClientSide, err := newCache(valkeyURL, "load:csc:", true)
+	cacheClientSide, err := newCacheWithPrefix(valkeyURL, "load:csc:", true)
 	require.NoError(t, err)
 	defer cacheClientSide.Close()
 
@@ -234,7 +207,7 @@ func TestListLoad(t *testing.T) {
 	report := buildReport([]stats{noCache, valkeyCache, cscCache})
 	t.Log("\n" + report)
 
-	require.NoError(t, os.WriteFile("cache-load-report.md", []byte(report), 0o644))
+	require.NoError(t, os.WriteFile("valkey-benchmark-report.md", []byte(report), 0o644))
 }
 
 func buildReport(scenarios []stats) string {
@@ -248,14 +221,13 @@ func buildReport(scenarios []stats) string {
 	fmt.Fprintf(sb, "- TTL кеша: **%s**\n", cacheTTL)
 
 	sb.WriteString("## Результаты\n\n")
-	sb.WriteString("| Сценарий | avg | p50 | p95 | p99 | RPS |\n")
+	sb.WriteString("| Сценарий | avg | p50 | p99 | RPS |\n")
 	sb.WriteString("|---|---|---|---|---|---|\n")
 	for _, s := range scenarios {
-		fmt.Fprintf(sb, "| %s | %s | %s | %s | %s | %.0f |\n",
+		fmt.Fprintf(sb, "| %s | %s | %s | %s | %.0f |\n",
 			s.name,
 			s.avg().Round(time.Microsecond),
 			s.percentile(50).Round(time.Microsecond),
-			s.percentile(95).Round(time.Microsecond),
 			s.percentile(99).Round(time.Microsecond),
 			s.throughput(),
 		)
