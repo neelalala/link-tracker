@@ -221,10 +221,10 @@ func buildNotifier(
 	}
 	switch cfg.BotService.Protocol {
 	case config.ProtocolHTTP:
-		notifier := notifierhttp.NewBot(cfg.BotService.URL, log)
+		notifier := notifierhttp.NewBot(cfg.BotService.URL, cfg.BotService.Timeout, log)
 		return notifier, nil
 	case config.ProtocolGRPC:
-		notifier, err := notifiergrpc.NewBot(cfg.BotService.URL)
+		notifier, err := notifiergrpc.NewBot(cfg.BotService.URL, cfg.BotService.Timeout, log)
 		if err != nil {
 			return nil, err
 		}

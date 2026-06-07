@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,6 +15,8 @@ import (
 const (
 	BaseURL    = "https://github.com/"
 	BaseApiURL = "https://api.github.com"
+
+	httpClientTimeout = 1 * time.Minute
 )
 
 type Client struct {
@@ -21,14 +24,16 @@ type Client struct {
 	apiURL        string
 	baseURL       string
 	maxPreviewLen int
+	timeout       time.Duration
 }
 
 func NewClient(baseUrl, baseApiUrl string, timeout time.Duration, maxPreviewLen int) *Client {
 	return &Client{
-		httpClient:    &http.Client{Timeout: timeout},
+		httpClient:    &http.Client{Timeout: httpClientTimeout},
 		apiURL:        baseApiUrl,
 		baseURL:       baseUrl,
 		maxPreviewLen: maxPreviewLen,
+		timeout:       timeout,
 	}
 }
 
@@ -36,7 +41,6 @@ func (client *Client) CanHandle(url string) bool {
 	return strings.HasPrefix(url, client.baseURL)
 }
 
-// TODO better link parsing (trim, net/url)
 func (client *Client) Fetch(ctx context.Context, url string, since time.Time) ([]domain.UpdateEvent, error) {
 	path := strings.TrimPrefix(url, client.baseURL)
 	path = strings.Trim(path, "/")
@@ -47,15 +51,24 @@ func (client *Client) Fetch(ctx context.Context, url string, since time.Time) ([
 	}
 	owner, repo := parts[0], parts[1]
 
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	repoURL := fmt.Sprintf("%s/repos/%s/%s", client.apiURL, owner, repo)
 
 	pullRequests, err := client.fetchPullRequests(ctx, repoURL, since)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("fetch pull requests timed out: %w", err)
+		}
 		return nil, fmt.Errorf("error fetching pull requests: %w", err)
 	}
 
 	issues, err := client.fetchIssues(ctx, repoURL, since)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("fetch issues timed out: %w", err)
+		}
 		return nil, fmt.Errorf("error fetching issues: %w", err)
 	}
 

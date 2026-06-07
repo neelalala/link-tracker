@@ -64,8 +64,9 @@ type SchedulerConfig struct {
 }
 
 type BotServiceConfig struct {
-	URL      string   `yaml:"url" env:"BOT_URL"`
-	Protocol Protocol `yaml:"protocol" env:"BOT_API_PROTOCOL" env-default:"grpc"`
+	URL      string        `yaml:"url" env:"BOT_URL"`
+	Protocol Protocol      `yaml:"protocol" env:"BOT_API_PROTOCOL" env-default:"grpc"`
+	Timeout  time.Duration `yaml:"timeout" env:"BOT_API_TIMEOUT" env-default:"10s"`
 }
 
 type ServerConfig struct {
@@ -99,7 +100,7 @@ type KafkaConfig struct {
 
 type ValkeyConfig struct {
 	Enabled         bool          `yaml:"enabled" env:"CACHE_ENABLED" env-default:"true"`
-	Addresses       []string      `yaml:"addresses" env:"CACHE_ADDRESSES" env-default:""`
+	Addresses       []string      `yaml:"addresses" env:"CACHE_ADDRESSES"`
 	TTL             time.Duration `yaml:"ttl" env:"CACHE_TTL" env-default:"1h"`
 	KeyPrefix       string        `yaml:"key-prefix" env:"CACHE_KEY_PREFIX" env-default:"scrapper:links:"`
 	ClientSideCache bool          `yaml:"client-side-cache" env:"CACHE_CLIENT_SIDE" env-default:"true"`

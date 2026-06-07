@@ -3,6 +3,7 @@ package stackoverflow
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -16,6 +17,8 @@ const (
 	BaseApiURL = "https://api.stackexchange.com/2.3"
 
 	site = "stackoverflow.com"
+
+	httpClientTimeout = 1 * time.Minute
 )
 
 type Client struct {
@@ -24,6 +27,7 @@ type Client struct {
 	baseURL       string
 	maxPreviewLen int
 	keyQuery      string
+	timeout       time.Duration
 }
 
 func NewClient(baseURL, baseAPIURL string, timeout time.Duration, maxPreviewLen int, key string) *Client {
@@ -31,11 +35,12 @@ func NewClient(baseURL, baseAPIURL string, timeout time.Duration, maxPreviewLen 
 		key = fmt.Sprintf("&key=%s", key)
 	}
 	return &Client{
-		httpClient:    &http.Client{Timeout: timeout},
+		httpClient:    &http.Client{Timeout: httpClientTimeout},
 		apiURL:        baseAPIURL,
 		baseURL:       baseURL,
 		maxPreviewLen: maxPreviewLen,
 		keyQuery:      key,
+		timeout:       timeout,
 	}
 }
 
@@ -51,10 +56,16 @@ func (client *Client) Fetch(ctx context.Context, url string, since time.Time) ([
 		return nil, fmt.Errorf("invalid stackoverflow url: %s", url)
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	questionID := parts[0]
 
 	title, err := client.fetchQuestionTitle(ctx, questionID)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("fetch question title timed out: %w", err)
+		}
 		return nil, fmt.Errorf("error getting title for question with id %s: %w", questionID, err)
 	}
 
@@ -62,12 +73,18 @@ func (client *Client) Fetch(ctx context.Context, url string, since time.Time) ([
 
 	answers, err := client.fetchAnswers(ctx, questionURL, since, title)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("fetch answers timed out: %w", err)
+		}
+		return nil, fmt.Errorf("error getting question answers: %w", err)
 	}
 
 	comments, err := client.fetchComments(ctx, questionURL, since, title)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("fetch comments timed out: %w", err)
+		}
+		return nil, fmt.Errorf("error getting question comments: %w", err)
 	}
 
 	updates := make([]domain.UpdateEvent, 0, len(answers)+len(comments))
@@ -146,7 +163,7 @@ func (client *Client) fetchAnswers(ctx context.Context, questionURL string, sinc
 		return nil, err
 	}
 
-	answerUpdates := []domain.UpdateEvent{}
+	var answerUpdates []domain.UpdateEvent
 	for _, answer := range answers.Items {
 		timestamp := time.Unix(answer.CreationDate, 0).UTC()
 		if !timestamp.After(since) {
@@ -197,7 +214,7 @@ func (client *Client) fetchComments(ctx context.Context, questionURL string, sin
 		return nil, err
 	}
 
-	commentUpdates := []domain.UpdateEvent{}
+	var commentUpdates []domain.UpdateEvent
 	for _, comment := range comments.Items {
 		commentUpdates = append(commentUpdates, &CommentUpdate{
 			Title:         questionTitle,
