@@ -17,8 +17,6 @@ import (
 const (
 	tgChatEndpoint = "tg-chat"
 	linksEndpoint  = "links"
-
-	httpClientTimeout = 1 * time.Minute
 )
 
 type Client struct {
@@ -28,9 +26,13 @@ type Client struct {
 	log        *slog.Logger
 }
 
-func NewClient(url string, timeout time.Duration, log *slog.Logger) *Client {
+func NewClient(url string, httpClient *http.Client, timeout time.Duration, log *slog.Logger) *Client {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
 	return &Client{
-		httpClient: &http.Client{Timeout: httpClientTimeout},
+		httpClient: httpClient,
 		baseURL:    url,
 		timeout:    timeout,
 		log:        log,

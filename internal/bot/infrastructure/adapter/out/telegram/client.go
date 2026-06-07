@@ -13,10 +13,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-const (
-	httpClientTimeout = 30 * time.Second
-)
-
 type Client struct {
 	offset     int64
 	url        string
@@ -24,11 +20,15 @@ type Client struct {
 	timeout    time.Duration
 }
 
-func NewClient(apiURL, token string, timeout time.Duration) (*Client, error) {
+func NewClient(apiURL, token string, timeout time.Duration, httpClient *http.Client) (*Client, error) {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
 	client := &Client{
 		offset:     0,
 		url:        apiURL + token,
-		httpClient: &http.Client{Timeout: timeout + httpClientTimeout},
+		httpClient: httpClient,
 		timeout:    timeout,
 	}
 
@@ -229,10 +229,7 @@ func (client *Client) SetMyCommands(ctx context.Context, cmds []domain.CommandIn
 		return fmt.Errorf("error marshalling request body: %w", err)
 	}
 
-	setCtx, cancel := context.WithTimeout(ctx, client.timeout)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(setCtx, http.MethodPost, query, bytes.NewReader(reqBody))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
 	if err != nil {
 		return fmt.Errorf("error creating http request: %w", err)
 	}

@@ -31,8 +31,8 @@ func NewPoller(
 	commandService CommandService,
 	dialogService DialogService,
 	tgClient *telegram.Client,
-	logger *slog.Logger,
 	timeout time.Duration,
+	logger *slog.Logger,
 ) (*Poller, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()

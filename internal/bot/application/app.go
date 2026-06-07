@@ -24,6 +24,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository/sql"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository/sqlbuilder"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/resilience"
 )
 
 type UpdateListener interface {
@@ -72,7 +73,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 	log := logger.NewLogger(cfg.Logger.Level, out)
 	app.log = log
 
-	tgClient, err := outtelegram.NewClient(cfg.Telegram.ApiURL, cfg.Telegram.Token, cfg.Telegram.Timeout)
+	tgClient, err := buildTelegramClient(cfg.Telegram, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating telegram client: %v", err)
 	}
@@ -85,7 +86,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 	}
 	app.server = listener
 
-	scrapper, err := buildScrapperClient(cfg, log)
+	scrapper, err := buildScrapperClient(cfg.ScrapperService, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating scrapper client: %v", err)
 	}
@@ -100,7 +101,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 		return nil
 	})
 
-	sessionRepo, err := buildRepos(cfg, dbPool, log)
+	sessionRepo, err := buildRepos(cfg.Database, dbPool, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating session repository: %v", err)
 	}
@@ -111,7 +112,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 
 	dialogService := NewDialogService(scrapper, sessionRepo, log)
 
-	poller, err := intelegram.NewPoller(commandService, dialogService, tgClient, log, cfg.Telegram.Timeout)
+	poller, err := intelegram.NewPoller(commandService, dialogService, tgClient, cfg.Telegram.Resilience.Timeout, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating telegram poller: %v", err)
 	}
@@ -158,6 +159,15 @@ func (app *App) Shutdown(ctx context.Context) {
 	app.log.Info("bot successfully stopped")
 }
 
+func buildTelegramClient(cfg config.TelegramConfig, log *slog.Logger) (*outtelegram.Client, error) {
+	httpClient := resilience.NewHTTPClient("telegram-in", cfg.Resilience, nil, log)
+	tgClient, err := outtelegram.NewClient(cfg.ApiURL, cfg.Token, cfg.Resilience.Timeout, httpClient)
+	if err != nil {
+		return nil, fmt.Errorf("error creating telegram client: %v", err)
+	}
+	return tgClient, nil
+}
+
 func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *slog.Logger) (UpdateListener, error) {
 	if cfg.Kafka.Enable {
 		log.Info("using queue as listener")
@@ -190,26 +200,27 @@ func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *sl
 	}
 }
 
-func buildScrapperClient(cfg config.Config, log *slog.Logger) (ScrapperClient, error) {
-	switch cfg.ScrapperService.Protocol {
+func buildScrapperClient(cfg config.ScrapperServiceConfig, log *slog.Logger) (ScrapperClient, error) {
+	switch cfg.Protocol {
 	case config.ProtocolHTTP:
+		httpClient := resilience.NewHTTPClient("scrapper", cfg.Resilience, nil, log)
 		log.Info("using http scrapper client")
-		scrapper := scrapperhttp.NewClient(cfg.ScrapperService.URL, cfg.ScrapperService.Timeout, log)
+		scrapper := scrapperhttp.NewClient(cfg.URL, httpClient, cfg.Resilience.Timeout, log)
 		return scrapper, nil
 	case config.ProtocolGRPC:
 		log.Info("using grpc scrapper client")
-		scrapper, err := scrappergrpc.NewClient(cfg.ScrapperService.URL, cfg.ScrapperService.Timeout, log)
+		scrapper, err := scrappergrpc.NewClient(cfg.URL, cfg.Resilience.Timeout, log)
 		if err != nil {
 			return nil, fmt.Errorf("error creating scrapper: %v", err)
 		}
 		return scrapper, nil
 	default:
-		return nil, fmt.Errorf("unsupported protocol: %v", cfg.ScrapperService.Protocol)
+		return nil, fmt.Errorf("unsupported protocol: %v", cfg.Protocol)
 	}
 }
 
-func buildRepos(cfg config.Config, dbPool *pgxpool.Pool, log *slog.Logger) (domain.SessionRepository, error) {
-	switch cfg.Database.AccessType {
+func buildRepos(cfg config.DatabaseConfig, dbPool *pgxpool.Pool, log *slog.Logger) (domain.SessionRepository, error) {
+	switch cfg.AccessType {
 	case config.AccessTypeSQL:
 		log.Info("using raw sql database access type")
 		sessionRepo := sql.NewSessionRepository(dbPool)
@@ -219,7 +230,7 @@ func buildRepos(cfg config.Config, dbPool *pgxpool.Pool, log *slog.Logger) (doma
 		sessionRepo := sqlbuilder.NewSessionRepository(dbPool)
 		return sessionRepo, nil
 	default:
-		return nil, fmt.Errorf("unsupported database access type: %v", cfg.Database.AccessType)
+		return nil, fmt.Errorf("unsupported database access type: %v", cfg.AccessType)
 	}
 }
 

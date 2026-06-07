@@ -4,6 +4,7 @@ go 1.25.1
 
 require (
 	github.com/IBM/sarama v1.48.0
+	github.com/avast/retry-go/v5 v5.0.0
 	github.com/docker/go-connections v0.6.0
 	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-co-op/gocron/v2 v2.19.1

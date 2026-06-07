@@ -2,9 +2,10 @@ package config
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/resilience"
 )
 
 type Protocol string
@@ -53,9 +54,9 @@ type DatabaseConfig struct {
 }
 
 type TelegramConfig struct {
-	Token   string        `yaml:"token" env:"TELEGRAM_TOKEN"`
-	ApiURL  string        `yaml:"api-url" env:"TELEGRAM_API_URL" env-default:"https://api.telegram.org/bot"`
-	Timeout time.Duration `yaml:"timeout" env:"TELEGRAM_TIMEOUT" env-default:"10s"`
+	Token      string                      `yaml:"token" env:"TELEGRAM_TOKEN"`
+	ApiURL     string                      `yaml:"api-url" env:"TELEGRAM_API_URL" env-default:"https://api.telegram.org/bot"`
+	Resilience resilience.HTTPClientConfig `yaml:"resilience"`
 }
 
 type LoggerConfig struct {
@@ -64,9 +65,9 @@ type LoggerConfig struct {
 }
 
 type ScrapperServiceConfig struct {
-	URL      string        `yaml:"url" env:"SCRAPPER_URL"`
-	Protocol Protocol      `yaml:"protocol" env:"SCRAPPER_API_PROTOCOL" env-default:"grpc"`
-	Timeout  time.Duration `yaml:"timeout" env:"SCRAPPER_API_TIMEOUT" env-default:"10s"`
+	URL        string                      `yaml:"url" env:"SCRAPPER_URL"`
+	Protocol   Protocol                    `yaml:"protocol" env:"SCRAPPER_API_PROTOCOL" env-default:"grpc"`
+	Resilience resilience.HTTPClientConfig `yaml:"resilience"`
 }
 
 type ServerConfig struct {
