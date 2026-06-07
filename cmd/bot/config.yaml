@@ -6,6 +6,7 @@ logger:
 
 scrapper-service:
   protocol: grpc
+  timeout: 15s
 
 database:
   access-type: SQL

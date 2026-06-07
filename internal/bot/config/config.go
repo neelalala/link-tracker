@@ -64,8 +64,9 @@ type LoggerConfig struct {
 }
 
 type ScrapperServiceConfig struct {
-	URL      string   `yaml:"url" env:"SCRAPPER_URL"`
-	Protocol Protocol `yaml:"protocol" env:"SCRAPPER_API_PROTOCOL" env-default:"grpc"`
+	URL      string        `yaml:"url" env:"SCRAPPER_URL"`
+	Protocol Protocol      `yaml:"protocol" env:"SCRAPPER_API_PROTOCOL" env-default:"grpc"`
+	Timeout  time.Duration `yaml:"timeout" env:"SCRAPPER_API_TIMEOUT" env-default:"10s"`
 }
 
 type ServerConfig struct {

@@ -194,11 +194,11 @@ func buildScrapperClient(cfg config.Config, log *slog.Logger) (ScrapperClient, e
 	switch cfg.ScrapperService.Protocol {
 	case config.ProtocolHTTP:
 		log.Info("using http scrapper client")
-		scrapper := scrapperhttp.NewClient(cfg.ScrapperService.URL)
+		scrapper := scrapperhttp.NewClient(cfg.ScrapperService.URL, cfg.ScrapperService.Timeout, log)
 		return scrapper, nil
 	case config.ProtocolGRPC:
 		log.Info("using grpc scrapper client")
-		scrapper, err := scrappergrpc.NewClient(cfg.ScrapperService.URL)
+		scrapper, err := scrappergrpc.NewClient(cfg.ScrapperService.URL, cfg.ScrapperService.Timeout, log)
 		if err != nil {
 			return nil, fmt.Errorf("error creating scrapper: %v", err)
 		}

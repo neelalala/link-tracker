@@ -2,7 +2,10 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -16,9 +19,11 @@ import (
 type Client struct {
 	connection *grpc.ClientConn
 	grpcClient pb.ScrapperServiceClient
+	timeout    time.Duration
+	log        *slog.Logger
 }
 
-func NewClient(url string) (*Client, error) {
+func NewClient(url string, timeout time.Duration, log *slog.Logger) (*Client, error) {
 	connection, err := grpc.NewClient(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -27,6 +32,8 @@ func NewClient(url string) (*Client, error) {
 	return &Client{
 		connection: connection,
 		grpcClient: pb.NewScrapperServiceClient(connection),
+		timeout:    timeout,
+		log:        log,
 	}, nil
 }
 
@@ -38,32 +45,70 @@ func (client *Client) Close() error {
 }
 
 func (client *Client) RegisterChat(ctx context.Context, chatId int64) error {
+	client.log.Debug("registering chat",
+		"id", chatId,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	_, err := client.grpcClient.RegisterChat(ctx, &pb.RegisterChatRequest{Id: chatId})
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("register chat request timed out: %w", err)
+		}
 		if status.Code(err) == codes.AlreadyExists {
 			return domain.ErrChatAlreadyRegistered
 		}
 		return fmt.Errorf("scrapper api returned unexpected error: %w", err)
 	}
 
+	client.log.Debug("chat registered",
+		"id", chatId,
+	)
+
 	return nil
 }
 
 func (client *Client) DeleteChat(ctx context.Context, chatId int64) error {
+	client.log.Debug("deleting chat",
+		"id", chatId,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	_, err := client.grpcClient.DeleteChat(ctx, &pb.DeleteChatRequest{Id: chatId})
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("delete chat request timed out: %w", err)
+		}
 		if status.Code(err) == codes.NotFound {
 			return domain.ErrChatNotRegistered
 		}
 		return fmt.Errorf("scrapper api returned unexpected error: %w", err)
 	}
 
+	client.log.Debug("chat deleted",
+		"id", chatId,
+	)
+
 	return nil
 }
 
 func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]domain.TrackedLink, error) {
+	client.log.Debug("getting tracked links",
+		"id", chatId,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	resp, err := client.grpcClient.GetLinks(ctx, &pb.GetLinksRequest{TgChatId: chatId})
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("get tracked links timed out: %w", err)
+		}
 		if status.Code(err) == codes.NotFound {
 			return nil, domain.ErrChatNotRegistered
 		}
@@ -79,10 +124,24 @@ func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]doma
 		})
 	}
 
+	client.log.Debug("got tracked links",
+		"id", chatId,
+		"count", len(links),
+	)
+
 	return links, nil
 }
 
 func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tags []string) (domain.TrackedLink, error) {
+	client.log.Debug("adding link",
+		"id", chatId,
+		"url", url,
+		"tags", tags,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	request := &pb.AddLinkRequest{
 		TgChatId: chatId,
 		Link:     url,
@@ -91,6 +150,9 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 
 	resp, err := client.grpcClient.AddLink(ctx, request)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return domain.TrackedLink{}, fmt.Errorf("add link timed out: %w", err)
+		}
 		code := status.Code(err)
 		switch code {
 		case codes.NotFound:
@@ -104,6 +166,12 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 		}
 	}
 
+	client.log.Debug("add link",
+		"id", chatId,
+		"url", url,
+		"id", resp.Id,
+	)
+
 	return domain.TrackedLink{
 		ID:   resp.Id,
 		URL:  resp.Url,
@@ -112,6 +180,14 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 }
 
 func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) (domain.TrackedLink, error) {
+	client.log.Debug("removing link",
+		"id", chatId,
+		"url", url,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	req := &pb.RemoveLinkRequest{
 		TgChatId: chatId,
 		Link:     url,
@@ -119,11 +195,20 @@ func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) 
 
 	resp, err := client.grpcClient.RemoveLink(ctx, req)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return domain.TrackedLink{}, fmt.Errorf("remove link timed out: %w", err)
+		}
 		if status.Code(err) == codes.NotFound {
 			return domain.TrackedLink{}, domain.ErrChatNotRegisteredOrLinkNotFound
 		}
 		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected error: %w", err)
 	}
+
+	client.log.Debug("link removed",
+		"id", chatId,
+		"url", url,
+		"id", resp.Id,
+	)
 
 	return domain.TrackedLink{
 		ID:   resp.Id,
