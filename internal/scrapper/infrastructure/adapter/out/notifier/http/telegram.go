@@ -15,8 +15,6 @@ import (
 
 const (
 	endpoint = "updates"
-
-	httpClientTimeout = 1 * time.Minute
 )
 
 type Bot struct {
@@ -26,10 +24,13 @@ type Bot struct {
 	log        *slog.Logger
 }
 
-func NewBot(url string, timeout time.Duration, log *slog.Logger) *Bot {
+func NewBot(httpClient *http.Client, url string, timeout time.Duration, log *slog.Logger) *Bot {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
 	return &Bot{
 		url:        url,
-		httpClient: &http.Client{Timeout: httpClientTimeout},
+		httpClient: httpClient,
 		timeout:    timeout,
 		log:        log,
 	}
@@ -57,7 +58,7 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 
 	body, err := json.Marshal(requestJson)
 	if err != nil {
-		return fmt.Errorf("failed to marshal update request: %w", err)
+		return fmt.Errorf("error marshalling update request: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, bot.timeout)
@@ -66,7 +67,7 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 	query := fmt.Sprintf("%s/%s", bot.url, endpoint)
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("error creating request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 
@@ -75,7 +76,7 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 		if errors.Is(err, context.DeadlineExceeded) {
 			return fmt.Errorf("send update request timed out: %w", err)
 		}
-		return fmt.Errorf("failed to send request to bot: %w", err)
+		return fmt.Errorf("error sending request to bot: %w", err)
 	}
 
 	defer response.Body.Close()

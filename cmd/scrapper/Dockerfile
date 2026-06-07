@@ -16,6 +16,7 @@ COPY docs/scrapper.proto ./docs/
 COPY docs/bot.proto ./docs/
 COPY docs/link_update.avsc ./docs/
 COPY migrations ./migrations
+COPY internal/resilience ./internal/resilience
 
 RUN mkdir -p pkg/api/proto/scrapper
 

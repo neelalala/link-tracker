@@ -15,8 +15,6 @@ import (
 const (
 	BaseURL    = "https://github.com/"
 	BaseApiURL = "https://api.github.com"
-
-	httpClientTimeout = 1 * time.Minute
 )
 
 type Client struct {
@@ -27,11 +25,15 @@ type Client struct {
 	timeout       time.Duration
 }
 
-func NewClient(baseUrl, baseApiUrl string, timeout time.Duration, maxPreviewLen int) *Client {
+func NewClient(httpClient *http.Client, baseURL, baseApiURL string, timeout time.Duration, maxPreviewLen int) *Client {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
 	return &Client{
-		httpClient:    &http.Client{Timeout: httpClientTimeout},
-		apiURL:        baseApiUrl,
-		baseURL:       baseUrl,
+		httpClient:    httpClient,
+		apiURL:        baseApiURL,
+		baseURL:       baseURL,
 		maxPreviewLen: maxPreviewLen,
 		timeout:       timeout,
 	}

@@ -17,8 +17,6 @@ const (
 	BaseApiURL = "https://api.stackexchange.com/2.3"
 
 	site = "stackoverflow.com"
-
-	httpClientTimeout = 1 * time.Minute
 )
 
 type Client struct {
@@ -30,12 +28,15 @@ type Client struct {
 	timeout       time.Duration
 }
 
-func NewClient(baseURL, baseAPIURL string, timeout time.Duration, maxPreviewLen int, key string) *Client {
+func NewClient(httpClient *http.Client, baseURL, baseAPIURL string, timeout time.Duration, maxPreviewLen int, key string) *Client {
 	if key != "" {
 		key = fmt.Sprintf("&key=%s", key)
 	}
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
 	return &Client{
-		httpClient:    &http.Client{Timeout: httpClientTimeout},
+		httpClient:    httpClient,
 		apiURL:        baseAPIURL,
 		baseURL:       baseURL,
 		maxPreviewLen: maxPreviewLen,

@@ -7,7 +7,14 @@ scheduler:
 
 bot-service:
   protocol: grpc
-  timeout: 15s
+  resilience:
+    timeout: 15s
+    retry:
+      enabled: true
+      max-retries: 3
+      delay: 100ms
+      backoff: true
+      max-delay: 15s
 
 server:
   protocol: grpc
@@ -18,9 +25,16 @@ database:
 
 fetchers:
   preview-limit: 200
-  timeout: 10s
   concurrency: 4
   batch: 500
+  resilience:
+    timeout: 5s
+    retry:
+      enabled: true
+      max-retries: 3
+      delay: 50ms
+      backoff: true
+      max-delay: 10s
 
 kafka:
   enabled: true

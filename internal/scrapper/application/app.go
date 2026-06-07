@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/resilience"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application/subscription"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
@@ -97,7 +98,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	})
 
 	log.Debug("Building transactor")
-	transactor, err := buildTransactor(cfg, dbPool)
+	transactor, err := buildTransactor(cfg.Database, dbPool)
 	if err != nil {
 		return nil, fmt.Errorf("error creating transactor: %v", err)
 	}
@@ -109,7 +110,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	}
 
 	log.Debug("Building fetchers")
-	fetchers := buildFetchers(cfg)
+	fetchers := buildFetchers(cfg.Fetchers, log)
 
 	log.Debug("Building fetcher service")
 	fetcher := NewFetcherService(fetchers)
@@ -221,10 +222,11 @@ func buildNotifier(
 	}
 	switch cfg.BotService.Protocol {
 	case config.ProtocolHTTP:
-		notifier := notifierhttp.NewBot(cfg.BotService.URL, cfg.BotService.Timeout, log)
+		httpClient := resilience.NewHTTPClient("bot-api", cfg.BotService.Resilience, nil, log)
+		notifier := notifierhttp.NewBot(httpClient, cfg.BotService.URL, cfg.BotService.Resilience.Timeout, log)
 		return notifier, nil
 	case config.ProtocolGRPC:
-		notifier, err := notifiergrpc.NewBot(cfg.BotService.URL, cfg.BotService.Timeout, log)
+		notifier, err := notifiergrpc.NewBot(cfg.BotService.URL, cfg.BotService.Resilience.Timeout, log)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +268,7 @@ func buildKafka(
 	app.onClose(producer.Close)
 
 	log.Debug("Running workers")
-	runWorkers(ctx, cfg, producer, log)
+	runWorkers(ctx, cfg.Kafka.Workers, producer, log)
 
 	log.Debug("Building kafka notifier")
 	notifier := kafka.NewNotifier(outRepo, cfg.Kafka.Topic, log)
@@ -294,15 +296,15 @@ func buildSchemaConfigs(cfg config.Config) (map[string]kafka.TopicConfig, error)
 	}, nil
 }
 
-func runWorkers(ctx context.Context, cfg config.Config, producer *kafka.Producer, log *slog.Logger) {
-	for range cfg.Kafka.Workers.Count {
-		worker := kafka.NewWorker(ctx, producer, cfg.Kafka.Workers.Interval, log)
+func runWorkers(ctx context.Context, cfg config.KafkaWorkerConfig, producer *kafka.Producer, log *slog.Logger) {
+	for range cfg.Count {
+		worker := kafka.NewWorker(ctx, producer, cfg.Interval, log)
 		go worker.Start()
 	}
 }
 
-func buildTransactor(cfg config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
-	switch cfg.Database.AccessType {
+func buildTransactor(cfg config.DatabaseConfig, dbPool *pgxpool.Pool) (domain.Transactor, error) {
+	switch cfg.AccessType {
 	case config.AccessTypeSQL:
 		transactor := sql.NewTransactor(dbPool)
 		return transactor, nil
@@ -310,7 +312,7 @@ func buildTransactor(cfg config.Config, dbPool *pgxpool.Pool) (domain.Transactor
 		transactor := sqlbuilder.NewTransactor(dbPool)
 		return transactor, nil
 	default:
-		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
+		return nil, fmt.Errorf("unsupported database access type: %s", cfg.AccessType)
 	}
 }
 
@@ -331,19 +333,21 @@ func buildRepos(cfg config.Config, dbPool *pgxpool.Pool) (domain.ChatRepository,
 	}
 }
 
-func buildFetchers(cfg config.Config) []domain.LinkFetcher {
+func buildFetchers(cfg config.FetchersConfig, log *slog.Logger) []domain.LinkFetcher {
 	githubClient := github.NewClient(
+		resilience.NewHTTPClient("github-fetcher", cfg.Resilience, nil, log),
 		github.BaseURL,
 		github.BaseApiURL,
-		cfg.Fetchers.Timeout,
-		cfg.Fetchers.PreviewLimit,
+		cfg.Resilience.Timeout,
+		cfg.PreviewLimit,
 	)
 	stackoverflowClient := stackoverflow.NewClient(
+		resilience.NewHTTPClient("stackoverflow-fetcher", cfg.Resilience, nil, log),
 		stackoverflow.BaseURL,
 		stackoverflow.BaseApiURL,
-		cfg.Fetchers.Timeout,
-		cfg.Fetchers.PreviewLimit,
-		cfg.Fetchers.StackOverflowKey,
+		cfg.Resilience.Timeout,
+		cfg.PreviewLimit,
+		cfg.StackOverflowKey,
 	)
 
 	return []domain.LinkFetcher{githubClient, stackoverflowClient}

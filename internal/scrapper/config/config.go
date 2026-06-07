@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/resilience"
 )
 
 type Protocol string
@@ -64,9 +66,9 @@ type SchedulerConfig struct {
 }
 
 type BotServiceConfig struct {
-	URL      string        `yaml:"url" env:"BOT_URL"`
-	Protocol Protocol      `yaml:"protocol" env:"BOT_API_PROTOCOL" env-default:"grpc"`
-	Timeout  time.Duration `yaml:"timeout" env:"BOT_API_TIMEOUT" env-default:"10s"`
+	URL        string                      `yaml:"url" env:"BOT_URL"`
+	Protocol   Protocol                    `yaml:"protocol" env:"BOT_API_PROTOCOL" env-default:"grpc"`
+	Resilience resilience.HTTPClientConfig `yaml:"resilience"`
 }
 
 type ServerConfig struct {
@@ -75,11 +77,11 @@ type ServerConfig struct {
 }
 
 type FetchersConfig struct {
-	PreviewLimit     int           `yaml:"preview-limit" env:"FETCHER_PREVIEW_LIMIT" env-default:"200"`
-	Timeout          time.Duration `yaml:"timeout" env:"FETCHER_TIMEOUT" env-default:"10s"`
-	Concurrency      int           `yaml:"concurrency" env:"FETCHER_COUNT" env-default:"1"`
-	Batch            int           `yaml:"batch" env:"FETCHER_BATCH_SIZE" env-default:"100"`
-	StackOverflowKey string        `yaml:"stackoverflow-key" env:"STACKOVERFLOW_KEY" env-default:""`
+	PreviewLimit     int                         `yaml:"preview-limit" env:"FETCHER_PREVIEW_LIMIT" env-default:"200"`
+	Concurrency      int                         `yaml:"concurrency" env:"FETCHER_COUNT" env-default:"1"`
+	Batch            int                         `yaml:"batch" env:"FETCHER_BATCH_SIZE" env-default:"100"`
+	StackOverflowKey string                      `yaml:"stackoverflow-key" env:"STACKOVERFLOW_KEY" env-default:""`
+	Resilience       resilience.HTTPClientConfig `yaml:"resilience"`
 }
 
 type KafkaWorkerConfig struct {
