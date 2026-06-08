@@ -15,6 +15,13 @@ bot-service:
       delay: 100ms
       backoff: true
       max-delay: 15s
+    breaker:
+      enabled: true
+      max-requests: 5
+      sliding-window: 1m
+      wait-in-open-state: 30s
+      minimum-number-of-calls: 5
+      failure-rate-threshold: 0.5
 
 server:
   protocol: grpc
@@ -35,7 +42,13 @@ fetchers:
       delay: 50ms
       backoff: true
       max-delay: 10s
-
+    breaker:
+      enabled: true
+      max-requests: 5
+      sliding-window: 1m
+      wait-in-open-state: 30s
+      minimum-number-of-calls: 5
+      failure-rate-threshold: 0.5
 kafka:
   enabled: true
   brokers:
