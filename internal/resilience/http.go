@@ -1,7 +1,9 @@
 package resilience
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"net/http"
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v5"
+	"github.com/sony/gobreaker/v2"
 )
 
 func NewHTTPClient(name string, cfg HTTPClientConfig, base *http.Client, log *slog.Logger) *http.Client {
@@ -16,11 +19,15 @@ func NewHTTPClient(name string, cfg HTTPClientConfig, base *http.Client, log *sl
 		base = http.DefaultClient
 	}
 
-	client := base
+	client := *base
 
 	transport := base.Transport
 	if transport == nil {
 		transport = http.DefaultTransport
+	}
+
+	if cfg.Breaker.Enabled {
+		transport = newBreakerTransport(transport, name, cfg.Breaker, log)
 	}
 
 	if cfg.Retry.Enabled {
@@ -30,7 +37,7 @@ func NewHTTPClient(name string, cfg HTTPClientConfig, base *http.Client, log *sl
 	client.Transport = transport
 	client.Timeout = 2 * cfg.Timeout
 
-	return client
+	return &client
 }
 
 type retryTransport struct {
@@ -87,20 +94,16 @@ func (transport *retryTransport) RoundTrip(req *http.Request) (*http.Response, e
 	var final *http.Response
 
 	err := transport.retrier.Do(func() error {
-		//if req.Body != nil && req.GetBody != nil {
-		//	body, err := req.GetBody()
-		//	if err != nil {
-		//		return retry.Unrecoverable(err)
-		//	}
-		//	req.Body = body
-		//}
-
 		resp, err := transport.base.RoundTrip(req)
 		if err != nil {
+			if errors.Is(err, gobreaker.ErrOpenState) {
+				return retry.Unrecoverable(err)
+			}
 			return err
 		}
 
 		if slices.Contains(transport.retryable, resp.StatusCode) {
+			io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
 			return fmt.Errorf("retryable status code %d", resp.StatusCode)
 		}
@@ -131,5 +134,55 @@ func exponentialBackoffDelay(backoffFactor float64, maxDelay time.Duration) retr
 		}
 
 		return delay
+	}
+}
+
+type breakerTransport struct {
+	base http.RoundTripper
+	cb   *gobreaker.CircuitBreaker[*http.Response]
+}
+
+func newBreakerTransport(base http.RoundTripper, name string, cfg CircuitBreakerConfig, log *slog.Logger) http.RoundTripper {
+	cb := gobreaker.NewCircuitBreaker[*http.Response](gobreaker.Settings{
+		Name:        name,
+		MaxRequests: cfg.MaxRequests,
+		Interval:    cfg.SlidingWindow,
+		Timeout:     cfg.WaitInOpenState,
+		ReadyToTrip: readyToTrip(cfg.MinimumNumberOfCalls, cfg.FailureRateThreshold),
+		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
+			log.Warn("circuit breaker state change",
+				"client", name,
+				"state", from,
+				"to", to,
+			)
+		},
+	})
+	return &breakerTransport{
+		base: base,
+		cb:   cb,
+	}
+}
+
+func (transport *breakerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return transport.cb.Execute(func() (*http.Response, error) {
+		resp, err := transport.base.RoundTrip(req)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode >= http.StatusInternalServerError {
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+			return nil, fmt.Errorf("server error: %d", resp.StatusCode)
+		}
+
+		return resp, nil
+	})
+}
+
+func readyToTrip(minNumOfCalls uint32, failureThreshold float64) func(counts gobreaker.Counts) bool {
+	return func(counts gobreaker.Counts) bool {
+		failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
+		return counts.Requests >= minNumOfCalls && failureRatio >= failureThreshold
 	}
 }

@@ -15,9 +15,19 @@ type RetryConfig struct {
 	RetryableStatuses []int         `yaml:"retryable-statuses"`
 }
 
+type CircuitBreakerConfig struct {
+	Enabled              bool          `yaml:"enabled" env-default:"true"`
+	MaxRequests          uint32        `yaml:"max-requests" env-default:"10"`
+	SlidingWindow        time.Duration `yaml:"sliding-window" env-default:"30s"`
+	WaitInOpenState      time.Duration `yaml:"wait-in-open-state" env-default:"15s"`
+	MinimumNumberOfCalls uint32        `yaml:"minimum-number-of-calls" env-default:"10"`
+	FailureRateThreshold float64       `yaml:"failure-rate-threshold" env-default:"0.5"`
+}
+
 type HTTPClientConfig struct {
-	Timeout time.Duration `yaml:"timeout" env-default:"5s"`
-	Retry   RetryConfig   `yaml:"retry"`
+	Timeout time.Duration        `yaml:"timeout" env-default:"5s"`
+	Retry   RetryConfig          `yaml:"retry"`
+	Breaker CircuitBreakerConfig `yaml:"breaker"`
 }
 
 var DefaultRetryableStatuses = []int{
