@@ -3,6 +3,7 @@ package resilience
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,10 @@ func TestRetry_SuccessOnThirdAttempt(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	var attempts int
 
+	const (
+		expectedBody = "success"
+	)
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
 		if attempts <= 2 {
@@ -26,7 +31,7 @@ func TestRetry_SuccessOnThirdAttempt(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		w.Write([]byte(expectedBody))
 	}))
 	defer server.Close()
 
@@ -53,6 +58,10 @@ func TestRetry_SuccessOnThirdAttempt(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode, "expected status code 200")
 
 	assert.Equal(t, 3, attempts, "expected 2 failures and 1 success")
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, expectedBody, string(body), "corrupted body")
 }
 
 func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
@@ -234,4 +243,92 @@ func TestCircuitBreaker_CancelledContext(t *testing.T) {
 	assert.Nil(t, resp3)
 
 	assert.Equal(t, 0, attempts, "expected 2 server calls")
+}
+
+type customReader struct {
+	data   string
+	offset int
+}
+
+func (r *customReader) Read(p []byte) (n int, err error) {
+	if r.offset >= len(r.data) {
+		return 0, io.EOF
+	}
+
+	n = copy(p, r.data)
+
+	r.offset += n
+	return
+}
+
+func (r *customReader) Close() error {
+	return nil
+}
+
+func TestResilience_ClientBody(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	const (
+		expectedRespBody = "respBody"
+		expectedReqBody  = "reqBody"
+	)
+	var attempts int
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts >= 2 {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if string(body) != expectedReqBody {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(expectedRespBody))
+			return
+		}
+		io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	cfg := HTTPClientConfig{
+		Timeout: 5 * time.Second,
+		Retry: RetryConfig{
+			Enabled:           true,
+			MaxRetries:        3,
+			Delay:             10 * time.Millisecond,
+			Backoff:           false,
+			RetryableStatuses: []int{http.StatusInternalServerError},
+		},
+		Breaker: CircuitBreakerConfig{
+			Enabled:              true,
+			MinimumNumberOfCalls: 2,
+			FailureRateThreshold: 0.5,
+			SlidingWindow:        5 * time.Second,
+			WaitInOpenState:      5 * time.Second,
+		},
+	}
+
+	client := NewHTTPClient("test-resilience-client_body", cfg, nil, log)
+
+	reader := &customReader{data: expectedReqBody}
+	req, err := http.NewRequest(http.MethodPost, server.URL, reader)
+	require.NoError(t, err)
+	req.GetBody = func() (io.ReadCloser, error) {
+		return &customReader{data: expectedReqBody}, nil
+	}
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, expectedRespBody, string(body), "corrupted body")
+
+	assert.Equal(t, 2, attempts, "expected 2 server calls")
 }
