@@ -84,6 +84,9 @@ func (transport *retryTransport) RoundTrip(req *http.Request) (*http.Response, e
 	var final *http.Response
 
 	err := transport.retrier.Do(func() error {
+		if err := req.Context().Err(); err != nil {
+			return retry.Unrecoverable(err)
+		}
 		resp, err := transport.base.RoundTrip(req)
 		if err != nil {
 			if errors.Is(err, gobreaker.ErrOpenState) {
@@ -155,6 +158,9 @@ func newBreakerTransport(base http.RoundTripper, name string, cfg CircuitBreaker
 
 func (transport *breakerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return transport.cb.Execute(func() (*http.Response, error) {
+		if err := req.Context().Err(); err != nil {
+			return nil, err
+		}
 		resp, err := transport.base.RoundTrip(req)
 		if err != nil {
 			return nil, err
