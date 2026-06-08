@@ -48,39 +48,29 @@ type retryTransport struct {
 }
 
 func newRetryTransport(base http.RoundTripper, name string, cfg RetryConfig, log *slog.Logger) http.RoundTripper {
-	var retrier *retry.Retrier
-
 	if len(cfg.RetryableStatuses) == 0 {
 		cfg.RetryableStatuses = DefaultRetryableStatuses
 	}
 
-	if cfg.Backoff {
-		retrier = retry.New(
-			retry.Attempts(cfg.MaxRetries),
-			retry.Delay(cfg.Delay),
-			retry.DelayType(exponentialBackoffDelay(cfg.BackoffFactor, cfg.MaxDelay)),
-			retry.OnRetry(func(n uint, err error) {
-				log.Warn("retrying request",
-					"client", name,
-					"attempt", n+1,
-					"error", err,
-				)
-			}),
-		)
-	} else {
-		retrier = retry.New(
-			retry.Attempts(cfg.MaxRetries),
-			retry.Delay(cfg.Delay),
-			retry.DelayType(retry.FixedDelay),
-			retry.OnRetry(func(n uint, err error) {
-				log.Warn("retrying request",
-					"client", name,
-					"attempt", n+1,
-					"error", err,
-				)
-			}),
-		)
+	var options = []retry.Option{
+		retry.Attempts(cfg.MaxRetries),
+		retry.Delay(cfg.Delay),
+		retry.OnRetry(func(n uint, err error) {
+			log.Warn("retrying request",
+				"client", name,
+				"attempt", n+1,
+				"error", err,
+			)
+		}),
 	}
+
+	if cfg.Backoff {
+		options = append(options, retry.DelayType(exponentialBackoffDelay(cfg.BackoffFactor, cfg.MaxDelay)))
+	} else {
+		options = append(options, retry.DelayType(retry.FixedDelay))
+	}
+
+	retrier := retry.New(options...)
 
 	return &retryTransport{
 		base:      base,
