@@ -87,6 +87,14 @@ func (transport *retryTransport) RoundTrip(req *http.Request) (*http.Response, e
 		if err := req.Context().Err(); err != nil {
 			return retry.Unrecoverable(err)
 		}
+		if req.GetBody != nil {
+			body, err := req.GetBody()
+			if err != nil {
+				return retry.Unrecoverable(err)
+			}
+			req.Body = body
+		}
+
 		resp, err := transport.base.RoundTrip(req)
 		if err != nil {
 			if errors.Is(err, gobreaker.ErrOpenState) {
