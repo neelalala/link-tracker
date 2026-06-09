@@ -30,6 +30,14 @@ type HTTPClientConfig struct {
 	Breaker CircuitBreakerConfig `yaml:"breaker"`
 }
 
+type RateLimitConfig struct {
+	Enabled  bool          `yaml:"enabled" env-default:"true"`
+	Period   time.Duration `yaml:"period" env-default:"10s"`
+	Requests int           `yaml:"requests" env-default:"10"`
+	Burst    int           `yaml:"burst" env-default:"5"`
+	TTL      time.Duration `yaml:"ttl" env-default:"1m"`
+}
+
 var DefaultRetryableStatuses = []int{
 	http.StatusRequestTimeout,
 	http.StatusTooEarly,
