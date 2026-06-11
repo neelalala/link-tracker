@@ -19,5 +19,9 @@ kafka:
   topic: link-updates
   dlq-topic: link-updates-dlq
   consumer-group: bot-group-1
-  retries: 3
+  retries:
+    max-retries: 3
+    delay: 100ms
+    max-delay: 10s
+    backoff-factor: 2.0
   schema-registry-url: http://schema-registry:8081
