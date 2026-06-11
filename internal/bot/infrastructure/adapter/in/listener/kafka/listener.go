@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/IBM/sarama"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
@@ -80,7 +81,6 @@ func (listener *Listener) Start() error {
 			return nil
 		}
 	}
-
 }
 
 func (listener *Listener) Stop(ctx context.Context) error {
@@ -103,4 +103,13 @@ func (listener *Listener) Stop(ctx context.Context) error {
 	err := errors.Join(errConsumer, errProducer)
 
 	return err
+}
+
+func (listener *Listener) WaitReady(ctx context.Context) error {
+	select {
+	case <-listener.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

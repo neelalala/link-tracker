@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka/mapper"
 	"log/slog"
 	"os"
 	"testing"
 	"time"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka/mapper"
 
 	"github.com/IBM/sarama"
 	"github.com/golang-migrate/migrate/v4"
@@ -20,6 +21,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
+
 	botdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	botkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/listener/kafka"
 	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
@@ -266,7 +268,7 @@ func TestScrapperKafka_Integration(t *testing.T) {
 	go func() { listener.Start() }()
 	defer listener.Stop(ctx)
 
-	time.Sleep(10 * time.Second) // listener connecting to kafka
+	require.NoError(t, listener.WaitReady(ctx))
 
 	t.Run("Scrapper - Kafka - Bot flow", func(t *testing.T) {
 		update := scrapperdomain.LinkUpdate{

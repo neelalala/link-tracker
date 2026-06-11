@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/riferrei/srclient"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/listener/kafka/mapper"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/validation"
@@ -23,7 +25,9 @@ type Handler struct {
 	dlqTopic      string
 	retries       int
 
-	srClient *srclient.SchemaRegistryClient
+	ready     chan struct{}
+	readyOnce sync.Once
+	srClient  *srclient.SchemaRegistryClient
 
 	log *slog.Logger
 }
@@ -41,12 +45,16 @@ func NewHandler(
 		producer:      producer,
 		dlqTopic:      dlqTopic,
 		retries:       retries,
+		ready:         make(chan struct{}),
 		srClient:      srclient.NewSchemaRegistryClient(registryURL),
 		log:           log,
 	}
 }
 
 func (h *Handler) Setup(sarama.ConsumerGroupSession) error {
+	h.readyOnce.Do(func() {
+		close(h.ready)
+	})
 	return nil
 }
 
