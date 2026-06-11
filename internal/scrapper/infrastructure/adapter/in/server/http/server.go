@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/resilience"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
@@ -21,17 +22,21 @@ type SubscriptionService interface {
 type Server struct {
 	httpServer *http.Server
 	port       uint16
+	rl         *resilience.IPRateLimiter
 	log        *slog.Logger
 }
 
-func NewServer(port uint16, service SubscriptionService, log *slog.Logger) *Server {
+func NewServer(port uint16, service SubscriptionService, rateLimitConfig resilience.RateLimitConfig, log *slog.Logger) *Server {
 	handler := NewHandler(service, log)
+
+	rl := resilience.NewIPRateLimiter(rateLimitConfig, log)
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /tg-chat/{id}", handler.HandlePostTgChat)
-	mux.HandleFunc("DELETE /tg-chat/{id}", handler.HandleDeleteTgChat)
-	mux.HandleFunc("GET /links", handler.HandleGetLinks)
-	mux.HandleFunc("POST /links", handler.HandlePostLinks)
-	mux.HandleFunc("DELETE /links", handler.HandleDeleteLinks)
+	mux.HandleFunc("POST /tg-chat/{id}", rl.Middleware(handler.HandlePostTgChat))
+	mux.HandleFunc("DELETE /tg-chat/{id}", rl.Middleware(handler.HandleDeleteTgChat))
+	mux.HandleFunc("GET /links", rl.Middleware(handler.HandleGetLinks))
+	mux.HandleFunc("POST /links", rl.Middleware(handler.HandlePostLinks))
+	mux.HandleFunc("DELETE /links", rl.Middleware(handler.HandleDeleteLinks))
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -41,6 +46,7 @@ func NewServer(port uint16, service SubscriptionService, log *slog.Logger) *Serv
 	return &Server{
 		httpServer: server,
 		port:       port,
+		rl:         rl,
 		log:        log,
 	}
 }
@@ -55,5 +61,6 @@ func (server *Server) Start() error {
 
 func (server *Server) Stop(ctx context.Context) error {
 	server.log.Info("Shutting down HTTP server...")
+	server.rl.Stop()
 	return server.httpServer.Shutdown(ctx)
 }

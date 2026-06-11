@@ -206,8 +206,14 @@ func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *sl
 	}
 	switch cfg.Server.Protocol {
 	case config.ProtocolHTTP:
+		rateLimitConfig := resilience.RateLimitConfig{
+			Enabled: cfg.Server.RateLimit.Enabled,
+			RPS:     cfg.Server.RateLimit.RPS,
+			Burst:   cfg.Server.RateLimit.Burst,
+			TTL:     cfg.Server.RateLimit.TTL,
+		}
 		log.Info("using http server as listener")
-		server := http.NewServer(cfg.Server.Port, notifier, log)
+		server := http.NewServer(cfg.Server.Port, notifier, rateLimitConfig, log)
 		return server, nil
 	case config.ProtocolGRPC:
 		log.Info("using grpc server as listener")

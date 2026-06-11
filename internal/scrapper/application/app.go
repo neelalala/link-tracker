@@ -396,7 +396,13 @@ func buildFetchers(cfg config.FetchersConfig, log *slog.Logger) []domain.LinkFet
 func buildAPIServer(cfg config.Config, subsService SubscriptionService, log *slog.Logger) (APIServer, error) {
 	switch cfg.Server.Protocol {
 	case config.ProtocolHTTP:
-		server := serverhttp.NewServer(cfg.Server.Port, subsService, log)
+		rateLimitConfig := resilience.RateLimitConfig{
+			Enabled: cfg.Server.RateLimit.Enabled,
+			RPS:     cfg.Server.RateLimit.RPS,
+			Burst:   cfg.Server.RateLimit.Burst,
+			TTL:     cfg.Server.RateLimit.TTL,
+		}
+		server := serverhttp.NewServer(cfg.Server.Port, subsService, rateLimitConfig, log)
 		return server, nil
 	case config.ProtocolGRPC:
 		server := servergrpc.NewServer(cfg.Server.Port, subsService, log)
