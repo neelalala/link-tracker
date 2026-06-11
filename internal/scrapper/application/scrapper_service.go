@@ -9,16 +9,12 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-type UpdateNotifier interface {
-	SendUpdate(ctx context.Context, update domain.LinkUpdate) error
-}
-
 type ScrapperService struct {
 	linkRepo   domain.LinkRepository
 	subRepo    domain.SubscriptionRepository
 	fetcher    domain.LinkFetcher
 	transactor domain.Transactor
-	notifier   UpdateNotifier
+	notifier   domain.UpdateNotifier
 
 	batchSize     int
 	fetchersCount int
@@ -31,7 +27,7 @@ func NewScrapperService(
 	subRepo domain.SubscriptionRepository,
 	fetcher domain.LinkFetcher,
 	transactor domain.Transactor,
-	notifier UpdateNotifier,
+	notifier domain.UpdateNotifier,
 	batchSize int,
 	fetchersCount int,
 	logger *slog.Logger,
