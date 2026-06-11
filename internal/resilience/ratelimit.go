@@ -29,6 +29,8 @@ type IPRateLimiter struct {
 
 	done chan struct{}
 	once sync.Once
+
+	log *slog.Logger
 }
 
 type limiterEntry struct {
@@ -36,7 +38,7 @@ type limiterEntry struct {
 	lastSeen time.Time
 }
 
-func NewIPRateLimiter(cfg RateLimitConfig) *IPRateLimiter {
+func NewIPRateLimiter(cfg RateLimitConfig, log *slog.Logger) *IPRateLimiter {
 	rl := &IPRateLimiter{
 		limiters: make(map[string]*limiterEntry),
 		limit:    rate.Limit(cfg.RPS),
@@ -44,6 +46,7 @@ func NewIPRateLimiter(cfg RateLimitConfig) *IPRateLimiter {
 		ttl:      cfg.TTL,
 		enabled:  cfg.Enabled,
 		done:     make(chan struct{}),
+		log:      log,
 	}
 
 	if rl.enabled {
@@ -89,7 +92,7 @@ func (rl *IPRateLimiter) cleaner(interval time.Duration) {
 	}
 }
 
-func (rl *IPRateLimiter) Middleware(next http.HandlerFunc, log *slog.Logger) http.HandlerFunc {
+func (rl *IPRateLimiter) Middleware(next http.HandlerFunc) http.HandlerFunc {
 	if !rl.enabled {
 		return next
 	}
@@ -97,7 +100,7 @@ func (rl *IPRateLimiter) Middleware(next http.HandlerFunc, log *slog.Logger) htt
 	return func(w http.ResponseWriter, req *http.Request) {
 		ip := clientIP(req)
 		if !rl.allow(ip) {
-			log.Warn("rate limit exceeded",
+			rl.log.Warn("rate limit exceeded",
 				slog.String("ip", ip),
 				slog.String("path", req.URL.Path),
 			)
