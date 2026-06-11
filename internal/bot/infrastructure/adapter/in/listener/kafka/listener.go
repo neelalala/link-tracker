@@ -14,7 +14,7 @@ import (
 type Listener struct {
 	consumer sarama.ConsumerGroup
 	producer sarama.SyncProducer
-	handler  sarama.ConsumerGroupHandler
+	handler  *Handler
 	topic    string
 
 	ctx    context.Context
@@ -107,7 +107,7 @@ func (listener *Listener) Stop(ctx context.Context) error {
 
 func (listener *Listener) WaitReady(ctx context.Context) error {
 	select {
-	case <-listener.done:
+	case <-listener.handler.ready:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
