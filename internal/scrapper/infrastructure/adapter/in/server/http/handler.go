@@ -29,13 +29,13 @@ type apiErrorResponse struct {
 type Handler struct {
 	service SubscriptionService
 
-	logger *slog.Logger
+	log *slog.Logger
 }
 
-func NewHandler(service SubscriptionService, logger *slog.Logger) *Handler {
+func NewHandler(service SubscriptionService, log *slog.Logger) *Handler {
 	return &Handler{
 		service: service,
-		logger:  logger,
+		log:     log,
 	}
 }
 
@@ -58,7 +58,7 @@ func (handler *Handler) getChatIdFromPath(request *http.Request) (int64, error) 
 func (handler *Handler) HandlePostTgChat(w http.ResponseWriter, request *http.Request) {
 	chatId, err := handler.getChatIdFromPath(request)
 	if err != nil {
-		handler.logger.Warn(
+		handler.log.Warn(
 			"failed to parse chat id from query string",
 			slog.String("error", err.Error()),
 			slog.String("context", "handler.HandlePostTgChat"),
@@ -89,7 +89,7 @@ func (handler *Handler) HandlePostTgChat(w http.ResponseWriter, request *http.Re
 			return
 		}
 
-		handler.logger.Error(
+		handler.log.Error(
 			"failed to register chat",
 			slog.Int64("chat_id", chatId),
 			slog.String("error", err.Error()),
@@ -110,7 +110,7 @@ func (handler *Handler) HandlePostTgChat(w http.ResponseWriter, request *http.Re
 func (handler *Handler) HandleDeleteTgChat(w http.ResponseWriter, request *http.Request) {
 	chatId, err := handler.getChatIdFromPath(request)
 	if err != nil {
-		handler.logger.Warn(
+		handler.log.Warn(
 			"failed to parse chat id from query string",
 			slog.String("error", err.Error()),
 			slog.String("context", "handler.HandleDeleteTgChat"),
@@ -139,7 +139,7 @@ func (handler *Handler) HandleDeleteTgChat(w http.ResponseWriter, request *http.
 			)
 			return
 		}
-		handler.logger.Error(
+		handler.log.Error(
 			"failed to delete chat",
 			slog.Int64("chat_id", chatId),
 			slog.String("error", err.Error()),
@@ -160,7 +160,7 @@ func (handler *Handler) HandleDeleteTgChat(w http.ResponseWriter, request *http.
 func (handler *Handler) HandleGetLinks(w http.ResponseWriter, request *http.Request) {
 	chatId, err := handler.getChatIDFromHeader(request)
 	if err != nil {
-		handler.logger.Warn(
+		handler.log.Warn(
 			"failed to parse chat id from header",
 			slog.String("error", err.Error()),
 			slog.String("context", "handler.HandleGetLinks"),
@@ -189,7 +189,7 @@ func (handler *Handler) HandleGetLinks(w http.ResponseWriter, request *http.Requ
 			)
 			return
 		}
-		handler.logger.Error(
+		handler.log.Error(
 			"failed to get tracked links",
 			slog.Int64("chat_id", chatId),
 			slog.String("error", err.Error()),
@@ -230,7 +230,7 @@ func (handler *Handler) HandleGetLinks(w http.ResponseWriter, request *http.Requ
 func (handler *Handler) HandlePostLinks(w http.ResponseWriter, request *http.Request) {
 	chatId, err := handler.getChatIDFromHeader(request)
 	if err != nil {
-		handler.logger.Warn(
+		handler.log.Warn(
 			"failed to parse chat id from header",
 			slog.String("error", err.Error()),
 			slog.String("context", "handler.HandlePostLinks"),
@@ -253,7 +253,7 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, request *http.Req
 	var reqJson addLinkRequest
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
-		handler.logger.Error(
+		handler.log.Error(
 			"failed to read request body",
 			slog.String("error", err.Error()),
 			slog.String("context", "handler.HandlePostLinks"),
@@ -314,7 +314,7 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, request *http.Req
 			)
 			return
 		}
-		handler.logger.Error(
+		handler.log.Error(
 			"failed to add link",
 			slog.Int64("chat_id", chatId),
 			slog.String("error", err.Error()),
@@ -344,7 +344,7 @@ func (handler *Handler) HandlePostLinks(w http.ResponseWriter, request *http.Req
 func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, request *http.Request) {
 	chatId, err := handler.getChatIDFromHeader(request)
 	if err != nil {
-		handler.logger.Warn(
+		handler.log.Warn(
 			"failed to parse chat id from header",
 			slog.String("error", err.Error()),
 			slog.String("context", "handler.HandlePostLinks"),
@@ -367,7 +367,7 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, request *http.R
 
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
-		handler.logger.Error(
+		handler.log.Error(
 			"failed to read request body",
 			slog.String("error", err.Error()),
 			slog.String("context", "handler.HandleDeleteLinks"),
@@ -419,7 +419,7 @@ func (handler *Handler) HandleDeleteLinks(w http.ResponseWriter, request *http.R
 			)
 			return
 		}
-		handler.logger.Error(
+		handler.log.Error(
 			"failed to delete link",
 			slog.Int64("chat_id", chatId),
 			slog.String("error", err.Error()),
