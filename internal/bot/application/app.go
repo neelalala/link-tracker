@@ -155,7 +155,27 @@ func (app *App) Shutdown(ctx context.Context) {
 }
 
 func buildTelegramClient(cfg config.TelegramConfig, log *slog.Logger) (*outtelegram.Client, error) {
-	httpClient := resilience.NewHTTPClient("telegram-in", cfg.Resilience, nil, log)
+	httpClientConfig := resilience.HTTPClientConfig{
+		Timeout: cfg.Resilience.Timeout,
+		Retry: resilience.RetryConfig{
+			Enabled:           cfg.Resilience.Retry.Enabled,
+			MaxRetries:        cfg.Resilience.Retry.MaxRetries,
+			Delay:             cfg.Resilience.Retry.Delay,
+			Backoff:           cfg.Resilience.Retry.Backoff,
+			BackoffFactor:     cfg.Resilience.Retry.BackoffFactor,
+			MaxDelay:          cfg.Resilience.Retry.MaxDelay,
+			RetryableStatuses: cfg.Resilience.Retry.RetryableStatuses,
+		},
+		Breaker: resilience.CircuitBreakerConfig{
+			Enabled:              cfg.Resilience.Breaker.Enabled,
+			MaxRequests:          cfg.Resilience.Breaker.MaxRequests,
+			SlidingWindow:        cfg.Resilience.Breaker.SlidingWindow,
+			WaitInOpenState:      cfg.Resilience.Breaker.WaitInOpenState,
+			MinimumNumberOfCalls: cfg.Resilience.Breaker.MinimumNumberOfCalls,
+			FailureRateThreshold: cfg.Resilience.Breaker.FailureRateThreshold,
+		},
+	}
+	httpClient := resilience.NewHTTPClient("telegram-in", httpClientConfig, nil, log)
 	tgClient, err := outtelegram.NewClient(cfg.ApiURL, cfg.Token, cfg.Resilience.Timeout, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error creating telegram client: %v", err)
@@ -201,7 +221,27 @@ func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *sl
 func buildScrapperClient(cfg config.ScrapperServiceConfig, log *slog.Logger) (ScrapperClient, error) {
 	switch cfg.Protocol {
 	case config.ProtocolHTTP:
-		httpClient := resilience.NewHTTPClient("scrapper", cfg.Resilience, nil, log)
+		httpClientConfig := resilience.HTTPClientConfig{
+			Timeout: cfg.Resilience.Timeout,
+			Retry: resilience.RetryConfig{
+				Enabled:           cfg.Resilience.Retry.Enabled,
+				MaxRetries:        cfg.Resilience.Retry.MaxRetries,
+				Delay:             cfg.Resilience.Retry.Delay,
+				Backoff:           cfg.Resilience.Retry.Backoff,
+				BackoffFactor:     cfg.Resilience.Retry.BackoffFactor,
+				MaxDelay:          cfg.Resilience.Retry.MaxDelay,
+				RetryableStatuses: cfg.Resilience.Retry.RetryableStatuses,
+			},
+			Breaker: resilience.CircuitBreakerConfig{
+				Enabled:              cfg.Resilience.Breaker.Enabled,
+				MaxRequests:          cfg.Resilience.Breaker.MaxRequests,
+				SlidingWindow:        cfg.Resilience.Breaker.SlidingWindow,
+				WaitInOpenState:      cfg.Resilience.Breaker.WaitInOpenState,
+				MinimumNumberOfCalls: cfg.Resilience.Breaker.MinimumNumberOfCalls,
+				FailureRateThreshold: cfg.Resilience.Breaker.FailureRateThreshold,
+			},
+		}
+		httpClient := resilience.NewHTTPClient("scrapper", httpClientConfig, nil, log)
 		log.Info("using http scrapper client")
 		scrapper := scrapperhttp.NewClient(cfg.URL, httpClient, cfg.Resilience.Timeout, log)
 		return scrapper, nil

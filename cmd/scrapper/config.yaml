@@ -25,6 +25,11 @@ bot-service:
 
 server:
   protocol: grpc
+  rate-limit:
+    enabled: true
+    rps: 6
+    burst: 3
+    ttl: 30s
 
 database:
   migrations-dir-url: file://migrations

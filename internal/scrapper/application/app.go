@@ -222,7 +222,27 @@ func buildNotifier(
 	}
 	switch cfg.BotService.Protocol {
 	case config.ProtocolHTTP:
-		httpClient := resilience.NewHTTPClient("bot-api", cfg.BotService.Resilience, nil, log)
+		httpClientConfig := resilience.HTTPClientConfig{
+			Timeout: cfg.BotService.Resilience.Timeout,
+			Retry: resilience.RetryConfig{
+				Enabled:           cfg.BotService.Resilience.Retry.Enabled,
+				MaxRetries:        cfg.BotService.Resilience.Retry.MaxRetries,
+				Delay:             cfg.BotService.Resilience.Retry.Delay,
+				Backoff:           cfg.BotService.Resilience.Retry.Backoff,
+				BackoffFactor:     cfg.BotService.Resilience.Retry.BackoffFactor,
+				MaxDelay:          cfg.BotService.Resilience.Retry.MaxDelay,
+				RetryableStatuses: cfg.BotService.Resilience.Retry.RetryableStatuses,
+			},
+			Breaker: resilience.CircuitBreakerConfig{
+				Enabled:              cfg.BotService.Resilience.Breaker.Enabled,
+				MaxRequests:          cfg.BotService.Resilience.Breaker.MaxRequests,
+				SlidingWindow:        cfg.BotService.Resilience.Breaker.SlidingWindow,
+				WaitInOpenState:      cfg.BotService.Resilience.Breaker.WaitInOpenState,
+				MinimumNumberOfCalls: cfg.BotService.Resilience.Breaker.MinimumNumberOfCalls,
+				FailureRateThreshold: cfg.BotService.Resilience.Breaker.FailureRateThreshold,
+			},
+		}
+		httpClient := resilience.NewHTTPClient("bot-api", httpClientConfig, nil, log)
 		notifier := notifierhttp.NewBot(httpClient, cfg.BotService.URL, cfg.BotService.Resilience.Timeout, log)
 		return notifier, nil
 	case config.ProtocolGRPC:
@@ -334,15 +354,35 @@ func buildRepos(cfg config.Config, dbPool *pgxpool.Pool) (domain.ChatRepository,
 }
 
 func buildFetchers(cfg config.FetchersConfig, log *slog.Logger) []domain.LinkFetcher {
+	httpClientConfig := resilience.HTTPClientConfig{
+		Timeout: cfg.Resilience.Timeout,
+		Retry: resilience.RetryConfig{
+			Enabled:           cfg.Resilience.Retry.Enabled,
+			MaxRetries:        cfg.Resilience.Retry.MaxRetries,
+			Delay:             cfg.Resilience.Retry.Delay,
+			Backoff:           cfg.Resilience.Retry.Backoff,
+			BackoffFactor:     cfg.Resilience.Retry.BackoffFactor,
+			MaxDelay:          cfg.Resilience.Retry.MaxDelay,
+			RetryableStatuses: cfg.Resilience.Retry.RetryableStatuses,
+		},
+		Breaker: resilience.CircuitBreakerConfig{
+			Enabled:              cfg.Resilience.Breaker.Enabled,
+			MaxRequests:          cfg.Resilience.Breaker.MaxRequests,
+			SlidingWindow:        cfg.Resilience.Breaker.SlidingWindow,
+			WaitInOpenState:      cfg.Resilience.Breaker.WaitInOpenState,
+			MinimumNumberOfCalls: cfg.Resilience.Breaker.MinimumNumberOfCalls,
+			FailureRateThreshold: cfg.Resilience.Breaker.FailureRateThreshold,
+		},
+	}
 	githubClient := github.NewClient(
-		resilience.NewHTTPClient("github-fetcher", cfg.Resilience, nil, log),
+		resilience.NewHTTPClient("github-fetcher", httpClientConfig, nil, log),
 		github.BaseURL,
 		github.BaseApiURL,
 		cfg.Resilience.Timeout,
 		cfg.PreviewLimit,
 	)
 	stackoverflowClient := stackoverflow.NewClient(
-		resilience.NewHTTPClient("stackoverflow-fetcher", cfg.Resilience, nil, log),
+		resilience.NewHTTPClient("stackoverflow-fetcher", httpClientConfig, nil, log),
 		stackoverflow.BaseURL,
 		stackoverflow.BaseApiURL,
 		cfg.Resilience.Timeout,
