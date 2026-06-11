@@ -7,9 +7,8 @@ import (
 	"log/slog"
 	"os"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/sync/errgroup"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/commands"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/config"
@@ -42,9 +41,9 @@ type ScrapperClient interface {
 }
 
 type App struct {
-	server UpdateListener
-	poller Poller
-	log    *slog.Logger
+	listener UpdateListener
+	poller   Poller
+	log      *slog.Logger
 
 	closers []func() error
 }
@@ -84,7 +83,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating update listener: %v", err)
 	}
-	app.server = listener
+	app.listener = listener
 
 	scrapper, err := buildScrapperClient(cfg.ScrapperService, log)
 	if err != nil {
@@ -125,8 +124,8 @@ func (app *App) Start(ctx context.Context) error {
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		app.log.Info("Starting bot API server...")
-		return app.server.Start()
+		app.log.Info("Starting bot listener (API server, Kafka)...")
+		return app.listener.Start()
 	})
 
 	g.Go(func() error {
@@ -135,17 +134,13 @@ func (app *App) Start(ctx context.Context) error {
 		return nil
 	})
 
-	if err := g.Wait(); err != nil {
-		return err
-	} else {
-		return nil
-	}
+	return g.Wait()
 }
 
 func (app *App) Shutdown(ctx context.Context) {
 	app.log.Info("shutting down bot...")
 
-	err := app.server.Stop(ctx)
+	err := app.listener.Stop(ctx)
 	if err != nil {
 		app.log.Error("failed to stop bot", slog.String("error", err.Error()))
 	}
@@ -176,7 +171,10 @@ func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *sl
 			cfg.Kafka.ConsumerGroup,
 			cfg.Kafka.Topic,
 			cfg.Kafka.DLQTopic,
-			cfg.Kafka.Retries,
+			cfg.Kafka.Retries.Delay,
+			cfg.Kafka.Retries.MaxDelay,
+			cfg.Kafka.Retries.BackoffFactor,
+			cfg.Kafka.Retries.MaxRetries,
 			cfg.Kafka.SchemaRegistryURL,
 			notifier,
 			log,

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/IBM/sarama"
 
@@ -14,7 +15,7 @@ import (
 type Listener struct {
 	consumer sarama.ConsumerGroup
 	producer sarama.SyncProducer
-	handler  sarama.ConsumerGroupHandler
+	handler  *Handler
 	topic    string
 
 	ctx    context.Context
@@ -28,6 +29,9 @@ func NewListener(
 	consumerGroup string,
 	topic string,
 	dlqTopic string,
+	delay time.Duration,
+	maxDelay time.Duration,
+	backoffFactor float64,
 	retries int,
 	registryURL string,
 	updateHandler domain.LinkUpdateHandler,
@@ -50,6 +54,9 @@ func NewListener(
 		updateHandler,
 		producer,
 		dlqTopic,
+		delay,
+		maxDelay,
+		backoffFactor,
 		retries,
 		registryURL,
 		log,
@@ -81,7 +88,6 @@ func (listener *Listener) Start() error {
 			return nil
 		}
 	}
-
 }
 
 func (listener *Listener) Stop(ctx context.Context) error {
@@ -104,4 +110,13 @@ func (listener *Listener) Stop(ctx context.Context) error {
 	err := errors.Join(errConsumer, errProducer)
 
 	return err
+}
+
+func (listener *Listener) WaitReady(ctx context.Context) error {
+	select {
+	case <-listener.handler.ready:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

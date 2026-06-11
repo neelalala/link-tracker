@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 
@@ -75,14 +76,21 @@ type ServerConfig struct {
 	Protocol Protocol `yaml:"protocol" env:"BOT_API_PROTOCOL" env-default:"grpc"`
 }
 
+type RetriesConfig struct {
+	MaxRetries    int           `yaml:"max-retries" env:"KAFKA_MAX_RETRIES" env-default:"5"`
+	Delay         time.Duration `yaml:"delay" env:"KAFKA_RETRY_DELAY" env-default:"100ms"`
+	MaxDelay      time.Duration `yaml:"max-delay" env:"KAFKA_RETRY_MAX_DELAY" env-default:"30s"`
+	BackoffFactor float64       `yaml:"backoff-factor" env:"KAFKA_RETRY_BACKOFF_FACTOR" env-default:"2.0"`
+}
+
 type KafkaConfig struct {
-	Enable            bool     `yaml:"enabled" env:"KAFKA_ENABLED" env-default:"true"`
-	Brokers           []string `yaml:"brokers" env:"KAFKA_BROKERS"`
-	Topic             string   `yaml:"topic" env:"KAFKA_TOPIC" env-default:"link-updates"`
-	DLQTopic          string   `yaml:"dlq-topic" env:"KAFKA_DLQ_TOPIC" env-default:"link-updates-dlq"`
-	SchemaRegistryURL string   `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
-	ConsumerGroup     string   `yaml:"consumer-group" env:"KAFKA_BOT_CONSUMER_GROUP" env-default:"bot-group-1"`
-	Retries           int      `yaml:"retries" env:"KAFKA_RETRIES" env-default:"5"`
+	Enable            bool          `yaml:"enabled" env:"KAFKA_ENABLED" env-default:"true"`
+	Brokers           []string      `yaml:"brokers" env:"KAFKA_BROKERS"`
+	Topic             string        `yaml:"topic" env:"KAFKA_TOPIC" env-default:"link-updates"`
+	DLQTopic          string        `yaml:"dlq-topic" env:"KAFKA_DLQ_TOPIC" env-default:"link-updates-dlq"`
+	SchemaRegistryURL string        `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
+	ConsumerGroup     string        `yaml:"consumer-group" env:"KAFKA_BOT_CONSUMER_GROUP" env-default:"bot-group-1"`
+	Retries           RetriesConfig `yaml:"retries"`
 }
 
 type Config struct {

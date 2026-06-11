@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka/mapper"
+
 	"github.com/IBM/sarama"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -24,7 +26,6 @@ import (
 	botkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/listener/kafka"
 	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	scrapperkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka/mapper"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sql"
 )
 
@@ -37,6 +38,10 @@ const (
 	topic         = "test-topic"
 	topicDql      = topic + "-dql"
 	consumerGroup = "test-consumer-group"
+
+	delay         = 100 * time.Millisecond
+	maxDelay      = 10 * delay
+	backoffFactor = 2.0
 	retries       = 3
 )
 
@@ -257,6 +262,9 @@ func TestScrapperKafka_Integration(t *testing.T) {
 		consumerGroup,
 		topic,
 		topicDql,
+		delay,
+		maxDelay,
+		backoffFactor,
 		retries,
 		testRegistry,
 		botNotifier,
@@ -267,7 +275,7 @@ func TestScrapperKafka_Integration(t *testing.T) {
 	go func() { listener.Start() }()
 	defer listener.Stop(ctx)
 
-	time.Sleep(10 * time.Second) // listener connecting to kafka
+	require.NoError(t, listener.WaitReady(ctx))
 
 	t.Run("Scrapper - Kafka - Bot flow", func(t *testing.T) {
 		update := scrapperdomain.LinkUpdate{
