@@ -18,7 +18,7 @@ type RateLimitConfig struct {
 }
 
 type IPRateLimiter struct {
-	mu       sync.RWMutex
+	mu       sync.Mutex
 	limiters map[string]*limiterEntry
 
 	limit rate.Limit
