@@ -14,6 +14,41 @@ import (
 	"github.com/sony/gobreaker/v2"
 )
 
+var DefaultRetryableStatuses = []int{
+	http.StatusRequestTimeout,
+	http.StatusTooEarly,
+	http.StatusTooManyRequests,
+	http.StatusInternalServerError,
+	http.StatusBadGateway,
+	http.StatusServiceUnavailable,
+	http.StatusGatewayTimeout,
+}
+
+type RetryConfig struct {
+	Enabled           bool
+	MaxRetries        uint
+	Delay             time.Duration
+	Backoff           bool
+	BackoffFactor     float64
+	MaxDelay          time.Duration
+	RetryableStatuses []int
+}
+
+type CircuitBreakerConfig struct {
+	Enabled              bool
+	MaxRequests          uint32
+	SlidingWindow        time.Duration
+	WaitInOpenState      time.Duration
+	MinimumNumberOfCalls uint32
+	FailureRateThreshold float64
+}
+
+type HTTPClientConfig struct {
+	Timeout time.Duration
+	Retry   RetryConfig
+	Breaker CircuitBreakerConfig
+}
+
 func NewHTTPClient(name string, cfg HTTPClientConfig, base *http.Client, log *slog.Logger) *http.Client {
 	if base == nil {
 		base = http.DefaultClient

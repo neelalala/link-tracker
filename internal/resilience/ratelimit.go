@@ -10,6 +10,13 @@ import (
 	"golang.org/x/time/rate"
 )
 
+type RateLimitConfig struct {
+	Enabled bool
+	RPS     int
+	Burst   int
+	TTL     time.Duration
+}
+
 type IPRateLimiter struct {
 	mu       sync.RWMutex
 	limiters map[string]*limiterEntry
@@ -19,6 +26,8 @@ type IPRateLimiter struct {
 	ttl   time.Duration
 
 	enabled bool
+
+	done chan struct{}
 }
 
 type limiterEntry struct {
@@ -27,13 +36,20 @@ type limiterEntry struct {
 }
 
 func NewIPRateLimiter(cfg RateLimitConfig) *IPRateLimiter {
-	return &IPRateLimiter{
+	rl := &IPRateLimiter{
 		limiters: make(map[string]*limiterEntry),
 		limit:    rate.Limit(cfg.RPS),
 		burst:    cfg.Burst,
 		ttl:      cfg.TTL,
 		enabled:  cfg.Enabled,
+		done:     make(chan struct{}),
 	}
+
+	if rl.enabled {
+		go rl.cleaner(rl.ttl)
+	}
+
+	return rl
 }
 
 func (rl *IPRateLimiter) allow(ip string) bool {
@@ -48,13 +64,28 @@ func (rl *IPRateLimiter) allow(ip string) bool {
 	}
 	entry.lastSeen = now
 
-	for key, e := range rl.limiters {
-		if now.Sub(e.lastSeen) > rl.ttl {
-			delete(rl.limiters, key)
-		}
-	}
-
 	return entry.limiter.Allow()
+}
+
+func (rl *IPRateLimiter) cleaner(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	select {
+	case <-ticker.C:
+		now := time.Now()
+
+		rl.mu.Lock()
+		for key, e := range rl.limiters {
+			if now.Sub(e.lastSeen) > rl.ttl {
+				delete(rl.limiters, key)
+			}
+		}
+
+		rl.mu.Unlock()
+	case <-rl.done:
+		return
+	}
 }
 
 func (rl *IPRateLimiter) Middleware(next http.HandlerFunc, log *slog.Logger) http.HandlerFunc {
@@ -82,4 +113,11 @@ func clientIP(req *http.Request) string {
 		return req.RemoteAddr
 	}
 	return host
+}
+
+func (rl *IPRateLimiter) Stop() {
+	if rl.done != nil {
+		close(rl.done)
+		rl.done = nil
+	}
 }

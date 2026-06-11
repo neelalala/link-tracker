@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/resilience"
 )
 
 type Protocol string
@@ -65,23 +63,56 @@ type SchedulerConfig struct {
 	JobTimeout  time.Duration `yaml:"job-timeout" env:"SCHEDULER_JOB_TIMEOUT" env-default:"5m"`
 }
 
+type RetryConfig struct {
+	Enabled           bool          `yaml:"enabled" env-default:"true"`
+	MaxRetries        uint          `yaml:"max-retries" env-default:"3"`
+	Delay             time.Duration `yaml:"delay" env-default:"200ms"`
+	Backoff           bool          `yaml:"backoff" env-default:"false"`
+	BackoffFactor     float64       `yaml:"backoff-factor" env-default:"2.0"`
+	MaxDelay          time.Duration `yaml:"max-delay" env-default:"30s"`
+	RetryableStatuses []int         `yaml:"retryable-statuses"`
+}
+
+type CircuitBreakerConfig struct {
+	Enabled              bool          `yaml:"enabled" env-default:"true"`
+	MaxRequests          uint32        `yaml:"max-requests" env-default:"10"`
+	SlidingWindow        time.Duration `yaml:"sliding-window" env-default:"30s"`
+	WaitInOpenState      time.Duration `yaml:"wait-in-open-state" env-default:"15s"`
+	MinimumNumberOfCalls uint32        `yaml:"minimum-number-of-calls" env-default:"10"`
+	FailureRateThreshold float64       `yaml:"failure-rate-threshold" env-default:"0.5"`
+}
+
+type HTTPClientConfig struct {
+	Timeout time.Duration        `yaml:"timeout" env-default:"5s"`
+	Retry   RetryConfig          `yaml:"retry"`
+	Breaker CircuitBreakerConfig `yaml:"breaker"`
+}
+
+type RateLimitConfig struct {
+	Enabled bool          `yaml:"enabled" env-default:"true"`
+	RPS     int           `yaml:"rps" env-default:"10"`
+	Burst   int           `yaml:"burst" env-default:"5"`
+	TTL     time.Duration `yaml:"ttl" env-default:"1m"`
+}
+
 type BotServiceConfig struct {
-	URL        string                      `yaml:"url" env:"BOT_URL"`
-	Protocol   Protocol                    `yaml:"protocol" env:"BOT_API_PROTOCOL" env-default:"grpc"`
-	Resilience resilience.HTTPClientConfig `yaml:"resilience"`
+	URL        string           `yaml:"url" env:"BOT_URL"`
+	Protocol   Protocol         `yaml:"protocol" env:"BOT_API_PROTOCOL" env-default:"grpc"`
+	Resilience HTTPClientConfig `yaml:"resilience"`
 }
 
 type ServerConfig struct {
-	Port     uint16   `yaml:"port" env:"SCRAPPER_API_PORT"`
-	Protocol Protocol `yaml:"protocol" env:"SCRAPPER_API_PROTOCOL" env-default:"grpc"`
+	Port      uint16          `yaml:"port" env:"SCRAPPER_API_PORT"`
+	Protocol  Protocol        `yaml:"protocol" env:"SCRAPPER_API_PROTOCOL" env-default:"grpc"`
+	RateLimit RateLimitConfig `yaml:"rate-limit"`
 }
 
 type FetchersConfig struct {
-	PreviewLimit     int                         `yaml:"preview-limit" env:"FETCHER_PREVIEW_LIMIT" env-default:"200"`
-	Concurrency      int                         `yaml:"concurrency" env:"FETCHER_COUNT" env-default:"1"`
-	Batch            int                         `yaml:"batch" env:"FETCHER_BATCH_SIZE" env-default:"100"`
-	StackOverflowKey string                      `yaml:"stackoverflow-key" env:"STACKOVERFLOW_KEY" env-default:""`
-	Resilience       resilience.HTTPClientConfig `yaml:"resilience"`
+	PreviewLimit     int              `yaml:"preview-limit" env:"FETCHER_PREVIEW_LIMIT" env-default:"200"`
+	Concurrency      int              `yaml:"concurrency" env:"FETCHER_COUNT" env-default:"1"`
+	Batch            int              `yaml:"batch" env:"FETCHER_BATCH_SIZE" env-default:"100"`
+	StackOverflowKey string           `yaml:"stackoverflow-key" env:"STACKOVERFLOW_KEY" env-default:""`
+	Resilience       HTTPClientConfig `yaml:"resilience"`
 }
 
 type KafkaWorkerConfig struct {
