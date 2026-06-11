@@ -76,10 +76,10 @@ func (rl *IPRateLimiter) Middleware(next http.HandlerFunc, log *slog.Logger) htt
 	}
 }
 
-func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
+func clientIP(req *http.Request) string {
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		return req.RemoteAddr
 	}
 	return host
 }
