@@ -65,13 +65,20 @@ type ServerConfig struct {
 	Protocol Protocol `config:"protocol"`
 }
 
+type RetriesConfig struct {
+	MaxRetries    int           `config:"max-retries,5"`
+	Delay         time.Duration `config:"delay,100ms"`
+	MaxDelay      time.Duration `config:"max-delay,30s"`
+	BackoffFactor float64       `config:"backoff-factor,2.0"`
+}
+
 type KafkaConfig struct {
-	Brokers           []string `config:"brokers"`
-	Topic             string   `config:"topic,link-updates"`
-	DLQTopic          string   `config:"dlq-topic,link-updates-dlq"`
-	SchemaRegistryURL string   `config:"schema-registry-url"`
-	ConsumerGroup     string   `config:"consumer-group,bot-group-1"`
-	Retries           int      `config:"retries,5"`
+	Brokers           []string      `config:"brokers"`
+	Topic             string        `config:"topic,link-updates"`
+	DLQTopic          string        `config:"dlq-topic,link-updates-dlq"`
+	SchemaRegistryURL string        `config:"schema-registry-url"`
+	ConsumerGroup     string        `config:"consumer-group,bot-group-1"`
+	Retries           RetriesConfig `config:"retries"`
 }
 
 type Config struct {

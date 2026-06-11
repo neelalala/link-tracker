@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/IBM/sarama"
 
@@ -28,6 +29,9 @@ func NewListener(
 	consumerGroup string,
 	topic string,
 	dlqTopic string,
+	delay time.Duration,
+	maxDelay time.Duration,
+	backoffFactor float64,
 	retries int,
 	registryURL string,
 	updateHandler domain.LinkUpdateHandler,
@@ -50,6 +54,9 @@ func NewListener(
 		updateHandler,
 		producer,
 		dlqTopic,
+		delay,
+		maxDelay,
+		backoffFactor,
 		retries,
 		registryURL,
 		log,

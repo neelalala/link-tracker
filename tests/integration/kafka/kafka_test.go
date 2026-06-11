@@ -38,6 +38,10 @@ const (
 	topic         = "test-topic"
 	topicDql      = topic + "-dql"
 	consumerGroup = "test-consumer-group"
+
+	delay         = 100 * time.Millisecond
+	maxDelay      = 10 * delay
+	backoffFactor = 2.0
 	retries       = 3
 )
 
@@ -258,6 +262,9 @@ func TestScrapperKafka_Integration(t *testing.T) {
 		consumerGroup,
 		topic,
 		topicDql,
+		delay,
+		maxDelay,
+		backoffFactor,
 		retries,
 		testRegistry,
 		botNotifier,

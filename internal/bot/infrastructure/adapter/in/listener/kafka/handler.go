@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"sync"
 	"time"
 
@@ -23,6 +24,10 @@ type Handler struct {
 	updateHandler domain.LinkUpdateHandler
 	producer      sarama.SyncProducer
 	dlqTopic      string
+
+	delay         time.Duration
+	maxDelay      time.Duration
+	backoffFactor float64
 	retries       int
 
 	ready     chan struct{}
@@ -36,6 +41,9 @@ func NewHandler(
 	updateHandler domain.LinkUpdateHandler,
 	producer sarama.SyncProducer,
 	dlqTopic string,
+	delay time.Duration,
+	maxDelay time.Duration,
+	backoffFactor float64,
 	retries int,
 	registryURL string,
 	log *slog.Logger,
@@ -44,6 +52,9 @@ func NewHandler(
 		updateHandler: updateHandler,
 		producer:      producer,
 		dlqTopic:      dlqTopic,
+		delay:         delay,
+		maxDelay:      maxDelay,
+		backoffFactor: backoffFactor,
 		retries:       retries,
 		ready:         make(chan struct{}),
 		srClient:      srclient.NewSchemaRegistryClient(registryURL),
@@ -108,6 +119,7 @@ func (h *Handler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama
 
 func (h *Handler) handleUpdate(ctx context.Context, update domain.LinkUpdate) error {
 	var processErr error
+	backoff := h.delay
 	for i := range h.retries {
 		if err := h.updateHandler.HandleUpdate(ctx, update); err != nil {
 			processErr = err
@@ -115,7 +127,18 @@ func (h *Handler) handleUpdate(ctx context.Context, update domain.LinkUpdate) er
 				slog.String("error", err.Error()),
 				slog.Int("attempt", i+1),
 				slog.Int64("link_id", update.ID))
-			time.Sleep(time.Second)
+
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			backoff = time.Duration(float64(h.delay) * math.Pow(h.backoffFactor, float64(i+1)))
+			if backoff > h.maxDelay {
+				backoff = h.maxDelay
+			}
+
 			continue
 		}
 		return nil
