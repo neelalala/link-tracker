@@ -31,11 +31,6 @@ const (
 	dbPass     = "testpass"
 	dbName     = "scrapper_test"
 	migrations = "file://../../../migrations"
-
-	seededLinks   = 50
-	totalRequests = 20000
-	concurrency   = 50
-	cacheTTL      = 5 * time.Minute
 )
 
 type mockLinkValidator struct{}
@@ -99,11 +94,18 @@ func loadPostgresContainer(ctx context.Context) (testcontainers.Container, error
 	})
 }
 
-func newCacheWithPrefix(addr, keyPrefix string, clientSide bool) (*valkeycache.Cache, error) {
-	return valkeycache.New([]string{addr}, cacheTTL, keyPrefix, clientSide)
+func newCacheWithPrefix(addr, keyPrefix string, clientSide bool, ttl time.Duration) (*valkeycache.Cache, error) {
+	return valkeycache.New([]string{addr}, ttl, keyPrefix, clientSide)
 }
 
-func runRequests(t *testing.T, name string, svc application.SubscriptionService, chatID int64) stats {
+func runRequests(
+	t *testing.T,
+	name string,
+	svc application.SubscriptionService,
+	chatID int64,
+	totalRequests int,
+	concurrency int,
+) stats {
 	t.Helper()
 
 	_, err := svc.GetTrackedLinks(context.Background(), chatID)
@@ -187,35 +189,63 @@ func TestListLoad(t *testing.T) {
 
 	const chatID = int64(1)
 	require.NoError(t, subService.RegisterChat(ctx, chatID))
+
+	var (
+		seededLinks   = 50
+		totalRequests = 20000
+		concurrency   = 50
+		cacheTTL      = 5 * time.Minute
+	)
+
 	for i := range seededLinks {
 		url := fmt.Sprintf("https://github.com/neelalala/repo-%d", i)
 		_, err := subService.AddLink(ctx, chatID, url, []string{"tag1", "tag2"})
 		require.NoError(t, err)
 	}
 
-	noCache := runRequests(t, "no-cache (db only)", subService, chatID)
+	noCache := runRequests(
+		t,
+		"no-cache (db only)",
+		subService,
+		chatID,
+		totalRequests,
+		concurrency,
+	)
 
-	cachePlain, err := newCacheWithPrefix(valkeyURL, "load:plain:", false)
+	cachePlain, err := newCacheWithPrefix(valkeyURL, "load:plain:", false, cacheTTL)
 	require.NoError(t, err)
 	defer cachePlain.Close()
 
 	svcPlain := subscription.NewCachingService(subService, cachePlain)
-	valkeyCache := runRequests(t, "valkey cache (no client-side)", svcPlain, chatID)
+	valkeyCache := runRequests(
+		t,
+		"valkey cache (no client-side)",
+		svcPlain,
+		chatID,
+		totalRequests,
+		concurrency,
+	)
 
-	cacheClientSide, err := newCacheWithPrefix(valkeyURL, "load:csc:", true)
+	cacheClientSide, err := newCacheWithPrefix(valkeyURL, "load:csc:", true, cacheTTL)
 	require.NoError(t, err)
 	defer cacheClientSide.Close()
 
 	svcCSC := subscription.NewCachingService(subService, cacheClientSide)
-	cscCache := runRequests(t, "valkey client-side cache", svcCSC, chatID)
+	cscCache := runRequests(t,
+		"valkey client-side cache",
+		svcCSC,
+		chatID,
+		totalRequests,
+		concurrency,
+	)
 
-	report := buildReport([]stats{noCache, valkeyCache, cscCache})
+	report := buildReport([]stats{noCache, valkeyCache, cscCache}, seededLinks, totalRequests, concurrency, cacheTTL)
 	t.Log("\n" + report)
 
 	require.NoError(t, os.WriteFile("valkey-benchmark-report.md", []byte(report), 0o644))
 }
 
-func buildReport(scenarios []stats) string {
+func buildReport(scenarios []stats, seededLinks, totalRequests, concurrency int, cacheTTL time.Duration) string {
 	sb := &strings.Builder{}
 
 	sb.WriteString("# Отчёт по нагрузочному тестированию кеша GET /links\n\n")
