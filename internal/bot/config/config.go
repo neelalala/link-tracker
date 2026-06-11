@@ -10,13 +10,13 @@ import (
 type Protocol string
 
 const (
-	HTTP Protocol = "http"
-	GRPC Protocol = "grpc"
+	ProtocolHTTP Protocol = "http"
+	ProtocolGRPC Protocol = "grpc"
 )
 
 func (protocol Protocol) Validate() error {
 	switch protocol {
-	case HTTP, GRPC:
+	case ProtocolHTTP, ProtocolGRPC:
 		return nil
 	default:
 		return fmt.Errorf("invalid protocol: %q. Allowed values are 'http' or 'grpc'", protocol)

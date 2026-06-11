@@ -3,12 +3,14 @@ package application
 import (
 	"context"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"log/slog"
 	"os"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/commands"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
@@ -171,11 +173,11 @@ func buildListener(cfg *config.Config, notifier domain.LinkUpdateHandler, log *s
 		return kafka, nil
 	}
 	switch cfg.Server.Protocol {
-	case config.HTTP:
+	case config.ProtocolHTTP:
 		log.Info("using http server as listener")
 		server := http.NewServer(cfg.Server.Port, notifier, log)
 		return server, nil
-	case config.GRPC:
+	case config.ProtocolGRPC:
 		log.Info("using grpc server as listener")
 		server := grpc.NewServer(cfg.Server.Port, notifier, log)
 		return server, nil
@@ -186,11 +188,11 @@ func buildListener(cfg *config.Config, notifier domain.LinkUpdateHandler, log *s
 
 func buildScrapperClient(cfg *config.Config, log *slog.Logger) (ScrapperClient, error) {
 	switch cfg.ScrapperService.Protocol {
-	case config.HTTP:
+	case config.ProtocolHTTP:
 		log.Info("using http scrapper client")
 		scrapper := scrapperhttp.NewClient(cfg.ScrapperService.URL)
 		return scrapper, nil
-	case config.GRPC:
+	case config.ProtocolGRPC:
 		log.Info("using grpc scrapper client")
 		scrapper, err := scrappergrpc.NewClient(cfg.ScrapperService.URL)
 		if err != nil {
