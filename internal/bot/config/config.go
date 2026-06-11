@@ -73,10 +73,10 @@ type HTTPClientConfig struct {
 }
 
 type RateLimitConfig struct {
-	Enabled bool          `yaml:"enabled" env-default:"true"`
-	RPS     int           `yaml:"rps" env-default:"10"`
-	Burst   int           `yaml:"burst" env-default:"5"`
-	TTL     time.Duration `yaml:"ttl" env-default:"1m"`
+	Enabled bool          `yaml:"enabled" env:"BOT_API_RATELIMIT_ENABLED" env-default:"true"`
+	RPS     int           `yaml:"rps" env:"BOT_API_RATELIMIT_RPS" env-default:"10"`
+	Burst   int           `yaml:"burst" env:"BOT_API_RATELIMIT_BURST" env-default:"5"`
+	TTL     time.Duration `yaml:"ttl" env:"BOT_API_RATELIMIT_TTL" env-default:"1m"`
 }
 
 type DatabaseConfig struct {
