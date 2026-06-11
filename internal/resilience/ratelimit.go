@@ -28,6 +28,7 @@ type IPRateLimiter struct {
 	enabled bool
 
 	done chan struct{}
+	once sync.Once
 }
 
 type limiterEntry struct {
@@ -116,8 +117,7 @@ func clientIP(req *http.Request) string {
 }
 
 func (rl *IPRateLimiter) Stop() {
-	if rl.done != nil {
+	rl.once.Do(func() {
 		close(rl.done)
-		rl.done = nil
-	}
+	})
 }
