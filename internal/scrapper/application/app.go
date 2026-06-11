@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"log/slog"
@@ -77,13 +78,30 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, func()) {
 		subRepo = sqlbuilder.NewSubscriptionRepository(dbPool)
 	}
 
-	githubClient := github.NewClient(github.BaseURL, github.BaseApiURL, github.Timeout)
-	stackoverflowClient := stackoverflow.NewClient(stackoverflow.BaseURL, stackoverflow.BaseApiURL, stackoverflow.Timeout)
+	githubClient := github.NewClient(
+		github.BaseURL,
+		github.BaseApiURL,
+		cfg.Fetchers.Timeout,
+		cfg.Fetchers.PreviewLimit,
+	)
+	stackoverflowClient := stackoverflow.NewClient(
+		stackoverflow.BaseURL,
+		stackoverflow.BaseApiURL,
+		cfg.Fetchers.Timeout,
+		cfg.Fetchers.PreviewLimit,
+		cfg.Fetchers.StackOverflowKey,
+	)
 
-	fetchers := []LinkFetcher{githubClient, stackoverflowClient}
+	transactor, err := buildTransactor(cfg, dbPool)
+	if err != nil {
+		slogger.Error("unable to create transactor", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	fetchers := []domain.LinkFetcher{githubClient, stackoverflowClient}
 	fetcher := NewFetcherService(fetchers)
 
-	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, fetcher, slogger)
+	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, slogger)
 
 	var server APIServer
 	switch cfg.Server.Protocol {
@@ -99,7 +117,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, func()) {
 	var botNotifier UpdateNotifier
 	switch cfg.BotService.Protocol {
 	case config.ProtocolHTTP:
-		botNotifier = httpnotifier.NewBot(cfg.BotService.URL)
+		botNotifier = httpnotifier.NewBot(cfg.BotService.URL, slogger)
 	case config.ProtocolGRPC:
 		botNotifier, err = grpcnotifier.NewBot(cfg.BotService.URL)
 		if err != nil {
@@ -123,7 +141,15 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, func()) {
 		os.Exit(1)
 	}
 
-	scrapperService := NewScrapperService(linkRepo, subRepo, fetcher, botNotifier, slogger)
+	scrapperService, err := NewScrapperService(
+		linkRepo,
+		subRepo,
+		fetcher,
+		transactor,
+		botNotifier,
+		cfg.Fetchers.Batch,
+		cfg.Fetchers.Concurrency,
+		slogger)
 
 	err = scheduler.Schedule(
 		cfg.Scheduler.FetchInterval,
@@ -173,4 +199,17 @@ func (a *App) Start(ctx context.Context) {
 	}
 
 	a.slogger.Info("scrapper successfully stopped")
+}
+
+func buildTransactor(cfg *config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
+	switch cfg.Database.AccessType {
+	case config.AccessTypeSQL:
+		transactor := sql.NewTransactor(dbPool)
+		return transactor, nil
+	case config.AccessTypeBUILDER:
+		transactor := sqlbuilder.NewTransactor(dbPool)
+		return transactor, nil
+	default:
+		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
+	}
 }

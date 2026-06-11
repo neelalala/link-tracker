@@ -42,7 +42,10 @@ func (service *NotifierService) HandleUpdate(ctx context.Context, update domain.
 		return errors.New("no telegram chat ids provided")
 	}
 
-	text := fmt.Sprintf("There is something new!\n\nLink: %s\nUpdate: %s", update.URL, update.Description)
+	text := fmt.Sprintf("Update on %s:\n%s", update.URL, update.Description)
+	if update.Preview != "" {
+		text = fmt.Sprintf("%s\nPreview:\n%s", text, update.Preview)
+	}
 
 	for _, chatID := range update.TgChatIDs {
 		err := service.sender.SendMessage(ctx, chatID, text)

@@ -2,20 +2,16 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-type LinkFetcher interface {
-	CanHandle(url string) bool
-	Fetch(ctx context.Context, url string) (domain.FetchResult, error)
-}
-
 type FetcherService struct {
-	linkFetchers []LinkFetcher
+	linkFetchers []domain.LinkFetcher
 }
 
-func NewFetcherService(fetchers []LinkFetcher) *FetcherService {
+func NewFetcherService(fetchers []domain.LinkFetcher) *FetcherService {
 	return &FetcherService{
 		linkFetchers: fetchers,
 	}
@@ -30,11 +26,11 @@ func (service *FetcherService) CanHandle(url string) bool {
 	return false
 }
 
-func (service *FetcherService) Fetch(ctx context.Context, url string) (domain.FetchResult, error) {
+func (service *FetcherService) Fetch(ctx context.Context, url string, since time.Time) ([]domain.UpdateEvent, error) {
 	for _, linkFetcher := range service.linkFetchers {
 		if linkFetcher.CanHandle(url) {
-			return linkFetcher.Fetch(ctx, url)
+			return linkFetcher.Fetch(ctx, url, since)
 		}
 	}
-	return domain.FetchResult{}, domain.ErrURLNotSupported
+	return nil, domain.ErrURLNotSupported
 }

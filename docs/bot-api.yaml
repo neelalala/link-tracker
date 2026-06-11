@@ -13,17 +13,17 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LinkUpdate'
+              $ref: "#/components/schemas/LinkUpdate"
         required: true
       responses:
-        '200':
+        "200":
           description: Обновление обработано
-        '400':
+        "400":
           description: Некорректные параметры запроса
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: "#/components/schemas/ApiErrorResponse"
 components:
   schemas:
     ApiErrorResponse:
@@ -51,6 +51,8 @@ components:
           type: string
           format: uri
         description:
+          type: string
+        preview:
           type: string
         tgChatIds:
           type: array

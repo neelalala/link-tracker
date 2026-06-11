@@ -14,5 +14,6 @@ message LinkUpdate {
   int64 id = 1;
   string url = 2;
   string description = 3;
-  repeated int64 tg_chat_ids = 4;
+  string preview = 4;
+  repeated int64 tg_chat_ids = 5;
 }

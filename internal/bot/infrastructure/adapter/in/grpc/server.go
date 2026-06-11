@@ -72,6 +72,7 @@ func (server *Server) SendUpdate(ctx context.Context, request *pb.LinkUpdate) (*
 		ID:          request.GetId(),
 		URL:         request.GetUrl(),
 		Description: request.GetDescription(),
+		Preview:     request.GetPreview(),
 		TgChatIDs:   request.GetTgChatIds(),
 	}
 

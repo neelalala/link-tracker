@@ -16,7 +16,7 @@ type TrackedLink struct {
 	Tags []string
 }
 
-//go:generate mockgen -source=subscription.go -destination=../mocks/mock_domain_subscription.go -package=mocks
+//go:generate mockgen -source=subscription.go -destination=../mocks/mock_domain_subscription_repository.go -package=mocks
 type SubscriptionRepository interface {
 	Save(ctx context.Context, sub Subscription) error
 	GetByChatID(ctx context.Context, chatID int64) ([]Subscription, error)

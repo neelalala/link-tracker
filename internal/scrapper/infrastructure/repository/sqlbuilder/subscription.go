@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/doug-martin/goqu/v9"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
@@ -21,12 +22,6 @@ func NewSubscriptionRepository(pool *pgxpool.Pool) *SubscriptionRepository {
 }
 
 func (subRepo *SubscriptionRepository) Save(ctx context.Context, sub domain.Subscription) error {
-	tx, err := subRepo.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(context.Background())
-
 	subQuery, args, err := psql.Insert("subscriptions").
 		Rows(goqu.Record{
 			"chat_id": sub.ChatID,
@@ -37,7 +32,9 @@ func (subRepo *SubscriptionRepository) Save(ctx context.Context, sub domain.Subs
 		return fmt.Errorf("failed to build sub query: %w", err)
 	}
 
-	_, err = tx.Exec(ctx, subQuery, args...)
+	db := GetDB(ctx, subRepo.pool)
+
+	_, err = db.Exec(ctx, subQuery, args...)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
@@ -47,13 +44,9 @@ func (subRepo *SubscriptionRepository) Save(ctx context.Context, sub domain.Subs
 	}
 
 	if len(sub.Tags) > 0 {
-		if err := insertTagsBatch(ctx, tx, sub.ChatID, sub.LinkID, sub.Tags, false); err != nil {
+		if err := insertTagsBatch(ctx, db, sub.ChatID, sub.LinkID, sub.Tags, false); err != nil {
 			return err
 		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -112,8 +105,10 @@ func (subRepo *SubscriptionRepository) Exists(ctx context.Context, chatID int64,
 		return false, fmt.Errorf("failed to build exists query: %w", err)
 	}
 
+	db := GetDB(ctx, subRepo.pool)
+
 	var exists bool
-	err = subRepo.pool.QueryRow(ctx, query, args...).Scan(&exists)
+	err = db.QueryRow(ctx, query, args...).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to check subscription for link %d in chat %d: %w", linkID, chatID, err)
 	}
@@ -127,7 +122,9 @@ func (subRepo *SubscriptionRepository) scanSubscriptions(
 	args []any,
 	keyFn func(chatID, linkID int64) int64,
 ) ([]domain.Subscription, error) {
-	rows, err := subRepo.pool.Query(ctx, query, args...)
+	db := GetDB(ctx, subRepo.pool)
+
+	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query subscriptions: %w", err)
 	}
@@ -184,7 +181,9 @@ func (subRepo *SubscriptionRepository) Delete(ctx context.Context, chatID int64,
 		return domain.Subscription{}, fmt.Errorf("failed to build delete sub query: %w", err)
 	}
 
-	ct, err := subRepo.pool.Exec(ctx, query, args...)
+	db := GetDB(ctx, subRepo.pool)
+
+	ct, err := db.Exec(ctx, query, args...)
 	if err != nil {
 		return domain.Subscription{}, fmt.Errorf("failed to delete subscription: %w", err)
 	}
@@ -209,18 +208,10 @@ func (subRepo *SubscriptionRepository) AddTags(ctx context.Context, linkID, chat
 		return nil
 	}
 
-	tx, err := subRepo.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(context.Background())
+	db := GetDB(ctx, subRepo.pool)
 
-	if err := insertTagsBatch(ctx, tx, chatID, linkID, tags, true); err != nil {
+	if err := insertTagsBatch(ctx, db, chatID, linkID, tags, true); err != nil {
 		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -238,7 +229,9 @@ func (subRepo *SubscriptionRepository) GetTags(ctx context.Context, linkID, chat
 		return nil, fmt.Errorf("failed to build get tags SQL for link %d: %w", linkID, err)
 	}
 
-	rows, err := subRepo.pool.Query(ctx, query, args...)
+	db := GetDB(ctx, subRepo.pool)
+
+	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tags for link %d: %w", linkID, err)
 	}
@@ -265,12 +258,6 @@ func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkID, c
 		return nil
 	}
 
-	tx, err := subRepo.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(context.Background())
-
 	batch := &pgx.Batch{}
 	for _, tag := range tags {
 		q, args, err := psql.Delete("subscription_tags").
@@ -286,7 +273,9 @@ func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkID, c
 		batch.Queue(q, args...)
 	}
 
-	br := tx.SendBatch(ctx, batch)
+	db := GetDB(ctx, subRepo.pool)
+
+	br := db.SendBatch(ctx, batch)
 	for _, tag := range tags {
 		if _, err := br.Exec(); err != nil {
 			br.Close()
@@ -298,14 +287,10 @@ func (subRepo *SubscriptionRepository) DeleteTags(ctx context.Context, linkID, c
 		return fmt.Errorf("failed to close batch: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
 	return nil
 }
 
-func insertTagsBatch(ctx context.Context, tx pgx.Tx, chatID, linkID int64, tags []string, onConflictDoNothing bool) error {
+func insertTagsBatch(ctx context.Context, db DB, chatID, linkID int64, tags []string, onConflictDoNothing bool) error {
 	batch := &pgx.Batch{}
 
 	for _, tag := range tags {
@@ -327,7 +312,7 @@ func insertTagsBatch(ctx context.Context, tx pgx.Tx, chatID, linkID int64, tags 
 		batch.Queue(q, args...)
 	}
 
-	br := tx.SendBatch(ctx, batch)
+	br := db.SendBatch(ctx, batch)
 	for _, tag := range tags {
 		if _, err := br.Exec(); err != nil {
 			br.Close()

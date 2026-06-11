@@ -28,6 +28,7 @@ type updateRequest struct {
 	Id          int64   `json:"id"`
 	Url         string  `json:"url"`
 	Description string  `json:"description"`
+	Preview     string  `json:"preview"`
 	TgChatIds   []int64 `json:"tgChatIds"`
 }
 
@@ -81,6 +82,7 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 		ID:          request.Id,
 		URL:         request.Url,
 		Description: request.Description,
+		Preview:     request.Preview,
 		TgChatIDs:   request.TgChatIds,
 	}
 

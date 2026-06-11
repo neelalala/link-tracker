@@ -39,6 +39,7 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 		Id:          update.ID,
 		Url:         update.URL,
 		Description: update.Description,
+		Preview:     update.Preview,
 		TgChatIds:   update.TgChatIDs,
 	}
 
