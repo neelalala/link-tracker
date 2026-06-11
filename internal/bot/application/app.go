@@ -132,11 +132,7 @@ func (app *App) Start(ctx context.Context) error {
 		return nil
 	})
 
-	if err := g.Wait(); err != nil {
-		return err
-	} else {
-		return nil
-	}
+	return g.Wait()
 }
 
 func (app *App) Shutdown(ctx context.Context) {
