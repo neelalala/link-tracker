@@ -20,6 +20,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/cache/valkey"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/github"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/stackoverflow"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/fallback"
 	notifiergrpc "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/grpc"
 	notifierhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka"
@@ -215,11 +216,18 @@ func buildNotifier(
 	dbPool *pgxpool.Pool,
 	app *App,
 	log *slog.Logger,
-) (UpdateNotifier, error) {
-	if cfg.Kafka.Enable {
-		log.Debug("Building kafka")
-		return buildKafka(ctx, cfg, dbPool, app, log)
+) (domain.UpdateNotifier, error) {
+	log.Debug("Building kafka")
+	kafkaNotifier, err := buildKafka(ctx, cfg, dbPool, app, log)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kafka notifier: %v", err)
 	}
+	if cfg.Kafka.Enable {
+		log.Debug("Kafka is primary notifier")
+		return kafkaNotifier, nil
+	}
+
+	var primary domain.UpdateNotifier
 	switch cfg.BotService.Protocol {
 	case config.ProtocolHTTP:
 		httpClientConfig := resilience.HTTPClientConfig{
@@ -243,18 +251,20 @@ func buildNotifier(
 			},
 		}
 		httpClient := resilience.NewHTTPClient("bot-api", httpClientConfig, nil, log)
-		notifier := notifierhttp.NewBot(httpClient, cfg.BotService.URL, cfg.BotService.Resilience.Timeout, log)
-		return notifier, nil
+		primary = notifierhttp.NewBot(httpClient, cfg.BotService.URL, cfg.BotService.Resilience.Timeout, log)
 	case config.ProtocolGRPC:
-		notifier, err := notifiergrpc.NewBot(cfg.BotService.URL, cfg.BotService.Resilience.Timeout, log)
+		grpcNotifier, err := notifiergrpc.NewBot(cfg.BotService.URL, cfg.BotService.Resilience.Timeout, log)
 		if err != nil {
 			return nil, err
 		}
-		app.onClose(notifier.Close)
-		return notifier, nil
+		app.onClose(grpcNotifier.Close)
+		primary = grpcNotifier
 	default:
 		return nil, fmt.Errorf("unsupported notifier protocol: %s", cfg.BotService.Protocol)
 	}
+
+	notifier := fallback.New(primary, kafkaNotifier, log)
+	return notifier, nil
 }
 
 func buildKafka(
@@ -263,7 +273,7 @@ func buildKafka(
 	dbPool *pgxpool.Pool,
 	app *App,
 	log *slog.Logger,
-) (UpdateNotifier, error) {
+) (domain.UpdateNotifier, error) {
 	log.Debug("Building outbox repository")
 	var outRepo domain.OutboxRepository
 	switch cfg.Database.AccessType {
