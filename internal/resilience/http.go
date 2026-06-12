@@ -176,6 +176,14 @@ func exponentialBackoffDelay(backoffFactor float64, maxDelay time.Duration) retr
 	}
 }
 
+type breakerError struct {
+	statusCode int
+}
+
+func (err breakerError) Error() string {
+	return fmt.Sprintf("server error: %d", err.statusCode)
+}
+
 type breakerTransport struct {
 	base http.RoundTripper
 	cb   *gobreaker.CircuitBreaker[*http.Response]
@@ -203,7 +211,7 @@ func newBreakerTransport(base http.RoundTripper, name string, cfg CircuitBreaker
 }
 
 func (transport *breakerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	return transport.cb.Execute(func() (*http.Response, error) {
+	resp, err := transport.cb.Execute(func() (*http.Response, error) {
 		if err := req.Context().Err(); err != nil {
 			return nil, err
 		}
@@ -215,11 +223,20 @@ func (transport *breakerTransport) RoundTrip(req *http.Request) (*http.Response,
 		if resp.StatusCode >= http.StatusInternalServerError {
 			io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
-			return nil, fmt.Errorf("server error: %d", resp.StatusCode)
+			return resp, breakerError{resp.StatusCode}
 		}
 
 		return resp, nil
 	})
+	if err != nil {
+		var statusErr breakerError
+		if errors.As(err, &statusErr) {
+			return resp, nil
+		}
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func readyToTrip(minNumOfCalls uint32, failureThreshold float64) func(counts gobreaker.Counts) bool {
