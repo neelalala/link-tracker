@@ -17,12 +17,16 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/mocks"
 )
 
-type MockNotifier struct {
+type mockNotifier struct {
 	mu          sync.Mutex
 	SentUpdates []domain.LinkUpdate
 }
 
-func (m *MockNotifier) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
+func (m *mockNotifier) Close() error {
+	return nil
+}
+
+func (m *mockNotifier) SendUpdate(ctx context.Context, update domain.LinkUpdate) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.SentUpdates = append(m.SentUpdates, update)
@@ -51,7 +55,7 @@ func TestScrapperService_ProcessLink_NotifiesOnlySubscribers(t *testing.T) {
 	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
 	mockFetcher := mocks.NewMockLinkFetcher(ctrl)
 
-	notifier := &MockNotifier{}
+	notifier := &mockNotifier{}
 
 	testLink := domain.Link{
 		ID:          1,
@@ -118,7 +122,7 @@ func TestScrapperService_ProcessLink_FetcherError(t *testing.T) {
 		GetByLinkID(gomock.Any(), testLink.ID).
 		Return([]domain.Subscription{{ChatID: 100, LinkID: testLink.ID}}, nil)
 
-	notifier := &MockNotifier{}
+	notifier := &mockNotifier{}
 
 	mockFetcher.EXPECT().CanHandle(testLink.URL).Return(true).AnyTimes()
 
@@ -145,7 +149,7 @@ func TestScrapperService_GetUpdates_BatchProcessedCorrectly(t *testing.T) {
 	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
 	mockFetcher := mocks.NewMockLinkFetcher(ctrl)
 
-	notifier := &MockNotifier{}
+	notifier := &mockNotifier{}
 	batchSize := 2
 
 	linksBatch1 := []domain.Link{
@@ -204,7 +208,7 @@ func TestScrapperService_GetUpdates_PartialFailureIsolation(t *testing.T) {
 	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
 	mockFetcher := mocks.NewMockLinkFetcher(ctrl)
 
-	notifier := &MockNotifier{}
+	notifier := &mockNotifier{}
 	batchSize := 10
 
 	goodLink1 := domain.Link{ID: 1, URL: "https://github.com/good1"}

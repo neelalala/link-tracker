@@ -14,6 +14,7 @@ services:
       - SCRAPPER_URL="scrapper:63343"
       - BOT_API_PROTOCOL="grpc"
       - SCRAPPER_API_PROTOCOL="grpc"
+      - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,scrapper,postgres,localhost,127.0.0.1
 
   scrapper:
     build:
@@ -22,6 +23,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      schema-registry:
+        condition: service_started
     restart: unless-stopped
     env_file:
       - .env
@@ -30,6 +33,7 @@ services:
       - SCRAPPER_API_PORT=63343
       - BOT_API_PROTOCOL="grpc"
       - SCRAPPER_API_PROTOCOL="grpc"
+      - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,postgres,localhost,127.0.0.1
 
   postgres:
     image: postgres:17-alpine
@@ -48,6 +52,84 @@ services:
       interval: 3s
       timeout: 3s
       retries: 5
+
+  kafka-1:
+    image: apache/kafka:latest
+    container_name: kafka-1
+    ports:
+      - "9092:9092"
+    env_file:
+      - kafka_common.env
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1:9092
+
+  kafka-2:
+    image: apache/kafka:latest
+    container_name: kafka-2
+    ports:
+      - "9094:9092"
+    env_file:
+      - kafka_common.env
+    environment:
+      - KAFKA_NODE_ID=2
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-2:9092
+
+  kafka-3:
+    image: apache/kafka:latest
+    container_name: kafka-3
+    ports:
+      - "9095:9092"
+    env_file:
+      - kafka_common.env
+    environment:
+      - KAFKA_NODE_ID=3
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-3:9092
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: schema-registry
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'PLAINTEXT://kafka-1:9092,PLAINTEXT://kafka-2:9092,PLAINTEXT://kafka-3:9092'
+    depends_on:
+      kafka-1:
+        condition: service_started
+      kafka-2:
+        condition: service_started
+      kafka-3:
+        condition: service_started
+        
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+
+  kafka-init:
+    image: apache/kafka:latest
+    container_name: kafka-init
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    command: >
+      bash -c "
+        echo 'Waiting for Kafka cluster to be ready...';
+        sleep 10;
+        ./opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic link-updates --partitions 3 --replication-factor 3 --bootstrap-server kafka-1:9092
+        ./opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic link-updates-dlq --partitions 3 --replication-factor 3 --bootstrap-server kafka-1:9092
+        echo 'Topics created successfully!';
+        "
 
 networks:
   app-network:

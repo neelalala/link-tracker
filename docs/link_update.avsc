@@ -1,0 +1,35 @@
+{
+  "type": "record",
+  "name": "LinkUpdateEvent",
+  "namespace": "domain.LinkUpdate",
+  "fields": [
+    {
+      "name": "id",
+      "type": "long",
+      "doc": "Link ID"
+    },
+    {
+      "name": "url",
+      "type": "string",
+      "doc": "Link URL"
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "doc": "Short update description"
+    },
+    {
+      "name": "preview",
+      "type": "string",
+      "doc": "Update review"
+    },
+    {
+      "name": "tgChatIds",
+      "type": {
+        "type": "array",
+        "items": "long"
+      },
+      "doc": "Telegram chats IDs"
+    }
+  ]
+}

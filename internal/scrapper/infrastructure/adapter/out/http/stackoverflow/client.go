@@ -148,7 +148,7 @@ func (client *Client) fetchAnswers(ctx context.Context, questionURL string, sinc
 
 	answerUpdates := []domain.UpdateEvent{}
 	for _, answer := range answers.Items {
-		timestamp := time.Unix(answer.CreationDate, 0)
+		timestamp := time.Unix(answer.CreationDate, 0).UTC()
 		if !timestamp.After(since) {
 			continue
 		}
@@ -202,7 +202,7 @@ func (client *Client) fetchComments(ctx context.Context, questionURL string, sin
 		commentUpdates = append(commentUpdates, &CommentUpdate{
 			Title:         questionTitle,
 			Owner:         comment.Owner.DisplayName,
-			CreatedAt:     time.Unix(comment.CreationDate, 0),
+			CreatedAt:     time.Unix(comment.CreationDate, 0).UTC(),
 			Body:          comment.Body,
 			MaxPreviewLen: client.maxPreviewLen,
 		})

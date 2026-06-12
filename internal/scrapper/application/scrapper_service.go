@@ -16,7 +16,7 @@ type UpdateNotifier interface {
 type ScrapperService struct {
 	linkRepo   domain.LinkRepository
 	subRepo    domain.SubscriptionRepository
-	fetcher    *FetcherService
+	fetcher    domain.LinkFetcher
 	transactor domain.Transactor
 	notifier   UpdateNotifier
 
@@ -29,7 +29,7 @@ type ScrapperService struct {
 func NewScrapperService(
 	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,
-	fetcher *FetcherService,
+	fetcher domain.LinkFetcher,
 	transactor domain.Transactor,
 	notifier UpdateNotifier,
 	batchSize int,
@@ -132,7 +132,7 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 		if len(chatIDs) > 0 {
 			update := domain.LinkUpdate{
 				URL:         link.URL,
-				Description: "no fetcher for this link yet",
+				Description: "Cannot handle this link yet. Please contact admins if you see this message",
 				TgChatIDs:   chatIDs,
 			}
 			err := service.notifier.SendUpdate(ctx, update)

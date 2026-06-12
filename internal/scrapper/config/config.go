@@ -73,6 +73,21 @@ type FetchersConfig struct {
 	StackOverflowKey string        `config:"stackoverflow-key"`
 }
 
+type KafkaWorkerConfig struct {
+	Count      int           `config:"count,1"`
+	Interval   time.Duration `config:"interval,1m"`
+	EventLimit int           `config:"event-limit,10"`
+	MaxRetries int           `config:"max-retries,5"`
+}
+
+type KafkaConfig struct {
+	Brokers           []string          `config:"brokers"`
+	SchemaRegistryURL string            `config:"schema-registry-url"`
+	Topic             string            `config:"topic,link-updates"`
+	SchemaPath        string            `config:"schema-path"`
+	Workers           KafkaWorkerConfig `config:"workers"`
+}
+
 type Config struct {
 	Logger     LoggerConfig     `config:"logger"`
 	Scheduler  SchedulerConfig  `config:"scheduler"`
@@ -80,6 +95,8 @@ type Config struct {
 	Server     ServerConfig     `config:"server"`
 	Database   DatabaseConfig   `config:"database"`
 	Fetchers   FetchersConfig   `config:"fetchers"`
+	UseQueue   bool             `config:"use-queue,true"`
+	Kafka      KafkaConfig      `config:"kafka"`
 }
 
 func Load(configPath string) (*Config, error) {

@@ -14,6 +14,7 @@ COPY cmd/bot ./cmd/bot
 COPY internal/bot ./internal/bot
 COPY docs/scrapper.proto ./docs/
 COPY docs/bot.proto ./docs/
+COPY internal/validation ./internal/validation
 
 RUN mkdir -p pkg/api/proto/scrapper
 

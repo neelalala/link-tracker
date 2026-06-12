@@ -4,20 +4,22 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"os"
+	"slices"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/grpc"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/http"
-	cronin "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/scheduler"
-	grpcnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/grpc/notifier"
+	cron "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/scheduler"
+	servergrpc "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/server/grpc"
+	serverhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/server/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/github"
-	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/notifier"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/stackoverflow"
+	notifiergrpc "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/grpc"
+	notifierhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/http"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka/mapper"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sql"
@@ -25,59 +27,294 @@ import (
 )
 
 type APIServer interface {
-	Start(ctx context.Context) error
+	Start() error
+	Stop(ctx context.Context) error
 }
 
 type App struct {
-	scheduler *cronin.Scheduler
+	scheduler *cron.Scheduler
 	server    APIServer
-	slogger   *slog.Logger
+	log       *slog.Logger
+
+	closers []func() error
 }
 
-func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, func()) {
+func (a *App) onClose(f func() error) {
+	a.closers = append(a.closers, f)
+}
+
+func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
-		log.Fatalf("error loading config: %v", err)
+		return nil, err
 	}
+
+	app := &App{}
 
 	if cfg.Logger.File != "" {
 		file, err := os.OpenFile(cfg.Logger.File, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
-			log.Fatalf("error opening file: %v", err)
+			return nil, fmt.Errorf("error opening log file: %v", err)
 		}
 		out = file
+		app.onClose(file.Close)
 	}
 
-	slogger := logger.NewLogger(cfg.Logger.Level, out)
+	log := logger.NewLogger(cfg.Logger.Level, out)
 
-	err = database.RunMigrationsFromFile(cfg.Database.URL, cfg.Database.MigrationsDirUrl, slogger)
+	log.Info("Info messages are enabled")
+	log.Debug("Debug messages are enabled")
+
+	app.log = log
+
+	log.Debug("running migrations")
+	err = database.RunMigrationsFromFile(cfg.Database.URL, cfg.Database.MigrationsDirUrl, log)
 	if err != nil {
-		slogger.Error("migration failed", slog.String("error", err.Error()))
-		os.Exit(1)
+		return nil, fmt.Errorf("error running migrations: %v", err)
 	}
 
+	log.Debug("Creating db pool")
 	dbPool, err := pgxpool.New(context.Background(), cfg.Database.URL)
 	if err != nil {
-		slogger.Error("unable to connect to database", slog.String("error", err.Error()))
-		os.Exit(1)
+		return nil, fmt.Errorf("unable to connect to database: %v", err)
 	}
-	cleanup := func() { dbPool.Close() }
+	app.onClose(func() error {
+		dbPool.Close()
+		return nil
+	})
 
-	var chatRepo domain.ChatRepository
-	var linkRepo domain.LinkRepository
-	var subRepo domain.SubscriptionRepository
+	log.Debug("Building transactor")
+	transactor, err := buildTransactor(cfg, dbPool)
+	if err != nil {
+		return nil, fmt.Errorf("error creating transactor: %v", err)
+	}
 
+	log.Debug("Building repositories")
+	chatRepo, linkRepo, subRepo, err := buildRepos(cfg, dbPool)
+	if err != nil {
+		return nil, fmt.Errorf("error creating repository: %v", err)
+	}
+
+	log.Debug("Building fetchers")
+	fetchers := buildFetchers(cfg)
+
+	log.Debug("Building fetcher service")
+	fetcher := NewFetcherService(fetchers)
+
+	log.Debug("Building subscription service")
+	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
+
+	log.Debug("Building API server")
+	server, err := buildAPIServer(cfg, subsService, log)
+	if err != nil {
+		return nil, fmt.Errorf("error creating API server: %v", err)
+	}
+	app.server = server
+
+	log.Debug("Building notification service")
+	notifier, err := buildNotifier(ctx, cfg, dbPool, app, log)
+	if err != nil {
+		return nil, fmt.Errorf("error creating notifier: %v", err)
+	}
+
+	log.Debug("Creating scheduler")
+	scheduler, err := cron.New(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error creating scheduler: %v", err)
+	}
+	app.scheduler = scheduler
+
+	log.Debug("Building scrapper service")
+	scrapperService, err := NewScrapperService(
+		linkRepo,
+		subRepo,
+		fetcher,
+		transactor,
+		notifier,
+		cfg.Fetchers.Batch,
+		cfg.Fetchers.Concurrency,
+		log,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating scrapper: %v", err)
+	}
+
+	log.Debug("Creating scheduler job")
+	err = scheduler.Schedule(
+		cfg.Scheduler.FetchInterval,
+		cfg.Scheduler.FetchTimeout,
+		func(jobCtx context.Context) {
+			log.Info("fetch job started")
+			err := scrapperService.GetUpdates(jobCtx)
+			if err != nil {
+				log.Error("scrapper iteration failed",
+					slog.String("context", "main"),
+					slog.String("error", err.Error()),
+				)
+			}
+			log.Info("fetch job finished")
+		})
+	if err != nil {
+		return nil, fmt.Errorf("error scheduling job: %v", err)
+	}
+	app.onClose(scheduler.Shutdown)
+
+	return app, nil
+}
+
+func (a *App) Start() error {
+	a.log.Debug("Starting application")
+	a.scheduler.Start()
+	a.log.Info("scheduler started")
+
+	a.log.Info("starting scrapper api server...")
+	if err := a.server.Start(); err != nil {
+		return fmt.Errorf("api server stopped with error: %w", err)
+	}
+
+	return nil
+}
+func (a *App) Shutdown(ctx context.Context) {
+	a.log.Info("shutting down scrapper...")
+
+	err := a.server.Stop(ctx)
+	if err != nil {
+		a.log.Error("error shutting down scrapper", slog.String("error", err.Error()))
+	}
+
+	for _, closer := range slices.Backward(a.closers) {
+		if err := closer(); err != nil {
+			a.log.Error("error during cleanup", slog.String("error", err.Error()))
+		}
+	}
+
+	a.log.Info("scrapper successfully stopped")
+}
+
+func buildNotifier(
+	ctx context.Context,
+	cfg *config.Config,
+	dbPool *pgxpool.Pool,
+	app *App,
+	log *slog.Logger,
+) (UpdateNotifier, error) {
+	if cfg.UseQueue {
+		log.Debug("Building kafka")
+		return buildKafka(ctx, cfg, dbPool, app, log)
+	}
+	switch cfg.BotService.Protocol {
+	case config.ProtocolHTTP:
+		notifier := notifierhttp.NewBot(cfg.BotService.URL, log)
+		return notifier, nil
+	case config.ProtocolGRPC:
+		notifier, err := notifiergrpc.NewBot(cfg.BotService.URL)
+		if err != nil {
+			return nil, err
+		}
+		app.onClose(notifier.Close)
+		return notifier, nil
+	default:
+		return nil, fmt.Errorf("unsupported notifier protocol: %s", cfg.BotService.Protocol)
+	}
+}
+
+func buildKafka(
+	ctx context.Context,
+	cfg *config.Config,
+	dbPool *pgxpool.Pool,
+	app *App,
+	log *slog.Logger,
+) (UpdateNotifier, error) {
+	log.Debug("Building outbox repository")
+	var outRepo domain.OutboxRepository
 	switch cfg.Database.AccessType {
 	case config.AccessTypeSQL:
-		chatRepo = sql.NewChatRepository(dbPool)
-		linkRepo = sql.NewLinkRepository(dbPool)
-		subRepo = sql.NewSubscriptionRepository(dbPool)
+		outRepo = sql.NewOutboxRepository(dbPool)
 	case config.AccessTypeBUILDER:
-		chatRepo = sqlbuilder.NewChatRepository(dbPool)
-		linkRepo = sqlbuilder.NewLinkRepository(dbPool)
-		subRepo = sqlbuilder.NewSubscriptionRepository(dbPool)
+		outRepo = sqlbuilder.NewOutboxRepository(dbPool)
+	default:
+		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
 	}
 
+	configs, err := buildSchemaConfigs(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("error building schemas configs: %v", err)
+	}
+
+	log.Debug("Building kafka producer")
+	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.SchemaRegistryURL, configs, outRepo, cfg.Kafka.Workers.EventLimit, cfg.Kafka.Workers.MaxRetries, log)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kafka producer: %v", err)
+	}
+	app.onClose(producer.Close)
+
+	log.Debug("Running workers")
+	runWorkers(ctx, cfg, producer, log)
+
+	log.Debug("Building kafka notifier")
+	notifier := kafka.NewNotifier(outRepo, cfg.Kafka.Topic, log)
+
+	return notifier, nil
+}
+
+func buildSchemaConfigs(cfg *config.Config) (map[string]kafka.TopicConfig, error) {
+	schemaFile, err := os.Open(cfg.Kafka.SchemaPath)
+	if err != nil {
+		return nil, fmt.Errorf("error opening kafka schema file: %v", err)
+	}
+	defer schemaFile.Close()
+
+	schemaBytes, err := io.ReadAll(schemaFile)
+	if err != nil {
+		return nil, fmt.Errorf("error reading kafka schema file: %v", err)
+	}
+
+	return map[string]kafka.TopicConfig{
+		cfg.Kafka.Topic: {
+			SchemaString: string(schemaBytes),
+			ParseFunc:    mapper.LinkUpdateToNative,
+		},
+	}, nil
+}
+
+func runWorkers(ctx context.Context, cfg *config.Config, producer *kafka.Producer, log *slog.Logger) {
+	for range cfg.Kafka.Workers.Count {
+		worker := kafka.NewWorker(ctx, producer, cfg.Kafka.Workers.Interval, log)
+		go worker.Start()
+	}
+}
+
+func buildTransactor(cfg *config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
+	switch cfg.Database.AccessType {
+	case config.AccessTypeSQL:
+		transactor := sql.NewTransactor(dbPool)
+		return transactor, nil
+	case config.AccessTypeBUILDER:
+		transactor := sqlbuilder.NewTransactor(dbPool)
+		return transactor, nil
+	default:
+		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
+	}
+}
+
+func buildRepos(cfg *config.Config, dbPool *pgxpool.Pool) (domain.ChatRepository, domain.LinkRepository, domain.SubscriptionRepository, error) {
+	switch cfg.Database.AccessType {
+	case config.AccessTypeSQL:
+		chatRepo := sql.NewChatRepository(dbPool)
+		linkRepo := sql.NewLinkRepository(dbPool)
+		subRepo := sql.NewSubscriptionRepository(dbPool)
+		return chatRepo, linkRepo, subRepo, nil
+	case config.AccessTypeBUILDER:
+		chatRepo := sqlbuilder.NewChatRepository(dbPool)
+		linkRepo := sqlbuilder.NewLinkRepository(dbPool)
+		subRepo := sqlbuilder.NewSubscriptionRepository(dbPool)
+		return chatRepo, linkRepo, subRepo, nil
+	default:
+		return nil, nil, nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
+	}
+}
+
+func buildFetchers(cfg *config.Config) []domain.LinkFetcher {
 	githubClient := github.NewClient(
 		github.BaseURL,
 		github.BaseApiURL,
@@ -92,124 +329,18 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, func()) {
 		cfg.Fetchers.StackOverflowKey,
 	)
 
-	transactor, err := buildTransactor(cfg, dbPool)
-	if err != nil {
-		slogger.Error("unable to create transactor", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
+	return []domain.LinkFetcher{githubClient, stackoverflowClient}
+}
 
-	fetchers := []domain.LinkFetcher{githubClient, stackoverflowClient}
-	fetcher := NewFetcherService(fetchers)
-
-	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, slogger)
-
-	var server APIServer
+func buildAPIServer(cfg *config.Config, subsService *SubscriptionService, log *slog.Logger) (APIServer, error) {
 	switch cfg.Server.Protocol {
 	case config.ProtocolHTTP:
-		server = http.NewServer(cfg.Server.Port, subsService, slogger)
+		server := serverhttp.NewServer(cfg.Server.Port, subsService, log)
+		return server, nil
 	case config.ProtocolGRPC:
-		server = grpc.NewServer(cfg.Server.Port, subsService, slogger)
+		server := servergrpc.NewServer(cfg.Server.Port, subsService, log)
+		return server, nil
 	default:
-		slogger.Error("unsupported protocol", "protocol", cfg.Server.Protocol)
-		os.Exit(1)
-	}
-
-	var botNotifier UpdateNotifier
-	switch cfg.BotService.Protocol {
-	case config.ProtocolHTTP:
-		botNotifier = httpnotifier.NewBot(cfg.BotService.URL, slogger)
-	case config.ProtocolGRPC:
-		botNotifier, err = grpcnotifier.NewBot(cfg.BotService.URL)
-		if err != nil {
-			slogger.Error("error creating grpc notifier",
-				slog.String("context", "main"),
-				slog.String("error", err.Error()),
-			)
-			os.Exit(1)
-		}
-	default:
-		slogger.Error("unsupported protocol", "protocol", cfg.BotService.Protocol)
-		os.Exit(1)
-	}
-
-	scheduler, err := cronin.New(ctx)
-	if err != nil {
-		slogger.Error("failed to init cron",
-			slog.String("context", "main"),
-			slog.String("error", err.Error()),
-		)
-		os.Exit(1)
-	}
-
-	scrapperService, err := NewScrapperService(
-		linkRepo,
-		subRepo,
-		fetcher,
-		transactor,
-		botNotifier,
-		cfg.Fetchers.Batch,
-		cfg.Fetchers.Concurrency,
-		slogger)
-
-	err = scheduler.Schedule(
-		cfg.Scheduler.FetchInterval,
-		cfg.Scheduler.FetchTimeout,
-		func(jobCtx context.Context) {
-			err := scrapperService.GetUpdates(jobCtx)
-			if err != nil {
-				slogger.Error("scrapper iteration failed",
-					slog.String("context", "main"),
-					slog.String("error", err.Error()),
-				)
-			}
-		})
-	if err != nil {
-		slogger.Error("failed to schedule job",
-			slog.String("context", "main"),
-			slog.String("error", err.Error()),
-		)
-		os.Exit(1)
-	}
-
-	return &App{
-		scheduler: scheduler,
-		server:    server,
-		slogger:   slogger,
-	}, cleanup
-}
-
-func (a *App) Start(ctx context.Context) {
-	a.scheduler.Start()
-	a.slogger.Info("scheduler started")
-
-	a.slogger.Info("starting scrapper api server...")
-	if err := a.server.Start(ctx); err != nil {
-		a.slogger.Error("api server stopped with error",
-			slog.String("context", "main"),
-			slog.String("error", err.Error()),
-		)
-	}
-
-	a.slogger.Info("shutting down scheduler...")
-	if err := a.scheduler.Shutdown(); err != nil {
-		a.slogger.Error("failed to shutdown cron gracefully",
-			slog.String("context", "main"),
-			slog.String("error", err.Error()),
-		)
-	}
-
-	a.slogger.Info("scrapper successfully stopped")
-}
-
-func buildTransactor(cfg *config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
-	switch cfg.Database.AccessType {
-	case config.AccessTypeSQL:
-		transactor := sql.NewTransactor(dbPool)
-		return transactor, nil
-	case config.AccessTypeBUILDER:
-		transactor := sqlbuilder.NewTransactor(dbPool)
-		return transactor, nil
-	default:
-		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
+		return nil, fmt.Errorf("unsupported server protocol: %s", cfg.Server.Protocol)
 	}
 }

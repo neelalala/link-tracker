@@ -109,7 +109,7 @@ func (client *Client) fetchPullRequests(ctx context.Context, repoURL string, sin
 		prUpdates = append(prUpdates, &NewPRUpdate{
 			Title:         pullRequest.Title,
 			Author:        pullRequest.User.Login,
-			CreatedAt:     pullRequest.CreatedAt,
+			CreatedAt:     pullRequest.CreatedAt.UTC(),
 			Body:          pullRequest.BodyText,
 			MaxPreviewLen: client.maxPreviewLen,
 		})
@@ -167,7 +167,7 @@ func (client *Client) fetchIssues(ctx context.Context, repoURL string, since tim
 		issueUpdates = append(issueUpdates, &NewIssueUpdate{
 			Title:         issue.Title,
 			Author:        issue.User.Login,
-			CreatedAt:     issue.CreatedAt,
+			CreatedAt:     issue.CreatedAt.UTC(),
 			Body:          issue.BodyText,
 			MaxPreviewLen: client.maxPreviewLen,
 		})
