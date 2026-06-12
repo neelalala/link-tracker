@@ -11,9 +11,9 @@ services:
         condition: service_healthy
     environment:
       - BOT_API_PORT=63342
-      - SCRAPPER_URL="scrapper:63343"
-      - BOT_API_PROTOCOL="grpc"
-      - SCRAPPER_API_PROTOCOL="grpc"
+      - SCRAPPER_URL=scrapper:63343
+      - BOT_API_PROTOCOL=grpc
+      - SCRAPPER_API_PROTOCOL=grpc
       - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,scrapper,postgres,localhost,127.0.0.1
 
   scrapper:
@@ -25,15 +25,17 @@ services:
         condition: service_healthy
       schema-registry:
         condition: service_started
+      valkey-cluster-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      - BOT_URL="bot:63342"
+      - BOT_URL=bot:63342
       - SCRAPPER_API_PORT=63343
-      - BOT_API_PROTOCOL="grpc"
-      - SCRAPPER_API_PROTOCOL="grpc"
-      - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,postgres,localhost,127.0.0.1
+      - BOT_API_PROTOCOL=grpc
+      - SCRAPPER_API_PROTOCOL=grpc
+      - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,valkey-1,valkey-2,valkey-3,postgres,localhost,127.0.0.1
 
   postgres:
     image: postgres:17-alpine
@@ -101,7 +103,7 @@ services:
         condition: service_started
       kafka-3:
         condition: service_started
-        
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -131,10 +133,121 @@ services:
         echo 'Topics created successfully!';
         "
 
+  valkey-1:
+    image: valkey/valkey:9-alpine
+    container_name: valkey-1
+    command: >
+      valkey-server
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-hostname valkey-1
+      --cluster-preferred-endpoint-type hostname
+      --appendonly yes
+      --bind 0.0.0.0
+      --port 6379
+    ports:
+      - "7001:6379"
+    volumes:
+      - valkey-1-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-h", "127.0.0.1", "-p", "6379", "ping" ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  valkey-2:
+    image: valkey/valkey:9-alpine
+    container_name: valkey-2
+    command: >
+      valkey-server
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-hostname valkey-2
+      --cluster-preferred-endpoint-type hostname
+      --appendonly yes
+      --bind 0.0.0.0
+      --port 6379
+    ports:
+      - "7002:6379"
+    volumes:
+      - valkey-2-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-h", "127.0.0.1", "-p", "6379", "ping" ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  valkey-3:
+    image: valkey/valkey:9-alpine
+    container_name: valkey-3
+    command: >
+      valkey-server
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-hostname valkey-3
+      --cluster-preferred-endpoint-type hostname
+      --appendonly yes
+      --bind 0.0.0.0
+      --port 6379
+    ports:
+      - "7003:6379"
+    volumes:
+      - valkey-3-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-h", "127.0.0.1", "-p", "6379", "ping" ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  valkey-cluster-init:
+    image: valkey/valkey:9-alpine
+    container_name: valkey-cluster-init
+    depends_on:
+      valkey-1:
+        condition: service_healthy
+      valkey-2:
+        condition: service_healthy
+      valkey-3:
+        condition: service_healthy
+    command: >
+      sh -c "
+        if valkey-cli -h valkey-1 -p 6379 cluster info | grep -q 'cluster_state:ok'; then
+          echo 'Valkey cluster already initialized';
+          exit 0;
+        fi;
+        echo 'Creating Valkey cluster...';
+        valkey-cli --cluster create valkey-1:6379 valkey-2:6379 valkey-3:6379 --cluster-replicas 0 --cluster-yes;
+        echo 'Valkey cluster created';
+      "
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis-insight-data:/data
+    depends_on:
+      - valkey-cluster-init
+    restart: unless-stopped
 networks:
   app-network:
     driver: bridge
 
 volumes:
   pgdata:
+    driver: local
+  valkey-1-data:
+    driver: local
+  valkey-2-data:
+    driver: local
+  valkey-3-data:
+    driver: local
+  redis-insight-data:
     driver: local

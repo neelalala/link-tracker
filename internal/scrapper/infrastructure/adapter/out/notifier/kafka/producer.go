@@ -10,6 +10,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/linkedin/goavro/v2"
 	"github.com/riferrei/srclient"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 

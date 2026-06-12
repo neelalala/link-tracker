@@ -71,7 +71,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 	log := logger.NewLogger(cfg.Logger.Level, out)
 	app.log = log
 
-	tgClient, err := outtelegram.NewClient(cfg.Telegram.ApiUrl, cfg.Telegram.Token, cfg.Telegram.Timeout)
+	tgClient, err := outtelegram.NewClient(cfg.Telegram.ApiURL, cfg.Telegram.Token, cfg.Telegram.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("error creating telegram client: %v", err)
 	}
@@ -80,13 +80,13 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 
 	listener, err := buildListener(cfg, notifyService, log)
 	if err != nil {
-		return nil, fmt.Errorf("error creation update listener: %v", err)
+		return nil, fmt.Errorf("error creating update listener: %v", err)
 	}
 	app.listener = listener
 
 	scrapper, err := buildScrapperClient(cfg, log)
 	if err != nil {
-		return nil, fmt.Errorf("error creation scrapper client: %v", err)
+		return nil, fmt.Errorf("error creating scrapper client: %v", err)
 	}
 	app.onClose(scrapper.Close)
 
@@ -153,8 +153,8 @@ func (app *App) Shutdown(ctx context.Context) {
 	app.log.Info("bot successfully stopped")
 }
 
-func buildListener(cfg *config.Config, notifier domain.LinkUpdateHandler, log *slog.Logger) (UpdateListener, error) {
-	if cfg.UseQueue {
+func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *slog.Logger) (UpdateListener, error) {
+	if cfg.Kafka.Enable {
 		log.Info("using queue as listener")
 		kafka, err := kafka.NewListener(
 			cfg.Kafka.Brokers,
@@ -188,7 +188,7 @@ func buildListener(cfg *config.Config, notifier domain.LinkUpdateHandler, log *s
 	}
 }
 
-func buildScrapperClient(cfg *config.Config, log *slog.Logger) (ScrapperClient, error) {
+func buildScrapperClient(cfg config.Config, log *slog.Logger) (ScrapperClient, error) {
 	switch cfg.ScrapperService.Protocol {
 	case config.ProtocolHTTP:
 		log.Info("using http scrapper client")
@@ -206,7 +206,7 @@ func buildScrapperClient(cfg *config.Config, log *slog.Logger) (ScrapperClient, 
 	}
 }
 
-func buildRepos(cfg *config.Config, dbPool *pgxpool.Pool, log *slog.Logger) (domain.SessionRepository, error) {
+func buildRepos(cfg config.Config, dbPool *pgxpool.Pool, log *slog.Logger) (domain.SessionRepository, error) {
 	switch cfg.Database.AccessType {
 	case config.AccessTypeSQL:
 		log.Info("using raw sql database access type")

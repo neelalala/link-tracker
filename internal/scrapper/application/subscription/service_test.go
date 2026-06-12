@@ -1,4 +1,4 @@
-package application
+package subscription
 
 import (
 	"context"
@@ -47,7 +47,7 @@ func TestSubscriptionService_AddLink_NewLinkCreatedAndSaved(t *testing.T) {
 	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
 	mockValidator := &mockLinkValidator{Can: []bool{true}}
 
-	service := NewSubscriptionService(mockChatRepo, mockLinkRepo, mockSubRepo, mockTransactor{}, mockValidator, testLogger())
+	service := NewService(mockChatRepo, mockLinkRepo, mockSubRepo, mockTransactor{}, mockValidator, testLogger())
 
 	ctx := context.Background()
 	chatID := int64(123)
@@ -91,7 +91,7 @@ func TestSubscriptionService_AddLink_ExistingLinkJustSubscribed(t *testing.T) {
 	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
 	mockValidator := &mockLinkValidator{Can: []bool{true}}
 
-	service := NewSubscriptionService(mockChatRepo, mockLinkRepo, mockSubRepo, mockTransactor{}, mockValidator, testLogger())
+	service := NewService(mockChatRepo, mockLinkRepo, mockSubRepo, mockTransactor{}, mockValidator, testLogger())
 
 	ctx := context.Background()
 	chatID := int64(123)
@@ -133,7 +133,7 @@ func TestSubscriptionService_AddLink_UnsupportedURL(t *testing.T) {
 	mockSubRepo := mocks.NewMockSubscriptionRepository(ctrl)
 	mockValidator := &mockLinkValidator{Can: []bool{false}}
 
-	service := NewSubscriptionService(mockChatRepo, mockLinkRepo, mockSubRepo, mockTransactor{}, mockValidator, testLogger())
+	service := NewService(mockChatRepo, mockLinkRepo, mockSubRepo, mockTransactor{}, mockValidator, testLogger())
 
 	ctx := context.Background()
 	chatID := int64(123)

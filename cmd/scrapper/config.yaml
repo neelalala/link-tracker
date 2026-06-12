@@ -1,0 +1,47 @@
+logger:
+  level: INFO
+
+scheduler:
+  fetch-interval: 60s
+  fetch-timeout: 60s
+
+bot-service:
+  protocol: grpc
+
+server:
+  protocol: grpc
+
+database:
+  migrations-dir-url: file://migrations
+  access-type: BUILDER
+
+fetchers:
+  preview-limit: 200
+  timeout: 10s
+  concurrency: 4
+  batch: 500
+
+kafka:
+  enabled: true
+  brokers:
+    - kafka-1:9092
+    - kafka-2:9092
+    - kafka-3:9092
+  topic: link-updates
+  workers:
+    count: 1
+    interval: 30s
+    event-limit: 50
+    max-retries: 7
+  schema-registry-url: http://schema-registry:8081
+  schema-path: ./docs/link_update.avsc
+
+valkey:
+  enabled: true
+  addresses:
+    - valkey-1:6379
+    - valkey-2:6379
+    - valkey-3:6379
+  ttl: 5m
+  key-prefix: "scrapper:links:"
+  client-side-cache: true

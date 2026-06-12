@@ -1,10 +1,11 @@
-package application
+package subscription
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
@@ -14,7 +15,7 @@ type LinkValidator interface {
 	CanHandle(url string) bool
 }
 
-type SubscriptionService struct {
+type Service struct {
 	chatRepo domain.ChatRepository
 	linkRepo domain.LinkRepository
 	subRepo  domain.SubscriptionRepository
@@ -22,36 +23,49 @@ type SubscriptionService struct {
 	transactor domain.Transactor
 
 	linkValidator LinkValidator
-	logger        *slog.Logger
+
+	log *slog.Logger
 }
 
-func NewSubscriptionService(
+func NewService(
 	chatRepo domain.ChatRepository,
 	linkRepo domain.LinkRepository,
 	subRepo domain.SubscriptionRepository,
 	transactor domain.Transactor,
 	linkValidator LinkValidator,
-	logger *slog.Logger,
-) *SubscriptionService {
-	return &SubscriptionService{
+	log *slog.Logger,
+) *Service {
+	return &Service{
 		chatRepo:      chatRepo,
 		linkRepo:      linkRepo,
 		subRepo:       subRepo,
 		transactor:    transactor,
 		linkValidator: linkValidator,
-		logger:        logger,
+		log:           log,
 	}
 }
 
-func (service *SubscriptionService) RegisterChat(ctx context.Context, chatID int64) error {
+func (service *Service) RegisterChat(ctx context.Context, chatID int64) error {
+	service.log.Info("registering new chat",
+		"context", "Service.RegisterChat",
+		"chatID", chatID,
+	)
 	return service.chatRepo.Create(ctx, chatID)
 }
 
-func (service *SubscriptionService) DeleteChat(ctx context.Context, chatID int64) error {
+func (service *Service) DeleteChat(ctx context.Context, chatID int64) error {
+	service.log.Info("deleting chat",
+		"context", "Service.DeleteChat",
+		"chatID", chatID,
+	)
 	return service.chatRepo.Delete(ctx, chatID)
 }
 
-func (service *SubscriptionService) GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error) {
+func (service *Service) GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error) {
+	service.log.Info("getting tracked links",
+		"context", "Service.GetTrackedLinks",
+		"chatID", chatID,
+	)
 	var trackedLinks []domain.TrackedLink
 	err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		_, err := service.chatRepo.GetByID(ctx, chatID)
@@ -85,7 +99,13 @@ func (service *SubscriptionService) GetTrackedLinks(ctx context.Context, chatID 
 	return trackedLinks, nil
 }
 
-func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error) {
+func (service *Service) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error) {
+	service.log.Info("adding link",
+		"context", "Service.AddLink",
+		"chatID", chatID,
+		"url", url,
+		"tags", strings.Join(tags, ","),
+	)
 	if !service.linkValidator.CanHandle(url) {
 		return domain.TrackedLink{}, fmt.Errorf("%w: %s", domain.ErrURLNotSupported, url)
 	}
@@ -139,7 +159,12 @@ func (service *SubscriptionService) AddLink(ctx context.Context, chatID int64, u
 	}, nil
 }
 
-func (service *SubscriptionService) RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error) {
+func (service *Service) RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error) {
+	service.log.Info("removing link",
+		"context", "Service.RemoveLink",
+		"chatID", chatID,
+		"url", url,
+	)
 	var trackedLink domain.TrackedLink
 	err := service.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		_, err := service.chatRepo.GetByID(ctx, chatID)

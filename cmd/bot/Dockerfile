@@ -36,7 +36,7 @@ FROM alpine:latest
 
 WORKDIR /app
 
-COPY cmd/bot/bot.conf ./bot.conf
+COPY cmd/bot/config.yaml ./config.yaml
 COPY --from=builder /bin/bot /app/bot
 
 EXPOSE 63342

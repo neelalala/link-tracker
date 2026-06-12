@@ -16,7 +16,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	cfgPath := flag.String("config", "scrapper.conf", "path to config file")
+	cfgPath := flag.String("config", "config.yaml", "path to config file")
 	flag.Parse()
 
 	app, err := application.NewApp(ctx, *cfgPath, os.Stdout)

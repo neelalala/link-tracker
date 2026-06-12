@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/byrnedo/typesafe-config/parse"
 	"github.com/docker/go-connections/nat"
+	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,24 +30,18 @@ const (
 	dbName = "scrapper_test"
 )
 
-type TelegramConfig struct {
-	Token string `config:"token"`
-}
-
 type Config struct {
-	Telegram TelegramConfig `config:"telegram"`
+	Token string `env:"TELEGRAM_TOKEN"`
 }
 
-func Load(botConfig string) (*Config, error) {
+func Load(configPath string) (Config, error) {
 	godotenv.Load("../../.env")
-	tree, err := parse.ParseFile(botConfig)
+
+	var cfg Config
+	err := cleanenv.ReadConfig(configPath, &cfg)
 	if err != nil {
-		return nil, fmt.Errorf("error reading config file: %w", err)
+		return Config{}, err
 	}
-
-	cfg := &Config{}
-
-	parse.Populate(cfg, tree.GetConfig(), "")
 
 	return cfg, nil
 }
@@ -76,7 +70,7 @@ func loadPostgresContainer(ctx context.Context, net *testcontainers.DockerNetwor
 	})
 }
 
-func loadBotContainer(ctx context.Context, net *testcontainers.DockerNetwork, cfg *Config) (testcontainers.Container, error) {
+func loadBotContainer(ctx context.Context, net *testcontainers.DockerNetwork, cfg Config) (testcontainers.Container, error) {
 	botReq := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
 			Context:    "../../",
@@ -88,12 +82,12 @@ func loadBotContainer(ctx context.Context, net *testcontainers.DockerNetwork, cf
 			net.Name: {"bot"},
 		},
 		Env: map[string]string{
-			"TELEGRAM_TOKEN":        cfg.Telegram.Token,
+			"TELEGRAM_TOKEN":        cfg.Token,
 			"BOT_API_PORT":          strconv.Itoa(BOT_API_PORT),
 			"SCRAPPER_URL":          fmt.Sprintf("scrapper:%d", SCRAPPER_API_PORT),
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
-			"USE_QUEUE":             "false",
+			"KAFKA_ENABLED":         "false",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", BOT_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
@@ -122,7 +116,8 @@ func loadScrapperContainer(ctx context.Context, net *testcontainers.DockerNetwor
 			"DATABASE_URL":          dbURL,
 			"BOT_API_PROTOCOL":      "http",
 			"SCRAPPER_API_PROTOCOL": "http",
-			"USE_QUEUE":             "false",
+			"KAFKA_ENABLED":         "false",
+			"CACHE_ENABLED":         "false",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
@@ -134,7 +129,7 @@ func loadScrapperContainer(ctx context.Context, net *testcontainers.DockerNetwor
 }
 
 func TestEndToEnd_BotScrapperHTTP(t *testing.T) {
-	cfg, err := Load("../../cmd/bot/bot.conf")
+	cfg, err := Load("../../cmd/bot/config.yaml")
 	require.NoErrorf(t, err, "error loading config: %v", err)
 
 	ctx := context.Background()

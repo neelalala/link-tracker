@@ -9,11 +9,14 @@ import (
 	"slices"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application/subscription"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	cron "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/scheduler"
 	servergrpc "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/server/grpc"
 	serverhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/in/server/http"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/cache/valkey"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/github"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/http/stackoverflow"
 	notifiergrpc "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/grpc"
@@ -29,6 +32,14 @@ import (
 type APIServer interface {
 	Start() error
 	Stop(ctx context.Context) error
+}
+
+type SubscriptionService interface {
+	RegisterChat(ctx context.Context, chatID int64) error
+	DeleteChat(ctx context.Context, chatID int64) error
+	GetTrackedLinks(ctx context.Context, chatID int64) ([]domain.TrackedLink, error)
+	AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.TrackedLink, error)
+	RemoveLink(ctx context.Context, chatID int64, url string) (domain.TrackedLink, error)
 }
 
 type App struct {
@@ -49,6 +60,8 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 		return nil, err
 	}
 
+	fmt.Printf("config: %+v\n", cfg)
+
 	app := &App{}
 
 	if cfg.Logger.File != "" {
@@ -68,7 +81,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	app.log = log
 
 	log.Debug("running migrations")
-	err = database.RunMigrationsFromFile(cfg.Database.URL, cfg.Database.MigrationsDirUrl, log)
+	err = database.RunMigrationsFromFile(cfg.Database.URL, cfg.Database.MigrationsDirURL, log)
 	if err != nil {
 		return nil, fmt.Errorf("error running migrations: %v", err)
 	}
@@ -102,7 +115,10 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	fetcher := NewFetcherService(fetchers)
 
 	log.Debug("Building subscription service")
-	subsService := NewSubscriptionService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
+	subsService, err := buildSubscriptionService(cfg, chatRepo, linkRepo, subRepo, transactor, fetcher, log, app)
+	if err != nil {
+		return nil, fmt.Errorf("error creating subscription service: %v", err)
+	}
 
 	log.Debug("Building API server")
 	server, err := buildAPIServer(cfg, subsService, log)
@@ -141,8 +157,8 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 
 	log.Debug("Creating scheduler job")
 	err = scheduler.Schedule(
-		cfg.Scheduler.FetchInterval,
-		cfg.Scheduler.FetchTimeout,
+		cfg.Scheduler.JobInterval,
+		cfg.Scheduler.JobTimeout,
 		func(jobCtx context.Context) {
 			log.Info("fetch job started")
 			err := scrapperService.GetUpdates(jobCtx)
@@ -174,6 +190,7 @@ func (a *App) Start() error {
 
 	return nil
 }
+
 func (a *App) Shutdown(ctx context.Context) {
 	a.log.Info("shutting down scrapper...")
 
@@ -193,12 +210,12 @@ func (a *App) Shutdown(ctx context.Context) {
 
 func buildNotifier(
 	ctx context.Context,
-	cfg *config.Config,
+	cfg config.Config,
 	dbPool *pgxpool.Pool,
 	app *App,
 	log *slog.Logger,
 ) (UpdateNotifier, error) {
-	if cfg.UseQueue {
+	if cfg.Kafka.Enable {
 		log.Debug("Building kafka")
 		return buildKafka(ctx, cfg, dbPool, app, log)
 	}
@@ -220,7 +237,7 @@ func buildNotifier(
 
 func buildKafka(
 	ctx context.Context,
-	cfg *config.Config,
+	cfg config.Config,
 	dbPool *pgxpool.Pool,
 	app *App,
 	log *slog.Logger,
@@ -257,7 +274,7 @@ func buildKafka(
 	return notifier, nil
 }
 
-func buildSchemaConfigs(cfg *config.Config) (map[string]kafka.TopicConfig, error) {
+func buildSchemaConfigs(cfg config.Config) (map[string]kafka.TopicConfig, error) {
 	schemaFile, err := os.Open(cfg.Kafka.SchemaPath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening kafka schema file: %v", err)
@@ -277,14 +294,14 @@ func buildSchemaConfigs(cfg *config.Config) (map[string]kafka.TopicConfig, error
 	}, nil
 }
 
-func runWorkers(ctx context.Context, cfg *config.Config, producer *kafka.Producer, log *slog.Logger) {
+func runWorkers(ctx context.Context, cfg config.Config, producer *kafka.Producer, log *slog.Logger) {
 	for range cfg.Kafka.Workers.Count {
 		worker := kafka.NewWorker(ctx, producer, cfg.Kafka.Workers.Interval, log)
 		go worker.Start()
 	}
 }
 
-func buildTransactor(cfg *config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
+func buildTransactor(cfg config.Config, dbPool *pgxpool.Pool) (domain.Transactor, error) {
 	switch cfg.Database.AccessType {
 	case config.AccessTypeSQL:
 		transactor := sql.NewTransactor(dbPool)
@@ -297,7 +314,7 @@ func buildTransactor(cfg *config.Config, dbPool *pgxpool.Pool) (domain.Transacto
 	}
 }
 
-func buildRepos(cfg *config.Config, dbPool *pgxpool.Pool) (domain.ChatRepository, domain.LinkRepository, domain.SubscriptionRepository, error) {
+func buildRepos(cfg config.Config, dbPool *pgxpool.Pool) (domain.ChatRepository, domain.LinkRepository, domain.SubscriptionRepository, error) {
 	switch cfg.Database.AccessType {
 	case config.AccessTypeSQL:
 		chatRepo := sql.NewChatRepository(dbPool)
@@ -314,7 +331,7 @@ func buildRepos(cfg *config.Config, dbPool *pgxpool.Pool) (domain.ChatRepository
 	}
 }
 
-func buildFetchers(cfg *config.Config) []domain.LinkFetcher {
+func buildFetchers(cfg config.Config) []domain.LinkFetcher {
 	githubClient := github.NewClient(
 		github.BaseURL,
 		github.BaseApiURL,
@@ -332,7 +349,7 @@ func buildFetchers(cfg *config.Config) []domain.LinkFetcher {
 	return []domain.LinkFetcher{githubClient, stackoverflowClient}
 }
 
-func buildAPIServer(cfg *config.Config, subsService *SubscriptionService, log *slog.Logger) (APIServer, error) {
+func buildAPIServer(cfg config.Config, subsService SubscriptionService, log *slog.Logger) (APIServer, error) {
 	switch cfg.Server.Protocol {
 	case config.ProtocolHTTP:
 		server := serverhttp.NewServer(cfg.Server.Port, subsService, log)
@@ -343,4 +360,35 @@ func buildAPIServer(cfg *config.Config, subsService *SubscriptionService, log *s
 	default:
 		return nil, fmt.Errorf("unsupported server protocol: %s", cfg.Server.Protocol)
 	}
+}
+
+func buildSubscriptionService(
+	cfg config.Config,
+	chatRepo domain.ChatRepository,
+	linkRepo domain.LinkRepository,
+	subRepo domain.SubscriptionRepository,
+	transactor domain.Transactor,
+	fetcher domain.LinkFetcher,
+	log *slog.Logger,
+	app *App,
+) (SubscriptionService, error) {
+	service := subscription.NewService(chatRepo, linkRepo, subRepo, transactor, fetcher, log)
+
+	if !cfg.Valkey.Enabled {
+		return service, nil
+	}
+
+	cache, err := valkey.New(
+		cfg.Valkey.Addresses,
+		cfg.Valkey.TTL,
+		cfg.Valkey.KeyPrefix,
+		cfg.Valkey.ClientSideCache,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	app.onClose(cache.Close)
+
+	return subscription.NewCachingService(service, cache), nil
 }

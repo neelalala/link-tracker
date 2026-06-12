@@ -33,6 +33,12 @@ func (m *mockNotifier) SendUpdate(ctx context.Context, update domain.LinkUpdate)
 	return nil
 }
 
+type mockTransactor struct{}
+
+func (m mockTransactor) WithinTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
+}
+
 type TestUpdateEvent struct {
 	Time time.Time
 	Desc string
