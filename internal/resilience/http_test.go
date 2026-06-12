@@ -250,14 +250,14 @@ func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
 	req1, err := http.NewRequest(http.MethodGet, server.URL, nil)
 	require.NoError(t, err)
 	resp1, err := client.Do(req1)
-	require.Error(t, err, "expected server to return Internal Error (first request)")
-	assert.Nil(t, resp1)
+	require.NoError(t, err)
+	assert.Equal(t, resp1.StatusCode, http.StatusInternalServerError, "expected status code 500 (first request)")
 
 	req2, err := http.NewRequest(http.MethodGet, server.URL, nil)
 	require.NoError(t, err)
 	resp2, err := client.Do(req2)
-	require.Error(t, err, "expected server to return Internal Error (second request)")
-	assert.Nil(t, resp2)
+	require.NoError(t, err)
+	assert.Equal(t, resp2.StatusCode, http.StatusInternalServerError, "expected status code 500 (second request)")
 
 	req3, err := http.NewRequest(http.MethodGet, server.URL, nil)
 	require.NoError(t, err)
