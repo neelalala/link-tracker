@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -171,6 +172,55 @@ func TestRetry_ConstantDelay(t *testing.T) {
 		assert.InDelta(t, expectedDelay, actualDelay, float64(delta),
 			"Delay between attempt %d and %d must be ~%v, but it is %v",
 			i, i+1, expectedDelay, actualDelay)
+	}
+}
+
+func TestRetry_ExponentialDelay(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	var times []time.Time
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		times = append(times, time.Now())
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	const (
+		baseDelay = 10 * time.Millisecond
+		factor    = 2.0
+		maxDelay  = 50 * time.Millisecond
+		delta     = 15 * time.Millisecond
+	)
+
+	cfg := HTTPClientConfig{
+		Timeout: 5 * time.Second,
+		Retry: RetryConfig{
+			Enabled:           true,
+			MaxRetries:        10,
+			Delay:             baseDelay,
+			Backoff:           true,
+			BackoffFactor:     factor,
+			MaxDelay:          maxDelay,
+			RetryableStatuses: []int{http.StatusInternalServerError},
+		},
+	}
+
+	client := NewHTTPClient("test-retries-constant-delay", cfg, nil, log)
+
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "expected status code 500")
+
+	for i := 1; i < len(times); i++ {
+		actualDelay := times[i].Sub(times[i-1])
+		delay := time.Duration(float64(baseDelay) * math.Pow(factor, float64(i-1)))
+		delay = min(delay, maxDelay)
+
+		assert.InDelta(t, delay, actualDelay, float64(delta),
+			"Delay between attempt %d and %d must be ~%v, but it is %v",
+			i, i+1, delay, actualDelay)
 	}
 }
 
