@@ -332,3 +332,33 @@ func TestResilience_ClientBody(t *testing.T) {
 
 	assert.Equal(t, 2, attempts, "expected 2 server calls")
 }
+
+func TestTimeout(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	const serverOperationDuration = 5 * time.Second
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-time.After(serverOperationDuration):
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	cfg := HTTPClientConfig{
+		Timeout: 1 * time.Second,
+	}
+	client := NewHTTPClient("test-resilience-timeout", cfg, nil, log)
+
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	start := time.Now()
+	resp, err := client.Do(req)
+	elapsed := time.Since(start)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, context.DeadlineExceeded))
+	assert.Nil(t, resp)
+	assert.Less(t, elapsed, serverOperationDuration)
+}
