@@ -64,6 +64,73 @@ func TestRetry_SuccessOnThirdAttempt(t *testing.T) {
 	assert.Equal(t, expectedBody, string(body), "corrupted body")
 }
 
+func TestRetry_CancelledContext(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	var attempts int
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := HTTPClientConfig{
+		Timeout: 5 * time.Second,
+		Retry: RetryConfig{
+			Enabled:           true,
+			MaxRetries:        3,
+			Delay:             10 * time.Millisecond,
+			Backoff:           false,
+			RetryableStatuses: []int{http.StatusInternalServerError},
+		},
+	}
+
+	client := NewHTTPClient("test-retries-context_cancelled", cfg, nil, log)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	cancel()
+
+	resp, err := client.Do(req)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, context.Canceled), "expected error to be cancelled")
+	assert.Nil(t, resp, "expected resp to be nil")
+
+	assert.Equal(t, 0, attempts, "expected 2 server calls")
+}
+
+func TestRetry_StatusBadRequest(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	var attempts int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	cfg := HTTPClientConfig{
+		Timeout: 5 * time.Second,
+		Retry: RetryConfig{
+			Enabled:           true,
+			MaxRetries:        3,
+			Delay:             10 * time.Millisecond,
+			Backoff:           false,
+			RetryableStatuses: []int{http.StatusInternalServerError},
+		},
+	}
+	client := NewHTTPClient("test-retries-bad_request", cfg, nil, log)
+
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "expected status code 400")
+	assert.Equal(t, 1, attempts, "expected no retries")
+}
+
 func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	var attempts int
@@ -107,83 +174,6 @@ func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
 	assert.Nil(t, resp3)
 
 	assert.Equal(t, 2, attempts, "expected 2 server calls")
-}
-
-func TestResilience_RetryAfterCircuitBreakerOpens(t *testing.T) {
-	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	var attempts int
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts++
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer server.Close()
-
-	cfg := HTTPClientConfig{
-		Timeout: 5 * time.Second,
-		Retry: RetryConfig{
-			Enabled:           true,
-			MaxRetries:        3,
-			Delay:             10 * time.Millisecond,
-			Backoff:           false,
-			RetryableStatuses: []int{http.StatusInternalServerError},
-		},
-		Breaker: CircuitBreakerConfig{
-			Enabled:              true,
-			MinimumNumberOfCalls: 2,
-			FailureRateThreshold: 0.5,
-			SlidingWindow:        5 * time.Second,
-			WaitInOpenState:      5 * time.Second,
-		},
-	}
-
-	client := NewHTTPClient("test-retries_after_cb_opens", cfg, nil, log)
-
-	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
-	require.NoError(t, err)
-	resp, err := client.Do(req)
-
-	assert.True(t, errors.Is(err, gobreaker.ErrOpenState), "expected error to be open state")
-	assert.Nil(t, resp, "expected resp to be nil")
-
-	assert.Equal(t, 2, attempts, "expected 2 server calls")
-}
-
-func TestRetry_CancelledContext(t *testing.T) {
-	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	var attempts int
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts++
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	cfg := HTTPClientConfig{
-		Timeout: 5 * time.Second,
-		Retry: RetryConfig{
-			Enabled:           true,
-			MaxRetries:        3,
-			Delay:             10 * time.Millisecond,
-			Backoff:           false,
-			RetryableStatuses: []int{http.StatusInternalServerError},
-		},
-	}
-
-	client := NewHTTPClient("test-retries-context_cancelled", cfg, nil, log)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
-	require.NoError(t, err)
-	cancel()
-
-	resp, err := client.Do(req)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, context.Canceled), "expected error to be cancelled")
-	assert.Nil(t, resp, "expected resp to be nil")
-
-	assert.Equal(t, 0, attempts, "expected 2 server calls")
 }
 
 func TestCircuitBreaker_CancelledContext(t *testing.T) {
@@ -243,6 +233,46 @@ func TestCircuitBreaker_CancelledContext(t *testing.T) {
 	assert.Nil(t, resp3)
 
 	assert.Equal(t, 0, attempts, "expected 2 server calls")
+}
+
+func TestResilience_RetryAfterCircuitBreakerOpens(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	var attempts int
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	cfg := HTTPClientConfig{
+		Timeout: 5 * time.Second,
+		Retry: RetryConfig{
+			Enabled:           true,
+			MaxRetries:        3,
+			Delay:             10 * time.Millisecond,
+			Backoff:           false,
+			RetryableStatuses: []int{http.StatusInternalServerError},
+		},
+		Breaker: CircuitBreakerConfig{
+			Enabled:              true,
+			MinimumNumberOfCalls: 2,
+			FailureRateThreshold: 0.5,
+			SlidingWindow:        5 * time.Second,
+			WaitInOpenState:      5 * time.Second,
+		},
+	}
+
+	client := NewHTTPClient("test-retries_after_cb_opens", cfg, nil, log)
+
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+
+	assert.True(t, errors.Is(err, gobreaker.ErrOpenState), "expected error to be open state")
+	assert.Nil(t, resp, "expected resp to be nil")
+
+	assert.Equal(t, 2, attempts, "expected 2 server calls")
 }
 
 type customReader struct {
