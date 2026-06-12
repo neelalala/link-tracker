@@ -116,9 +116,15 @@ func newRetryTransport(base http.RoundTripper, name string, cfg RetryConfig, log
 }
 
 func (transport *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	var final *http.Response
+	var lastResp *http.Response
+	var lastErr error
 
 	err := transport.retrier.Do(func() error {
+		if lastResp != nil {
+			io.Copy(io.Discard, lastResp.Body)
+			lastResp.Body.Close()
+			lastResp = nil
+		}
 		if err := req.Context().Err(); err != nil {
 			return retry.Unrecoverable(err)
 		}
@@ -130,28 +136,25 @@ func (transport *retryTransport) RoundTrip(req *http.Request) (*http.Response, e
 			req.Body = body
 		}
 
-		resp, err := transport.base.RoundTrip(req)
-		if err != nil {
-			if errors.Is(err, gobreaker.ErrOpenState) {
-				return retry.Unrecoverable(err)
+		lastResp, lastErr = transport.base.RoundTrip(req)
+		if lastErr != nil {
+			if errors.Is(lastErr, gobreaker.ErrOpenState) {
+				return retry.Unrecoverable(lastErr)
 			}
-			return err
+			return lastErr
 		}
 
-		if slices.Contains(transport.retryable, resp.StatusCode) {
-			io.Copy(io.Discard, resp.Body)
-			resp.Body.Close()
-			return fmt.Errorf("retryable status code %d", resp.StatusCode)
+		if slices.Contains(transport.retryable, lastResp.StatusCode) {
+			return fmt.Errorf("retryable status code %d", lastResp.StatusCode)
 		}
 
-		final = resp
 		return nil
 	})
-	if err != nil {
-		return nil, err
+	if lastErr == nil && lastResp != nil {
+		return lastResp, nil
 	}
 
-	return final, nil
+	return nil, err
 }
 
 func exponentialBackoffDelay(backoffFactor float64, maxDelay time.Duration) retry.DelayTypeFunc {
