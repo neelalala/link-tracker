@@ -131,6 +131,49 @@ func TestRetry_StatusBadRequest(t *testing.T) {
 	assert.Equal(t, 1, attempts, "expected no retries")
 }
 
+func TestRetry_ConstantDelay(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	var times []time.Time
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		times = append(times, time.Now())
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	const (
+		expectedDelay = 10 * time.Millisecond
+		delta         = 15 * time.Millisecond
+	)
+
+	cfg := HTTPClientConfig{
+		Timeout: 5 * time.Second,
+		Retry: RetryConfig{
+			Enabled:           true,
+			MaxRetries:        3,
+			Delay:             expectedDelay,
+			Backoff:           false,
+			RetryableStatuses: []int{http.StatusInternalServerError},
+		},
+	}
+
+	client := NewHTTPClient("test-retries-constant-delay", cfg, nil, log)
+
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "expected status code 500")
+
+	for i := 1; i < len(times); i++ {
+		actualDelay := times[i].Sub(times[i-1])
+
+		assert.InDelta(t, expectedDelay, actualDelay, float64(delta),
+			"Delay between attempt %d and %d must be ~%v, but it is %v",
+			i, i+1, expectedDelay, actualDelay)
+	}
+}
+
 func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	var attempts int
