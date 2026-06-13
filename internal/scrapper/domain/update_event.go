@@ -7,6 +7,7 @@ import (
 
 type UpdateEvent interface {
 	UpdatedAt() time.Time
+	Author() string
 	Description() string
 	Preview() string
 }

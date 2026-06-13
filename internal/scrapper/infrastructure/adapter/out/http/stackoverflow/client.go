@@ -171,11 +171,11 @@ func (client *Client) fetchAnswers(ctx context.Context, questionURL string, sinc
 			continue
 		}
 		answerUpdates = append(answerUpdates, &AnswerUpdate{
-			Title:         questionTitle,
-			Owner:         answer.Owner.DisplayName,
-			CreatedAt:     timestamp,
-			Body:          answer.Body,
-			MaxPreviewLen: client.maxPreviewLen,
+			title:         questionTitle,
+			owner:         answer.Owner.DisplayName,
+			createdAt:     timestamp,
+			body:          answer.Body,
+			maxPreviewLen: client.maxPreviewLen,
 		})
 	}
 
@@ -218,11 +218,11 @@ func (client *Client) fetchComments(ctx context.Context, questionURL string, sin
 	var commentUpdates []domain.UpdateEvent
 	for _, comment := range comments.Items {
 		commentUpdates = append(commentUpdates, &CommentUpdate{
-			Title:         questionTitle,
-			Owner:         comment.Owner.DisplayName,
-			CreatedAt:     time.Unix(comment.CreationDate, 0).UTC(),
-			Body:          comment.Body,
-			MaxPreviewLen: client.maxPreviewLen,
+			title:         questionTitle,
+			owner:         comment.Owner.DisplayName,
+			createdAt:     time.Unix(comment.CreationDate, 0).UTC(),
+			body:          comment.Body,
+			maxPreviewLen: client.maxPreviewLen,
 		})
 	}
 
