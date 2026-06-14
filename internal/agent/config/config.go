@@ -33,8 +33,8 @@ type DatabaseConfig struct {
 }
 
 type LoggerConfig struct {
-	File  string `yaml:"file" env:"BOT_LOGS_FILE" env-default:""`
-	Level string `yaml:"level" env:"BOT_LOG_LEVEL" env-default:"ERROR"`
+	File  string `yaml:"file" env:"AGENT_LOGS_FILE" env-default:""`
+	Level string `yaml:"level" env:"AGENT_LOG_LEVEL" env-default:"ERROR"`
 }
 
 type KafkaRetryConfig struct {
@@ -50,7 +50,7 @@ type KafkaConfig struct {
 	Topic             string           `yaml:"topic" env:"KAFKA_TOPIC" env-default:"link-updates"`
 	DLQTopic          string           `yaml:"dlq-topic" env:"KAFKA_DLQ_TOPIC" env-default:"link-updates-dlq"`
 	SchemaRegistryURL string           `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
-	ConsumerGroup     string           `yaml:"consumer-group" env:"KAFKA_BOT_CONSUMER_GROUP" env-default:"bot-group-1"`
+	ConsumerGroup     string           `yaml:"consumer-group" env:"KAFKA_AGENT_CONSUMER_GROUP" env-default:"agent-group-1"`
 	Retries           KafkaRetryConfig `yaml:"retries"`
 }
 
