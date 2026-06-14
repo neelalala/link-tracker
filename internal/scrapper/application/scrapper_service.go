@@ -186,6 +186,7 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 				update := domain.LinkUpdate{
 					ID:          link.ID,
 					URL:         link.URL,
+					Author:      event.Author(),
 					Description: event.Description(),
 					Preview:     event.Preview(),
 					TgChatIDs:   chatIDs,

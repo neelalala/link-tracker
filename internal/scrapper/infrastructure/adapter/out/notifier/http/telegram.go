@@ -45,12 +45,14 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 	var requestJson = struct {
 		Id          int64   `json:"id"`
 		Url         string  `json:"url"`
+		Author      string  `json:"author"`
 		Description string  `json:"description"`
 		Preview     string  `json:"preview"`
 		TgChatIds   []int64 `json:"tgChatIds"`
 	}{
 		Id:          update.ID,
 		Url:         update.URL,
+		Author:      update.Author,
 		Description: update.Description,
 		Preview:     update.Preview,
 		TgChatIds:   update.TgChatIDs,

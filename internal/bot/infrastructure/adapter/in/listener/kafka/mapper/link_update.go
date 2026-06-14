@@ -23,6 +23,11 @@ func LinkUpdateFromNative(native any) (domain.LinkUpdate, error) {
 		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string url")
 	}
 
+	author, ok := record["author"].(string)
+	if !ok {
+		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string author")
+	}
+
 	description, ok := record["description"].(string)
 	if !ok {
 		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string description")
@@ -36,6 +41,7 @@ func LinkUpdateFromNative(native any) (domain.LinkUpdate, error) {
 	update := domain.LinkUpdate{
 		ID:          id,
 		URL:         url,
+		Author:      author,
 		Description: description,
 		Preview:     preview,
 	}

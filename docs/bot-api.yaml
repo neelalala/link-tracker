@@ -50,6 +50,8 @@ components:
         url:
           type: string
           format: uri
+        author:
+          type: string
         description:
           type: string
         preview:

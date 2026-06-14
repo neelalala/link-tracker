@@ -14,6 +14,7 @@ type Link struct {
 type LinkUpdate struct {
 	ID          int64
 	URL         string
+	Author      string
 	Description string
 	Preview     string
 	TgChatIDs   []int64

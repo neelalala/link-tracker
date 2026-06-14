@@ -16,4 +16,5 @@ message LinkUpdate {
   string description = 3;
   string preview = 4;
   repeated int64 tg_chat_ids = 5;
+  string author = 6;
 }
