@@ -388,14 +388,14 @@ func buildFetchers(cfg config.FetchersConfig, log *slog.Logger) []domain.LinkFet
 		github.BaseURL,
 		github.BaseApiURL,
 		cfg.Resilience.Timeout,
-		cfg.PreviewLimit,
+		cfg.DescriptionLimit,
 	)
 	stackoverflowClient := stackoverflow.NewClient(
 		resilience.NewHTTPClient("stackoverflow-fetcher", httpClientConfig, nil, log),
 		stackoverflow.BaseURL,
 		stackoverflow.BaseApiURL,
 		cfg.Resilience.Timeout,
-		cfg.PreviewLimit,
+		cfg.DescriptionLimit,
 		cfg.StackOverflowKey,
 	)
 

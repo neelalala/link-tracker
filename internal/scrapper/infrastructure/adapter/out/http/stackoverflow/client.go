@@ -20,15 +20,15 @@ const (
 )
 
 type Client struct {
-	httpClient    *http.Client
-	apiURL        string
-	baseURL       string
-	maxPreviewLen int
-	keyQuery      string
-	timeout       time.Duration
+	httpClient        *http.Client
+	apiURL            string
+	baseURL           string
+	maxDescriptionLen int
+	keyQuery          string
+	timeout           time.Duration
 }
 
-func NewClient(httpClient *http.Client, baseURL, baseAPIURL string, timeout time.Duration, maxPreviewLen int, key string) *Client {
+func NewClient(httpClient *http.Client, baseURL, baseAPIURL string, timeout time.Duration, maxDescriptionLen int, key string) *Client {
 	if key != "" {
 		key = fmt.Sprintf("&key=%s", key)
 	}
@@ -36,12 +36,12 @@ func NewClient(httpClient *http.Client, baseURL, baseAPIURL string, timeout time
 		httpClient = http.DefaultClient
 	}
 	return &Client{
-		httpClient:    httpClient,
-		apiURL:        baseAPIURL,
-		baseURL:       baseURL,
-		maxPreviewLen: maxPreviewLen,
-		keyQuery:      key,
-		timeout:       timeout,
+		httpClient:        httpClient,
+		apiURL:            baseAPIURL,
+		baseURL:           baseURL,
+		maxDescriptionLen: maxDescriptionLen,
+		keyQuery:          key,
+		timeout:           timeout,
 	}
 }
 
@@ -175,7 +175,7 @@ func (client *Client) fetchAnswers(ctx context.Context, questionURL string, sinc
 			owner:         answer.Owner.DisplayName,
 			createdAt:     timestamp,
 			body:          answer.Body,
-			maxPreviewLen: client.maxPreviewLen,
+			maxPreviewLen: client.maxDescriptionLen,
 		})
 	}
 
@@ -222,7 +222,7 @@ func (client *Client) fetchComments(ctx context.Context, questionURL string, sin
 			owner:         comment.Owner.DisplayName,
 			createdAt:     time.Unix(comment.CreationDate, 0).UTC(),
 			body:          comment.Body,
-			maxPreviewLen: client.maxPreviewLen,
+			maxPreviewLen: client.maxDescriptionLen,
 		})
 	}
 

@@ -18,24 +18,24 @@ const (
 )
 
 type Client struct {
-	httpClient    *http.Client
-	apiURL        string
-	baseURL       string
-	maxPreviewLen int
-	timeout       time.Duration
+	httpClient        *http.Client
+	apiURL            string
+	baseURL           string
+	maxDescriptionLen int
+	timeout           time.Duration
 }
 
-func NewClient(httpClient *http.Client, baseURL, baseApiURL string, timeout time.Duration, maxPreviewLen int) *Client {
+func NewClient(httpClient *http.Client, baseURL, baseApiURL string, timeout time.Duration, maxDescriptionLen int) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 
 	return &Client{
-		httpClient:    httpClient,
-		apiURL:        baseApiURL,
-		baseURL:       baseURL,
-		maxPreviewLen: maxPreviewLen,
-		timeout:       timeout,
+		httpClient:        httpClient,
+		apiURL:            baseApiURL,
+		baseURL:           baseURL,
+		maxDescriptionLen: maxDescriptionLen,
+		timeout:           timeout,
 	}
 }
 
@@ -126,7 +126,7 @@ func (client *Client) fetchPullRequests(ctx context.Context, repoURL string, sin
 			author:        pullRequest.User.Login,
 			createdAt:     pullRequest.CreatedAt.UTC(),
 			body:          pullRequest.BodyText,
-			maxPreviewLen: client.maxPreviewLen,
+			maxPreviewLen: client.maxDescriptionLen,
 		})
 	}
 
@@ -184,7 +184,7 @@ func (client *Client) fetchIssues(ctx context.Context, repoURL string, since tim
 			author:        issue.User.Login,
 			createdAt:     issue.CreatedAt.UTC(),
 			body:          issue.BodyText,
-			maxPreviewLen: client.maxPreviewLen,
+			maxPreviewLen: client.maxDescriptionLen,
 		})
 	}
 

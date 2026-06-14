@@ -108,7 +108,7 @@ type ServerConfig struct {
 }
 
 type FetchersConfig struct {
-	PreviewLimit     int              `yaml:"preview-limit" env:"FETCHER_PREVIEW_LIMIT" env-default:"200"`
+	DescriptionLimit int              `yaml:"description-limit" env:"FETCHER_DESCRIPTION_LIMIT" env-default:"5000"`
 	Concurrency      int              `yaml:"concurrency" env:"FETCHER_COUNT" env-default:"1"`
 	Batch            int              `yaml:"batch" env:"FETCHER_BATCH_SIZE" env-default:"100"`
 	StackOverflowKey string           `yaml:"stackoverflow-key" env:"STACKOVERFLOW_KEY" env-default:""`

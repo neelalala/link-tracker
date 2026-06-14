@@ -36,7 +36,7 @@ database:
   access-type: BUILDER
 
 fetchers:
-  preview-limit: 200
+  description-limit: 5000
   concurrency: 4
   batch: 500
   resilience:
