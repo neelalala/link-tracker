@@ -1,0 +1,35 @@
+{
+  "type": "record",
+  "name": "ProcessedLinkUpdateEvent",
+  "namespace": "domain.ProcessedLinkUpdate",
+  "fields": [
+    {
+      "name": "url",
+      "type": "string",
+      "doc": "Link URL"
+    },
+    {
+      "name": "author",
+      "type": "string",
+      "doc": "Update author"
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "doc": "Short update description"
+    },
+    {
+      "name": "priority",
+      "type": "string",
+      "doc": "Update priority"
+    },
+    {
+      "name": "tgChatIds",
+      "type": {
+        "type": "array",
+        "items": "long"
+      },
+      "doc": "Telegram chats IDs"
+    }
+  ]
+}
