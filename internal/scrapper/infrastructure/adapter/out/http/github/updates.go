@@ -23,7 +23,7 @@ func (prUpdate *NewPRUpdate) Author() string {
 }
 
 func (prUpdate *NewPRUpdate) Description() string {
-	return fmt.Sprintf("New Pull Request: %s by %s", prUpdate.title, prUpdate.Author)
+	return fmt.Sprintf("New Pull Request: %s by %s", prUpdate.title, prUpdate.author)
 }
 
 func (prUpdate *NewPRUpdate) Preview() string {
