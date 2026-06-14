@@ -1,0 +1,46 @@
+logger:
+  level: INFO
+
+kafka:
+  enabled: true
+  brokers:
+    - "kafka-1:9092"
+    - "kafka-2:9092"
+    - "kafka-3:9092"
+  topic: link-updates.raw
+  dlq-topic: link-updates-dlq
+  consumer-group: agent-group-1
+  retries:
+    max-retries: 3
+    delay: 100ms
+    max-delay: 10s
+    backoff-factor: 2.0
+  schema-registry-url: http://schema-registry:8081
+
+database:
+  access-type: SQL
+
+filters:
+  author:
+    enabled: true
+    excluded:
+      - bot
+      - user
+      - bot-user
+      - agent
+
+  stop-words:
+    enabled: true
+    stop-words:
+      - spam
+      - ad
+      - ads
+      - promo
+
+  length:
+    enabled: false
+    min-length: 50
+
+transformers:
+  summarizer-enabled: false
+  threshold: 500
