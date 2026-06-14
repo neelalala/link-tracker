@@ -7,7 +7,6 @@ type linkUpdate struct {
 	URL         string  `json:"url"`
 	Author      string  `json:"author"`
 	Description string  `json:"description"`
-	Preview     string  `json:"preview"`
 	TgChatIDs   []int64 `json:"tgChatIds"`
 }
 
@@ -27,7 +26,6 @@ func LinkUpdateToNative(payload []byte) (map[string]any, error) {
 		"url":         update.URL,
 		"author":      update.Author,
 		"description": update.Description,
-		"preview":     update.Preview,
 		"tgChatIds":   tgChatIDs,
 	}, nil
 }

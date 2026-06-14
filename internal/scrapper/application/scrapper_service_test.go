@@ -41,13 +41,13 @@ func (m mockTransactor) WithinTransaction(ctx context.Context, fn func(ctx conte
 
 type TestUpdateEvent struct {
 	Time time.Time
+	Auth string
 	Desc string
-	Prev string
 }
 
 func (e TestUpdateEvent) UpdatedAt() time.Time { return e.Time }
+func (e TestUpdateEvent) Author() string       { return e.Auth }
 func (e TestUpdateEvent) Description() string  { return e.Desc }
-func (e TestUpdateEvent) Preview() string      { return e.Prev }
 
 func newLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -71,8 +71,8 @@ func TestScrapperService_ProcessLink_NotifiesOnlySubscribers(t *testing.T) {
 
 	mockEvent := TestUpdateEvent{
 		Time: time.Now(),
+		Auth: "test",
 		Desc: "New update",
-		Prev: "Update preview",
 	}
 
 	mockFetcher.EXPECT().CanHandle(testLink.URL).Return(true).AnyTimes()

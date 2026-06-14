@@ -33,17 +33,11 @@ func LinkUpdateFromNative(native any) (domain.LinkUpdate, error) {
 		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string description")
 	}
 
-	preview, ok := record["preview"].(string)
-	if !ok {
-		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string preview")
-	}
-
 	update := domain.LinkUpdate{
 		ID:          id,
 		URL:         url,
 		Author:      author,
 		Description: description,
-		Preview:     preview,
 	}
 
 	ids, ok := record["tgChatIds"].([]any)

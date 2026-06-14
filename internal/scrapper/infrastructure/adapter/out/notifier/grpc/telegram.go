@@ -46,7 +46,6 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 	bot.log.Debug("sending update to bot",
 		"url", update.URL,
 		"description", update.Description,
-		"preview", update.Preview,
 	)
 
 	request := &pb.LinkUpdate{
@@ -54,7 +53,6 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 		Url:         update.URL,
 		Author:      update.Author,
 		Description: update.Description,
-		Preview:     update.Preview,
 		TgChatIds:   update.TgChatIDs,
 	}
 

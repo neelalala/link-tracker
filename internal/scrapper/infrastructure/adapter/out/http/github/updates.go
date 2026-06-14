@@ -23,11 +23,10 @@ func (prUpdate *NewPRUpdate) Author() string {
 }
 
 func (prUpdate *NewPRUpdate) Description() string {
-	return fmt.Sprintf("New Pull Request: %s by %s", prUpdate.title, prUpdate.author)
-}
-
-func (prUpdate *NewPRUpdate) Preview() string {
-	return truncateText(prUpdate.body, prUpdate.maxPreviewLen)
+	return truncateText(
+		fmt.Sprintf("New Pull Request: %s by %s\n%s", prUpdate.title, prUpdate.author, prUpdate.body),
+		prUpdate.maxPreviewLen,
+	)
 }
 
 type NewIssueUpdate struct {
@@ -48,11 +47,10 @@ func (issueUpdate *NewIssueUpdate) Author() string {
 }
 
 func (issueUpdate *NewIssueUpdate) Description() string {
-	return fmt.Sprintf("New Issue: %s by %s", issueUpdate.title, issueUpdate.author)
-}
-
-func (issueUpdate *NewIssueUpdate) Preview() string {
-	return truncateText(issueUpdate.body, issueUpdate.maxPreviewLen)
+	return truncateText(
+		fmt.Sprintf("New Issue: %s by %s\n%s", issueUpdate.title, issueUpdate.author, issueUpdate.body),
+		issueUpdate.maxPreviewLen,
+	)
 }
 
 func truncateText(s string, maxLen int) string {

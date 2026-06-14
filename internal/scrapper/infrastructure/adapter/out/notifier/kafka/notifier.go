@@ -46,7 +46,6 @@ func (notifier *Notifier) SendUpdate(ctx context.Context, update domain.LinkUpda
 		URL:         update.URL,
 		Author:      update.Author,
 		Description: update.Description,
-		Preview:     update.Preview,
 		TgChatIDs:   update.TgChatIDs,
 	}
 

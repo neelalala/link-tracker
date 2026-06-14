@@ -17,7 +17,6 @@ func (transformer Cutter) Transform(_ context.Context, raw domain.LinkUpdate) (d
 		URL:         raw.URL,
 		Author:      raw.Author,
 		Description: truncateText(raw.Description, int(transformer)),
-		Preview:     raw.Preview,
 		TgChatIDs:   raw.TgChatIDs,
 	}, nil
 }

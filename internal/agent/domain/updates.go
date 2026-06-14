@@ -15,7 +15,6 @@ type LinkUpdate struct {
 	URL         string
 	Author      string
 	Description string
-	Preview     string
 	TgChatIDs   []int64
 }
 
@@ -30,9 +29,8 @@ func (update LinkUpdate) Validate() validation.Problems {
 		problems.Add("url", "must be not empty")
 	}
 
-	if update.Description == "" && update.Preview == "" {
-		problems.Add("description", "either description or preview must be set")
-		problems.Add("preview", "either description or preview must be set")
+	if update.Description == "" {
+		problems.Add("description", "must be not empty")
 	}
 
 	if len(update.TgChatIDs) == 0 {
@@ -46,6 +44,5 @@ type ProcessedLinkUpdate struct {
 	URL         string
 	Author      string
 	Description string
-	Preview     string
 	TgChatIDs   []int64
 }

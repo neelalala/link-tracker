@@ -54,8 +54,6 @@ components:
           type: string
         description:
           type: string
-        preview:
-          type: string
         tgChatIds:
           type: array
           items:

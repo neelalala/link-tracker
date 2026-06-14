@@ -47,9 +47,6 @@ func (service *NotifierService) HandleUpdate(ctx context.Context, update domain.
 	}
 
 	text := fmt.Sprintf("Update on %s:\n%s", update.URL, update.Description)
-	if update.Preview != "" {
-		text = fmt.Sprintf("%s\nPreview:\n%s", text, update.Preview)
-	}
 
 	var sendErr []error
 	for _, chatID := range update.TgChatIDs {

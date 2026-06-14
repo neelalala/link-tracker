@@ -28,7 +28,6 @@ type processedUpdate struct {
 	URL         string  `json:"url"`
 	Author      string  `json:"author"`
 	Description string  `json:"description"`
-	Preview     string  `json:"preview"`
 	TgChatIDs   []int64 `json:"tgChatIds"`
 }
 
@@ -44,7 +43,6 @@ func (notifier *Notifier) SendUpdate(ctx context.Context, update domain.LinkUpda
 		URL:         update.URL,
 		Author:      update.Author,
 		Description: update.Description,
-		Preview:     update.Preview,
 		TgChatIDs:   update.TgChatIDs,
 	}
 

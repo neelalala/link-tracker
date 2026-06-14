@@ -24,11 +24,6 @@
       "doc": "Short update description"
     },
     {
-      "name": "preview",
-      "type": "string",
-      "doc": "Update review"
-    },
-    {
       "name": "tgChatIds",
       "type": {
         "type": "array",

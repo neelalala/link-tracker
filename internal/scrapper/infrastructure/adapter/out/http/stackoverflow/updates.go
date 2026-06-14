@@ -36,11 +36,11 @@ func (soAnswerUpdate *AnswerUpdate) Author() string {
 }
 
 func (soAnswerUpdate *AnswerUpdate) Description() string {
-	return fmt.Sprintf("New answer on question \"%s\" by %s", soAnswerUpdate.title, soAnswerUpdate.owner)
-}
-
-func (soAnswerUpdate *AnswerUpdate) Preview() string {
-	return truncateText(cleanText(soAnswerUpdate.body), soAnswerUpdate.maxPreviewLen)
+	return truncateText(
+		fmt.Sprintf("New answer on question \"%s\" by %s\n%s",
+			soAnswerUpdate.title, soAnswerUpdate.owner, cleanText(soAnswerUpdate.body)),
+		soAnswerUpdate.maxPreviewLen,
+	)
 }
 
 type CommentUpdate struct {
@@ -61,11 +61,11 @@ func (soCommentUpdate *CommentUpdate) Author() string {
 }
 
 func (soCommentUpdate *CommentUpdate) Description() string {
-	return fmt.Sprintf("New comment on question \"%s\" by %s", soCommentUpdate.title, soCommentUpdate.owner)
-}
-
-func (soCommentUpdate *CommentUpdate) Preview() string {
-	return truncateText(soCommentUpdate.body, soCommentUpdate.maxPreviewLen)
+	return truncateText(
+		fmt.Sprintf("New comment on question \"%s\" by %s\n%s",
+			soCommentUpdate.title, soCommentUpdate.owner, cleanText(soCommentUpdate.body),
+		), soCommentUpdate.maxPreviewLen,
+	)
 }
 
 func truncateText(s string, maxLen int) string {

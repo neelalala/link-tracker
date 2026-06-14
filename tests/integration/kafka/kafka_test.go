@@ -282,7 +282,6 @@ func TestScrapperKafka_Integration(t *testing.T) {
 			ID:          1,
 			URL:         "https://github.com/test/1",
 			Description: "1",
-			Preview:     "Test 1",
 			TgChatIDs:   []int64{1},
 		}
 
@@ -298,7 +297,6 @@ func TestScrapperKafka_Integration(t *testing.T) {
 		assert.Equal(t, update.ID, received.ID)
 		assert.Equal(t, update.URL, received.URL)
 		assert.Equal(t, update.Description, received.Description)
-		assert.Equal(t, update.Preview, received.Preview)
 		assert.Equal(t, update.TgChatIDs, received.TgChatIDs)
 	})
 }
