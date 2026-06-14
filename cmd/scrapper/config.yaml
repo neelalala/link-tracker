@@ -67,7 +67,7 @@ kafka:
     event-limit: 50
     max-retries: 7
   schema-registry-url: http://schema-registry:8081
-  schema-path: ./docs/link_update.avsc
+  schema-path: ./docs/raw_link_update.avsc
 
 valkey:
   enabled: true
