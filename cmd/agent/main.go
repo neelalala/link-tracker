@@ -19,7 +19,7 @@ func main() {
 	cfgPath := flag.String("config", "config.yaml", "path to config file")
 	flag.Parse()
 
-	app, err := application.NewApp(*cfgPath, os.Stdout)
+	app, err := application.NewApp(ctx, *cfgPath, os.Stdout)
 	if err != nil {
 		log.Fatal(err)
 	}

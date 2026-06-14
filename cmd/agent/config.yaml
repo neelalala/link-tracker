@@ -11,12 +11,18 @@ kafka:
   processed-topic: link-updates.processed
   dlq-topic: link-updates-dlq
   consumer-group: agent-group-1
+  workers:
+    count: 1
+    interval: 30s
+    event-limit: 50
+    max-retries: 7
   retries:
     max-retries: 3
     delay: 100ms
     max-delay: 10s
     backoff-factor: 2.0
   schema-registry-url: http://schema-registry:8081
+  schema-path: ./docs/processed_link_update.avsc
 
 database:
   access-type: SQL
