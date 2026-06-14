@@ -66,7 +66,6 @@ func TestCutter_Transform_PreservesOtherFields(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, update.URL, result.URL)
-	assert.Equal(t, update.Author, result.Author)
 	assert.Equal(t, domain.PriorityHigh, result.Priority)
 	assert.Equal(t, update.TgChatIDs, result.TgChatIDs)
 

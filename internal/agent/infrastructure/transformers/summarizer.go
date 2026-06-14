@@ -26,7 +26,6 @@ func NewSummarizer(llm LLM, threshold int) Summarizer {
 func (transformer Summarizer) Transform(ctx context.Context, raw domain.LinkUpdate) (domain.ProcessedLinkUpdate, error) {
 	processed := domain.ProcessedLinkUpdate{
 		URL:         raw.URL,
-		Author:      raw.Author,
 		Description: raw.Description,
 		Priority:    domain.PriorityHigh,
 		TgChatIDs:   raw.TgChatIDs,

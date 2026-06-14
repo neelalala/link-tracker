@@ -15,7 +15,6 @@ func NewCutter(threshold int) Cutter {
 func (transformer Cutter) Transform(_ context.Context, raw domain.LinkUpdate) (domain.ProcessedLinkUpdate, error) {
 	return domain.ProcessedLinkUpdate{
 		URL:         raw.URL,
-		Author:      raw.Author,
 		Description: truncateText(raw.Description, int(transformer)),
 		Priority:    domain.PriorityHigh,
 		TgChatIDs:   raw.TgChatIDs,

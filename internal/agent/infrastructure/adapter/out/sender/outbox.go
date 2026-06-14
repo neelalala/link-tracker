@@ -32,13 +32,11 @@ func (sender Outbox) SendUpdate(ctx context.Context, update domain.ProcessedLink
 
 	var updateJSON = struct {
 		URL         string  `json:"url"`
-		Author      string  `json:"author"`
 		Description string  `json:"description"`
 		Priority    string  `json:"priority"`
 		TgChatIDs   []int64 `json:"tgChatIds"`
 	}{
 		URL:         update.URL,
-		Author:      update.Author,
 		Description: update.Description,
 		Priority:    string(update.Priority),
 		TgChatIDs:   update.TgChatIDs,

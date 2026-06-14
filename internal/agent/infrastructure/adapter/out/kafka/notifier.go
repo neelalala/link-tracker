@@ -26,7 +26,6 @@ func NewNotifier(outRepo domain.OutboxRepository, topic string, log *slog.Logger
 
 type linkUpdate struct {
 	URL         string  `json:"url"`
-	Author      string  `json:"author"`
 	Description string  `json:"description"`
 	Priority    string  `json:"priority"`
 	TgChatIDs   []int64 `json:"tgChatIds"`
@@ -42,7 +41,6 @@ func (notifier *Notifier) SendUpdate(ctx context.Context, update domain.Processe
 
 	updateJSON := linkUpdate{
 		URL:         update.URL,
-		Author:      update.Author,
 		Description: update.Description,
 		Priority:    string(update.Priority),
 		TgChatIDs:   update.TgChatIDs,
