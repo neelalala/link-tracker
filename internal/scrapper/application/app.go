@@ -31,6 +31,11 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sqlbuilder"
 )
 
+const (
+	rawLinkSchemaPath       = "./docs/raw_link_update.avsc"
+	processedLinkSchemaPath = "./docs/processed_link_update.avsc"
+)
+
 type APIServer interface {
 	Start() error
 	Stop(ctx context.Context) error
@@ -307,21 +312,36 @@ func buildKafka(
 }
 
 func buildSchemaConfigs(cfg config.Config) (map[string]kafka.TopicConfig, error) {
-	schemaFile, err := os.Open(cfg.Kafka.SchemaPath)
+	rawUpdateSchemaFile, err := os.Open(rawLinkSchemaPath)
 	if err != nil {
-		return nil, fmt.Errorf("error opening kafka schema file: %v", err)
+		return nil, fmt.Errorf("error opening kafka raw update schema file: %v", err)
 	}
-	defer schemaFile.Close()
+	defer rawUpdateSchemaFile.Close()
 
-	schemaBytes, err := io.ReadAll(schemaFile)
+	rawUpdateSchemaBytes, err := io.ReadAll(rawUpdateSchemaFile)
 	if err != nil {
-		return nil, fmt.Errorf("error reading kafka schema file: %v", err)
+		return nil, fmt.Errorf("error reading kafka raw update schema file: %v", err)
+	}
+
+	processedUpdateSchemaFile, err := os.Open(processedLinkSchemaPath)
+	if err != nil {
+		return nil, fmt.Errorf("error opening kafka processed update schema file: %v", err)
+	}
+	defer rawUpdateSchemaFile.Close()
+
+	processedUpdateSchemaBytes, err := io.ReadAll(processedUpdateSchemaFile)
+	if err != nil {
+		return nil, fmt.Errorf("error reading kafka processed update schema file: %v", err)
 	}
 
 	return map[string]kafka.TopicConfig{
 		cfg.Kafka.Topic: {
-			SchemaString: string(schemaBytes),
-			ParseFunc:    mapper.LinkUpdateToNative,
+			SchemaString: string(rawUpdateSchemaBytes),
+			ParseFunc:    mapper.RawLinkUpdateToNative,
+		},
+		"link-updates.processed": {
+			SchemaString: string(processedUpdateSchemaBytes),
+			ParseFunc:    mapper.ProcessedLinkUpdateToNative,
 		},
 	}, nil
 }

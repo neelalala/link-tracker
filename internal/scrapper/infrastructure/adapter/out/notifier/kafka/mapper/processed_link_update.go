@@ -2,16 +2,16 @@ package mapper
 
 import "encoding/json"
 
-type rawLinkUpdate struct {
-	ID          int64   `json:"id"`
+type processedLinkUpdate struct {
 	URL         string  `json:"url"`
 	Author      string  `json:"author"`
 	Description string  `json:"description"`
+	Priority    string  `json:"priority"`
 	TgChatIDs   []int64 `json:"tgChatIds"`
 }
 
-func RawLinkUpdateToNative(payload []byte) (map[string]any, error) {
-	var update rawLinkUpdate
+func ProcessedLinkUpdateToNative(payload []byte) (map[string]any, error) {
+	var update processedLinkUpdate
 	if err := json.Unmarshal(payload, &update); err != nil {
 		return nil, err
 	}
@@ -22,10 +22,10 @@ func RawLinkUpdateToNative(payload []byte) (map[string]any, error) {
 	}
 
 	return map[string]any{
-		"id":          update.ID,
 		"url":         update.URL,
 		"author":      update.Author,
 		"description": update.Description,
+		"priority":    update.Priority,
 		"tgChatIds":   tgChatIDs,
 	}, nil
 }
