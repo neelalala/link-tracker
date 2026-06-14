@@ -9,11 +9,6 @@
       "doc": "Link URL"
     },
     {
-      "name": "author",
-      "type": "string",
-      "doc": "Update author"
-    },
-    {
       "name": "description",
       "type": "string",
       "doc": "Short update description"
