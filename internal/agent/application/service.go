@@ -26,6 +26,7 @@ func NewService(
 	return &Service{
 		filters:     filters,
 		transformer: transformer,
+		sender:      sender,
 		log:         log,
 	}
 }
