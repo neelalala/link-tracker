@@ -37,9 +37,15 @@ func (service *Service) Filter(_ context.Context, update domain.LinkUpdate) bool
 
 	for _, filter := range service.filters {
 		if !filter.Check(update) {
+			service.log.Debug("Filter skipped",
+				"url", update.URL,
+			)
 			return false
 		}
 	}
+	service.log.Debug("Filter succeeded",
+		"url", update.URL,
+	)
 
 	return true
 }
@@ -53,6 +59,9 @@ func (service *Service) Transform(ctx context.Context, update domain.LinkUpdate)
 	if err != nil {
 		return domain.ProcessedLinkUpdate{}, fmt.Errorf("error transforming update: %w", err)
 	}
+	service.log.Debug("Transform succeeded",
+		"url", update.URL,
+	)
 
 	return transformed, nil
 }
