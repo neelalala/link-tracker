@@ -31,11 +31,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sqlbuilder"
 )
 
-const (
-	rawLinkSchemaPath       = "./docs/raw_link_update.avsc"
-	processedLinkSchemaPath = "./docs/processed_link_update.avsc"
-)
-
 type APIServer interface {
 	Start() error
 	Stop(ctx context.Context) error
@@ -290,13 +285,13 @@ func buildKafka(
 		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
 	}
 
-	configs, err := buildSchemaConfigs(cfg)
+	topic, err := buildSchemaTopic(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("error building schemas configs: %v", err)
 	}
 
 	log.Debug("Building kafka producer")
-	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.SchemaRegistryURL, configs, outRepo, cfg.Kafka.Workers.EventLimit, cfg.Kafka.Workers.MaxRetries, log)
+	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.SchemaRegistryURL, topic, outRepo, cfg.Kafka.Workers.EventLimit, cfg.Kafka.Workers.MaxRetries, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kafka producer: %v", err)
 	}
@@ -311,38 +306,22 @@ func buildKafka(
 	return notifier, nil
 }
 
-func buildSchemaConfigs(cfg config.Config) (map[string]kafka.TopicConfig, error) {
-	rawUpdateSchemaFile, err := os.Open(rawLinkSchemaPath)
+func buildSchemaTopic(cfg config.Config) (kafka.TopicConfig, error) {
+	schemaFile, err := os.Open(cfg.Kafka.SchemaPath)
 	if err != nil {
-		return nil, fmt.Errorf("error opening kafka raw update schema file: %v", err)
+		return kafka.TopicConfig{}, fmt.Errorf("error opening kafka raw update schema file: %v", err)
 	}
-	defer rawUpdateSchemaFile.Close()
+	defer schemaFile.Close()
 
-	rawUpdateSchemaBytes, err := io.ReadAll(rawUpdateSchemaFile)
+	schemaBytes, err := io.ReadAll(schemaFile)
 	if err != nil {
-		return nil, fmt.Errorf("error reading kafka raw update schema file: %v", err)
-	}
-
-	processedUpdateSchemaFile, err := os.Open(processedLinkSchemaPath)
-	if err != nil {
-		return nil, fmt.Errorf("error opening kafka processed update schema file: %v", err)
-	}
-	defer rawUpdateSchemaFile.Close()
-
-	processedUpdateSchemaBytes, err := io.ReadAll(processedUpdateSchemaFile)
-	if err != nil {
-		return nil, fmt.Errorf("error reading kafka processed update schema file: %v", err)
+		return kafka.TopicConfig{}, fmt.Errorf("error reading kafka raw update schema file: %v", err)
 	}
 
-	return map[string]kafka.TopicConfig{
-		cfg.Kafka.Topic: {
-			SchemaString: string(rawUpdateSchemaBytes),
-			ParseFunc:    mapper.RawLinkUpdateToNative,
-		},
-		"link-updates.processed": {
-			SchemaString: string(processedUpdateSchemaBytes),
-			ParseFunc:    mapper.ProcessedLinkUpdateToNative,
-		},
+	return kafka.TopicConfig{
+		Topic:        cfg.Kafka.Topic,
+		SchemaString: string(schemaBytes),
+		ParseFunc:    mapper.RawLinkUpdateToNative,
 	}, nil
 }
 

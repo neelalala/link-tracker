@@ -15,6 +15,7 @@ import (
 )
 
 type TopicConfig struct {
+	Topic        string
 	SchemaString string
 	ParseFunc    func(payload []byte) (map[string]any, error)
 }
@@ -26,9 +27,11 @@ type topicSerializer struct {
 }
 
 type Producer struct {
-	sync     sarama.SyncProducer
-	outRepo  domain.OutboxRepository
-	registry map[string]topicSerializer
+	sync    sarama.SyncProducer
+	outRepo domain.OutboxRepository
+
+	topic      string
+	serializer topicSerializer
 
 	limit      int
 	maxRetries int
@@ -38,7 +41,7 @@ type Producer struct {
 func NewProducer(
 	brokers []string,
 	registryURL string,
-	configs map[string]TopicConfig,
+	topic TopicConfig,
 	outRepo domain.OutboxRepository,
 	limit int,
 	maxRetries int,
@@ -46,17 +49,14 @@ func NewProducer(
 ) (*Producer, error) {
 	srClient := srclient.NewSchemaRegistryClient(registryURL)
 
-	registry := make(map[string]topicSerializer, len(configs))
-	for topic, cfg := range configs {
-		schema, err := getSchema(srClient, topic, cfg.SchemaString, log)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get schema for topic %s: %w", topic, err)
-		}
-		registry[topic] = topicSerializer{
-			schemaID: schema.ID(),
-			codec:    schema.Codec(),
-			parse:    cfg.ParseFunc,
-		}
+	schema, err := getSchema(srClient, topic.Topic, topic.SchemaString, log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get schema for topic %s: %w", topic.Topic, err)
+	}
+	serializer := topicSerializer{
+		schemaID: schema.ID(),
+		codec:    schema.Codec(),
+		parse:    topic.ParseFunc,
 	}
 
 	config := newConfig()
@@ -69,7 +69,8 @@ func NewProducer(
 	return &Producer{
 		sync:       producer,
 		outRepo:    outRepo,
-		registry:   registry,
+		topic:      topic.Topic,
+		serializer: serializer,
 		limit:      limit,
 		maxRetries: maxRetries,
 		log:        log,
@@ -77,7 +78,7 @@ func NewProducer(
 }
 
 func (producer *Producer) SendEvents(ctx context.Context) error {
-	events, err := producer.outRepo.GetPending(ctx, producer.limit)
+	events, err := producer.outRepo.GetPending(ctx, producer.topic, producer.limit)
 	if err != nil {
 		return fmt.Errorf("cannot get pending messages: %w", err)
 	}
@@ -85,19 +86,12 @@ func (producer *Producer) SendEvents(ctx context.Context) error {
 	producer.log.Debug("Sending events", "events_count", len(events))
 
 	for _, event := range events {
-		serializer, exists := producer.registry[event.Topic]
-		if !exists {
-			producer.log.Error("No schema config found for topic", "topic", event.Topic, "event_id", event.ID)
-			producer.markFailed(ctx, event)
-			continue
-		}
-
-		value, err := eventToBytes(serializer, event)
+		value, err := eventToBytes(producer.serializer, event)
 		if err != nil {
 			producer.log.Error("Failed to serialize event",
 				"topic", event.Topic,
 				"event_id", event.ID,
-				"error", err.Error(),
+				"error", err,
 			)
 			producer.markFailed(ctx, event)
 			continue

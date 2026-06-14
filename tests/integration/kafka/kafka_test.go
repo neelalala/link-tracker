@@ -243,14 +243,13 @@ func TestScrapperKafka_Integration(t *testing.T) {
 	schemaString, err := os.ReadFile("../../../docs/raw_link_update.avsc")
 	require.NoErrorf(t, err, "Failed to read schema from file %s", "docs/link_update.avsc")
 
-	configs := map[string]scrapperkafka.TopicConfig{
-		topic: {
-			SchemaString: string(schemaString),
-			ParseFunc:    mapper.RawLinkUpdateToNative,
-		},
+	topicCfg := scrapperkafka.TopicConfig{
+		Topic:        topic,
+		SchemaString: string(schemaString),
+		ParseFunc:    mapper.RawLinkUpdateToNative,
 	}
 
-	producer, err := scrapperkafka.NewProducer([]string{testBroker}, testRegistry, configs, outRepo, 50, 5, log)
+	producer, err := scrapperkafka.NewProducer([]string{testBroker}, testRegistry, topicCfg, outRepo, 50, 5, log)
 	require.NoErrorf(t, err, "Failed to create producer")
 	defer producer.Close()
 
