@@ -85,6 +85,36 @@ type FiltersConfig struct {
 	Length    LengthFilerConfig    `yaml:"length"`
 }
 
+type RetryConfig struct {
+	Enabled           bool          `yaml:"enabled" env-default:"true"`
+	MaxRetries        uint          `yaml:"max-retries" env-default:"3"`
+	Delay             time.Duration `yaml:"delay" env-default:"200ms"`
+	Backoff           bool          `yaml:"backoff" env-default:"false"`
+	BackoffFactor     float64       `yaml:"backoff-factor" env-default:"2.0"`
+	MaxDelay          time.Duration `yaml:"max-delay" env-default:"30s"`
+	RetryableStatuses []int         `yaml:"retryable-statuses"`
+}
+
+type CircuitBreakerConfig struct {
+	Enabled              bool          `yaml:"enabled" env-default:"true"`
+	MaxRequests          uint32        `yaml:"max-requests" env-default:"10"`
+	SlidingWindow        time.Duration `yaml:"sliding-window" env-default:"30s"`
+	WaitInOpenState      time.Duration `yaml:"wait-in-open-state" env-default:"15s"`
+	MinimumNumberOfCalls uint32        `yaml:"minimum-number-of-calls" env-default:"10"`
+	FailureRateThreshold float64       `yaml:"failure-rate-threshold" env-default:"0.5"`
+}
+
+type HTTPClientConfig struct {
+	Timeout time.Duration        `yaml:"timeout" env-default:"15s"`
+	Retry   RetryConfig          `yaml:"retry"`
+	Breaker CircuitBreakerConfig `yaml:"breaker"`
+}
+
+type GeminiConfig struct {
+	APIKey     string           `yaml:"api-key" env:"GEMINI_API_KEY"`
+	Resilience HTTPClientConfig `yaml:"resilience"`
+}
+
 type TransformerConfig struct {
 	SummarizerEnabled bool `yaml:"summarizer-enabled" env:"SUMMARIZER_ENABLED" env-default:"false"`
 	Threshold         int  `yaml:"threshold" env:"THRESHOLD" env-default:"500"`
@@ -96,6 +126,7 @@ type Config struct {
 	Database     DatabaseConfig    `yaml:"database"`
 	Filters      FiltersConfig     `yaml:"filters"`
 	Transformers TransformerConfig `yaml:"transformers"`
+	Gemini       GeminiConfig      `yaml:"gemini"`
 }
 
 func Load(configPath string) (Config, error) {

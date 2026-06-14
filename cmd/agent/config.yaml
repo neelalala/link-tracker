@@ -48,6 +48,23 @@ filters:
     enabled: false
     min-length: 50
 
+gemini:
+  resilience:
+    timeout: 15s
+    retry:
+      enabled: true
+      max-retries: 3
+      delay: 100ms
+      backoff: true
+      max-delay: 15s
+    breaker:
+      enabled: true
+      max-requests: 5
+      sliding-window: 1m
+      wait-in-open-state: 30s
+      minimum-number-of-calls: 5
+      failure-rate-threshold: 0.5
+
 transformers:
-  summarizer-enabled: false
+  summarizer-enabled: true
   threshold: 500

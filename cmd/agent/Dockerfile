@@ -8,6 +8,7 @@ RUN go mod download
 COPY cmd/agent ./cmd/agent
 COPY internal/agent ./internal/agent
 COPY internal/validation ./internal/validation
+COPY internal/resilience ./internal/resilience
 COPY docs/processed_link_update.avsc ./docs/
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/agent ./cmd/agent/main.go

@@ -15,11 +15,13 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/kafka"
 	kafkaout "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/kafka"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/kafka/mapper"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/llm/gemini"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/filters"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/repository/sql"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/repository/sqlbuilder"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/transformers"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/resilience"
 )
 
 type UpdateListener interface {
@@ -75,7 +77,7 @@ func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	})
 
 	filter := buildFilters(cfg.Filters)
-	transformer := buildTransformer(cfg.Transformers)
+	transformer := buildTransformer(cfg, log)
 
 	kafkaSender, err := buildSender(ctx, cfg, dbPool, app, log)
 	if err != nil {
@@ -136,8 +138,37 @@ func buildFilters(cfg config.FiltersConfig) []domain.Filter {
 	return filter
 }
 
-func buildTransformer(cfg config.TransformerConfig) domain.Transformer {
-	return transformers.Cutter(cfg.Threshold)
+func buildTransformer(cfg config.Config, log *slog.Logger) domain.Transformer {
+	if cfg.Transformers.SummarizerEnabled {
+		httpClientConfig := resilience.HTTPClientConfig{
+			Timeout: cfg.Gemini.Resilience.Timeout,
+			Retry: resilience.RetryConfig{
+				Enabled:           cfg.Gemini.Resilience.Retry.Enabled,
+				MaxRetries:        cfg.Gemini.Resilience.Retry.MaxRetries,
+				Delay:             cfg.Gemini.Resilience.Retry.Delay,
+				Backoff:           cfg.Gemini.Resilience.Retry.Backoff,
+				BackoffFactor:     cfg.Gemini.Resilience.Retry.BackoffFactor,
+				MaxDelay:          cfg.Gemini.Resilience.Retry.MaxDelay,
+				RetryableStatuses: cfg.Gemini.Resilience.Retry.RetryableStatuses,
+			},
+			Breaker: resilience.CircuitBreakerConfig{
+				Enabled:              cfg.Gemini.Resilience.Breaker.Enabled,
+				MaxRequests:          cfg.Gemini.Resilience.Breaker.MaxRequests,
+				SlidingWindow:        cfg.Gemini.Resilience.Breaker.SlidingWindow,
+				WaitInOpenState:      cfg.Gemini.Resilience.Breaker.WaitInOpenState,
+				MinimumNumberOfCalls: cfg.Gemini.Resilience.Breaker.MinimumNumberOfCalls,
+				FailureRateThreshold: cfg.Gemini.Resilience.Breaker.FailureRateThreshold,
+			},
+		}
+		geminiClient := gemini.New(
+			resilience.NewHTTPClient("gemini", httpClientConfig, nil, log),
+			cfg.Gemini.APIKey,
+			cfg.Gemini.Resilience.Timeout,
+			log,
+		)
+		return transformers.NewSummarizer(geminiClient, cfg.Transformers.Threshold)
+	}
+	return transformers.Cutter(cfg.Transformers.Threshold)
 }
 
 func buildListener(cfg config.KafkaConfig, notifier kafkain.UpdateHandler, log *slog.Logger) (UpdateListener, error) {

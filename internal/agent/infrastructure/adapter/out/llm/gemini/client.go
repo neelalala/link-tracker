@@ -19,21 +19,21 @@ const (
 )
 
 type Client struct {
+	httpClient *http.Client
 	apiURL     string
 	key        string
-	HTTPClient *http.Client
+	timeout    time.Duration
 
 	log *slog.Logger
 }
 
-func New(apiKey string, timeout time.Duration, log *slog.Logger) *Client {
+func New(httpClient *http.Client, apiKey string, timeout time.Duration, log *slog.Logger) *Client {
 	return &Client{
-		apiURL: fmt.Sprintf("%s/models/%s:%s", baseApiUrl, model3Flash, method),
-		key:    apiKey,
-		HTTPClient: &http.Client{
-			Timeout: timeout,
-		},
-		log: log,
+		httpClient: httpClient,
+		apiURL:     fmt.Sprintf("%s/models/%s:%s", baseApiUrl, model3Flash, method),
+		key:        apiKey,
+		timeout:    timeout,
+		log:        log,
 	}
 }
 
@@ -66,6 +66,9 @@ type geminiErrorResponse struct {
 }
 
 func (c *Client) GenerateText(ctx context.Context, prompt string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
 	reqBody := geminiRequest{
 		Contents: []content{
 			{
@@ -95,7 +98,7 @@ func (c *Client) GenerateText(ctx context.Context, prompt string) (string, error
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-goog-api-key", c.key)
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("couldn't send request: %w", err)
 	}
