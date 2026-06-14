@@ -4,13 +4,13 @@ import "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker
 
 type Length int
 
-func NewLength(length int) Length {
-	return Length(length)
+func NewLength(minLength int) Length {
+	return Length(minLength)
 }
 
 func (filter Length) Check(update domain.LinkUpdate) bool {
 	if len(update.Description) > int(filter) {
-		return false
+		return true
 	}
-	return true
+	return false
 }
