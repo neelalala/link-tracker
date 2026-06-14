@@ -75,11 +75,17 @@ type FiltersConfig struct {
 	Length    LengthFilerConfig    `yaml:"length"`
 }
 
+type TransformerConfig struct {
+	SummarizerEnabled bool `yaml:"summarizer-enabled" env:"SUMMARIZER_ENABLED" env-default:"false"`
+	Threshold         int  `yaml:"threshold" env:"THRESHOLD" env-default:"500"`
+}
+
 type Config struct {
-	Logger   LoggerConfig   `yaml:"logger"`
-	Kafka    KafkaConfig    `yaml:"kafka"`
-	Database DatabaseConfig `yaml:"database"`
-	Filters  FiltersConfig  `yaml:"filters"`
+	Logger       LoggerConfig      `yaml:"logger"`
+	Kafka        KafkaConfig       `yaml:"kafka"`
+	Database     DatabaseConfig    `yaml:"database"`
+	Filters      FiltersConfig     `yaml:"filters"`
+	Transformers TransformerConfig `yaml:"transformers"`
 }
 
 func Load(configPath string) (Config, error) {
