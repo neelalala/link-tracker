@@ -60,7 +60,7 @@ kafka:
     - kafka-1:9092
     - kafka-2:9092
     - kafka-3:9092
-  topic: link-updates
+  topic: link-updates.raw
   workers:
     count: 1
     interval: 30s
