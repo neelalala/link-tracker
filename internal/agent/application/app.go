@@ -81,7 +81,7 @@ func NewApp(cfgPath string, out io.Writer) (*App, error) {
 	filter := buildFilters(cfg.Filters)
 	transformer := buildTransformer(cfg.Transformers)
 
-	outboxSender := sender.NewOutbox(outboxRepo, cfg.Kafka.Topic, log)
+	outboxSender := sender.NewOutbox(outboxRepo, cfg.Kafka.ProcessedUpdateTopic, log)
 
 	service := NewService(filter, transformer, outboxSender, log)
 
@@ -146,7 +146,7 @@ func buildListener(cfg config.KafkaConfig, notifier kafka.UpdateHandler, log *sl
 	kafka, err := kafka.NewListener(
 		cfg.Brokers,
 		cfg.ConsumerGroup,
-		cfg.Topic,
+		cfg.RawUpdateTopic,
 		cfg.DLQTopic,
 		cfg.Retries.Delay,
 		cfg.Retries.MaxDelay,
