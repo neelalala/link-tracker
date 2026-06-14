@@ -104,19 +104,6 @@ func (app *App) Shutdown(ctx context.Context) error {
 	return app.listener.Stop(ctx)
 }
 
-func buildRepo(cfg config.Config, dbPool *pgxpool.Pool) (domain.OutboxRepository, error) {
-	switch cfg.Database.AccessType {
-	case config.AccessTypeSQL:
-		outboxRepo := sql.NewOutboxRepository(dbPool)
-		return outboxRepo, nil
-	case config.AccessTypeBUILDER:
-		outboxRepo := sqlbuilder.NewOutboxRepository(dbPool)
-		return outboxRepo, nil
-	default:
-		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
-	}
-}
-
 func buildFilters(cfg config.FiltersConfig) []domain.Filter {
 	filter := make([]domain.Filter, 0)
 
