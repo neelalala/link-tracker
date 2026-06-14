@@ -37,6 +37,27 @@ services:
       - SCRAPPER_API_PROTOCOL=grpc
       - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,valkey-1,valkey-2,valkey-3,postgres,localhost,127.0.0.1
 
+  agent:
+    build:
+      context: .
+      dockerfile: cmd/agent/Dockerfile
+    depends_on:
+      kafka-1:
+        condition: service_started
+      kafka-2:
+        condition: service_started
+      kafka-3:
+        condition: service_started
+      schema-registry:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NO_PROXY=schema-registry,kafka-1,kafka-2,kafka-3,postgres,localhost,127.0.0.1
+
   postgres:
     image: postgres:17-alpine
     container_name: postgres_container
