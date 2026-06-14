@@ -246,7 +246,7 @@ func TestScrapperKafka_Integration(t *testing.T) {
 	configs := map[string]scrapperkafka.TopicConfig{
 		topic: {
 			SchemaString: string(schemaString),
-			ParseFunc:    mapper.LinkUpdateToNative,
+			ParseFunc:    mapper.RawLinkUpdateToNative,
 		},
 	}
 
