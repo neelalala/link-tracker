@@ -50,10 +50,13 @@ func (outboxRepo *OutboxRepository) Add(ctx context.Context, topic string, paylo
 	return saved, nil
 }
 
-func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status domain.OutboxStatus, limit int) ([]domain.Outbox, error) {
+func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status domain.OutboxStatus, topic string, limit int) ([]domain.Outbox, error) {
 	query, args, err := psql.Select("id", "topic", "payload", "status", "retries", "created_at", "updated_at").
 		From(goqu.T("outbox")).
-		Where(goqu.C("status").Eq(status)).
+		Where(
+			goqu.C("status").Eq(status),
+			goqu.C("topic").Eq(topic),
+		).
 		Order(goqu.C("created_at").Asc()).
 		Limit(uint(limit)).
 		ToSQL()
@@ -92,12 +95,12 @@ func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status doma
 	return outboxes, nil
 }
 
-func (outboxRepo *OutboxRepository) GetPending(ctx context.Context, limit int) ([]domain.Outbox, error) {
-	return outboxRepo.getByStatus(ctx, domain.OutboxStatusPending, limit)
+func (outboxRepo *OutboxRepository) GetPending(ctx context.Context, topic string, limit int) ([]domain.Outbox, error) {
+	return outboxRepo.getByStatus(ctx, domain.OutboxStatusPending, topic, limit)
 }
 
-func (outboxRepo *OutboxRepository) GetFailed(ctx context.Context, limit int) ([]domain.Outbox, error) {
-	return outboxRepo.getByStatus(ctx, domain.OutboxStatusFailed, limit)
+func (outboxRepo *OutboxRepository) GetFailed(ctx context.Context, topic string, limit int) ([]domain.Outbox, error) {
+	return outboxRepo.getByStatus(ctx, domain.OutboxStatusFailed, topic, limit)
 }
 
 func (outboxRepo *OutboxRepository) UpdateStatus(ctx context.Context, id int64, status domain.OutboxStatus) error {

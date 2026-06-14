@@ -43,16 +43,16 @@ func (outboxRepo *OutboxRepository) Add(ctx context.Context, topic string, paylo
 	return saved, nil
 }
 
-func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status domain.OutboxStatus, limit int) ([]domain.Outbox, error) {
+func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status domain.OutboxStatus, topic string, limit int) ([]domain.Outbox, error) {
 	query := `
 		SELECT id, topic, payload, status, retries, created_at, updated_at
 		FROM outbox
-		WHERE status = $1
+		WHERE status = $1 AND topic = $2
 		ORDER BY created_at
-		LIMIT $2;
+		LIMIT $3;
 	`
 
-	rows, err := outboxRepo.pool.Query(ctx, query, status, limit)
+	rows, err := outboxRepo.pool.Query(ctx, query, status, topic, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get outboxes with status %v: %w", status, err)
 	}
@@ -83,12 +83,12 @@ func (outboxRepo *OutboxRepository) getByStatus(ctx context.Context, status doma
 	return outboxes, nil
 }
 
-func (outboxRepo *OutboxRepository) GetPending(ctx context.Context, limit int) ([]domain.Outbox, error) {
-	return outboxRepo.getByStatus(ctx, domain.OutboxStatusPending, limit)
+func (outboxRepo *OutboxRepository) GetPending(ctx context.Context, topic string, limit int) ([]domain.Outbox, error) {
+	return outboxRepo.getByStatus(ctx, domain.OutboxStatusPending, topic, limit)
 }
 
-func (outboxRepo *OutboxRepository) GetFailed(ctx context.Context, limit int) ([]domain.Outbox, error) {
-	return outboxRepo.getByStatus(ctx, domain.OutboxStatusFailed, limit)
+func (outboxRepo *OutboxRepository) GetFailed(ctx context.Context, topic string, limit int) ([]domain.Outbox, error) {
+	return outboxRepo.getByStatus(ctx, domain.OutboxStatusFailed, topic, limit)
 }
 
 func (outboxRepo *OutboxRepository) UpdateStatus(ctx context.Context, id int64, status domain.OutboxStatus) error {
