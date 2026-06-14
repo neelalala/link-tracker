@@ -2,8 +2,8 @@ logger:
   level: INFO
 
 scheduler:
-  fetch-interval: 60s
-  fetch-timeout: 60s
+  job-interval: 60s
+  job-timeout: 60s
 
 bot-service:
   protocol: grpc
