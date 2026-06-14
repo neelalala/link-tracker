@@ -70,10 +70,9 @@ func (server *Server) Stop(ctx context.Context) error {
 
 func (server *Server) SendUpdate(ctx context.Context, request *pb.LinkUpdate) (*emptypb.Empty, error) {
 	linkUpdate := domain.LinkUpdate{
-		ID:          request.GetId(),
 		URL:         request.GetUrl(),
-		Author:      request.GetAuthor(),
 		Description: request.GetDescription(),
+		Priority:    domain.Priority(request.GetPriority()),
 		TgChatIDs:   request.GetTgChatIds(),
 	}
 

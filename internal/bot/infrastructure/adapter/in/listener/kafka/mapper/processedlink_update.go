@@ -6,16 +6,11 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-func LinkUpdateFromNative(native any) (domain.LinkUpdate, error) {
+func ProcessedLinkUpdateFromNative(native any) (domain.LinkUpdate, error) {
 	record, ok := native.(map[string]any)
 	if !ok {
 		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to map[string]any")
 
-	}
-
-	id, ok := record["id"].(int64)
-	if !ok {
-		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to int64 id")
 	}
 
 	url, ok := record["url"].(string)
@@ -23,21 +18,20 @@ func LinkUpdateFromNative(native any) (domain.LinkUpdate, error) {
 		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string url")
 	}
 
-	author, ok := record["author"].(string)
-	if !ok {
-		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string author")
-	}
-
 	description, ok := record["description"].(string)
 	if !ok {
 		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string description")
 	}
 
+	priority, ok := record["priority"].(string)
+	if !ok {
+		return domain.LinkUpdate{}, fmt.Errorf("failed to cast native to string priority")
+	}
+
 	update := domain.LinkUpdate{
-		ID:          id,
 		URL:         url,
-		Author:      author,
 		Description: description,
+		Priority:    domain.Priority(priority),
 	}
 
 	ids, ok := record["tgChatIds"].([]any)

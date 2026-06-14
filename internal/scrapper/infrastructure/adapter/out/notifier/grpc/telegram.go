@@ -51,7 +51,6 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 	request := &pb.LinkUpdate{
 		Id:          update.ID,
 		Url:         update.URL,
-		Author:      update.Author,
 		Description: update.Description,
 		TgChatIds:   update.TgChatIDs,
 	}

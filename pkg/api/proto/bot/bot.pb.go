@@ -27,8 +27,8 @@ type LinkUpdate struct {
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Url           string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
 	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	TgChatIds     []int64                `protobuf:"varint,4,rep,packed,name=tg_chat_ids,json=tgChatIds,proto3" json:"tg_chat_ids,omitempty"`
-	Author        string                 `protobuf:"bytes,5,opt,name=author,proto3" json:"author,omitempty"`
+	Priority      string                 `protobuf:"bytes,4,opt,name=priority,proto3" json:"priority,omitempty"`
+	TgChatIds     []int64                `protobuf:"varint,5,rep,packed,name=tg_chat_ids,json=tgChatIds,proto3" json:"tg_chat_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -84,6 +84,13 @@ func (x *LinkUpdate) GetDescription() string {
 	return ""
 }
 
+func (x *LinkUpdate) GetPriority() string {
+	if x != nil {
+		return x.Priority
+	}
+	return ""
+}
+
 func (x *LinkUpdate) GetTgChatIds() []int64 {
 	if x != nil {
 		return x.TgChatIds
@@ -91,25 +98,18 @@ func (x *LinkUpdate) GetTgChatIds() []int64 {
 	return nil
 }
 
-func (x *LinkUpdate) GetAuthor() string {
-	if x != nil {
-		return x.Author
-	}
-	return ""
-}
-
 var File_bot_proto protoreflect.FileDescriptor
 
 const file_bot_proto_rawDesc = "" +
 	"\n" +
-	"\tbot.proto\x12\x03bot\x1a\x1bgoogle/protobuf/empty.proto\"\x88\x01\n" +
+	"\tbot.proto\x12\x03bot\x1a\x1bgoogle/protobuf/empty.proto\"\x8c\x01\n" +
 	"\n" +
 	"LinkUpdate\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1e\n" +
-	"\vtg_chat_ids\x18\x04 \x03(\x03R\ttgChatIds\x12\x16\n" +
-	"\x06author\x18\x05 \x01(\tR\x06author2C\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1a\n" +
+	"\bpriority\x18\x04 \x01(\tR\bpriority\x12\x1e\n" +
+	"\vtg_chat_ids\x18\x05 \x03(\x03R\ttgChatIds2C\n" +
 	"\n" +
 	"BotService\x125\n" +
 	"\n" +

@@ -293,7 +293,6 @@ func TestScrapperKafka_Integration(t *testing.T) {
 		received, err := botNotifier.waitForUpdate(15 * time.Second)
 		require.NoError(t, err, "Did not receive update in bot notifier")
 
-		assert.Equal(t, update.ID, received.ID)
 		assert.Equal(t, update.URL, received.URL)
 		assert.Equal(t, update.Description, received.Description)
 		assert.Equal(t, update.TgChatIDs, received.TgChatIDs)

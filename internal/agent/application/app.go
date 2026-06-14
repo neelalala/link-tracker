@@ -11,8 +11,10 @@ import (
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/domain"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/in/kafka"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/sender"
+	kafkain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/in/kafka"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/kafka"
+	kafkaout "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/kafka"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/kafka/mapper"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/filters"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/repository/sql"
@@ -36,7 +38,7 @@ func (app *App) onClose(f func() error) {
 	app.closers = append(app.closers, f)
 }
 
-func NewApp(cfgPath string, out io.Writer) (*App, error) {
+func NewApp(ctx context.Context, cfgPath string, out io.Writer) (*App, error) {
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		return nil, err
@@ -72,18 +74,15 @@ func NewApp(cfgPath string, out io.Writer) (*App, error) {
 		return nil
 	})
 
-	log.Debug("Building outbox repository")
-	outboxRepo, err := buildRepo(cfg, dbPool)
-	if err != nil {
-		return nil, fmt.Errorf("error creating repository: %v", err)
-	}
-
 	filter := buildFilters(cfg.Filters)
 	transformer := buildTransformer(cfg.Transformers)
 
-	outboxSender := sender.NewOutbox(outboxRepo, cfg.Kafka.ProcessedUpdateTopic, log)
+	kafkaSender, err := buildSender(ctx, cfg, dbPool, app, log)
+	if err != nil {
+		return nil, fmt.Errorf("error creating sender: %v", err)
+	}
 
-	service := NewService(filter, transformer, outboxSender, log)
+	service := NewService(filter, transformer, kafkaSender, log)
 
 	listener, err := buildListener(cfg.Kafka, service, log)
 	if err != nil {
@@ -141,9 +140,9 @@ func buildTransformer(cfg config.TransformerConfig) domain.Transformer {
 	return transformers.Cutter(cfg.Threshold)
 }
 
-func buildListener(cfg config.KafkaConfig, notifier kafka.UpdateHandler, log *slog.Logger) (UpdateListener, error) {
+func buildListener(cfg config.KafkaConfig, notifier kafkain.UpdateHandler, log *slog.Logger) (UpdateListener, error) {
 	log.Info("using queue as listener")
-	kafka, err := kafka.NewListener(
+	kafka, err := kafkain.NewListener(
 		cfg.Brokers,
 		cfg.ConsumerGroup,
 		cfg.RawUpdateTopic,
@@ -160,4 +159,69 @@ func buildListener(cfg config.KafkaConfig, notifier kafka.UpdateHandler, log *sl
 		return nil, fmt.Errorf("error creating kafka listener: %v", err)
 	}
 	return kafka, nil
+}
+
+func buildSchemaTopic(cfg config.Config) (kafkaout.TopicConfig, error) {
+	schemaFile, err := os.Open(cfg.Kafka.SchemaPath)
+	if err != nil {
+		return kafkaout.TopicConfig{}, fmt.Errorf("error opening kafka raw update schema file: %v", err)
+	}
+	defer schemaFile.Close()
+
+	schemaBytes, err := io.ReadAll(schemaFile)
+	if err != nil {
+		return kafkaout.TopicConfig{}, fmt.Errorf("error reading kafka raw update schema file: %v", err)
+	}
+
+	return kafkaout.TopicConfig{
+		Topic:        cfg.Kafka.ProcessedUpdateTopic,
+		SchemaString: string(schemaBytes),
+		ParseFunc:    mapper.ProcessedLinkUpdateToNative,
+	}, nil
+}
+
+func buildSender(
+	ctx context.Context,
+	cfg config.Config,
+	dbPool *pgxpool.Pool,
+	app *App,
+	log *slog.Logger,
+) (domain.UpdateSender, error) {
+	log.Debug("Building outbox repository")
+	var outRepo domain.OutboxRepository
+	switch cfg.Database.AccessType {
+	case config.AccessTypeSQL:
+		outRepo = sql.NewOutboxRepository(dbPool)
+	case config.AccessTypeBUILDER:
+		outRepo = sqlbuilder.NewOutboxRepository(dbPool)
+	default:
+		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
+	}
+
+	topic, err := buildSchemaTopic(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("error building schemas configs: %v", err)
+	}
+
+	log.Debug("Building kafka producer")
+	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.SchemaRegistryURL, topic, outRepo, cfg.Kafka.Workers.EventLimit, cfg.Kafka.Workers.MaxRetries, log)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kafka producer: %v", err)
+	}
+	app.onClose(producer.Close)
+
+	log.Debug("Running workers")
+	runWorkers(ctx, cfg.Kafka.Workers, producer, log)
+
+	log.Debug("Building kafka notifier")
+	notifier := kafka.NewNotifier(outRepo, cfg.Kafka.ProcessedUpdateTopic, log)
+
+	return notifier, nil
+}
+
+func runWorkers(ctx context.Context, cfg config.KafkaWorkerConfig, producer *kafka.Producer, log *slog.Logger) {
+	for range cfg.Count {
+		worker := kafka.NewWorker(ctx, producer, cfg.Interval, log)
+		go worker.Start()
+	}
 }

@@ -44,15 +44,24 @@ type KafkaRetryConfig struct {
 	BackoffFactor float64       `yaml:"backoff-factor" env:"KAFKA_RETRY_BACKOFF_FACTOR" env-default:"2.0"`
 }
 
+type KafkaWorkerConfig struct {
+	Count      int           `yaml:"count" env:"KAFKA_WORKER_COUNT" env-default:"1"`
+	Interval   time.Duration `yaml:"interval" env:"KAFKA_WORKER_INTERVAL" env-default:"1m"`
+	EventLimit int           `yaml:"event-limit" env:"KAFKA_WORKER_EVENT_LIMIT" env-default:"10"`
+	MaxRetries int           `yaml:"max-retries" env:"KAFKA_WORKER_MAX_RETRIES" env-default:"5"`
+}
+
 type KafkaConfig struct {
-	Enable               bool             `yaml:"enabled" env:"KAFKA_ENABLED" env-default:"true"`
-	Brokers              []string         `yaml:"brokers" env:"KAFKA_BROKERS"`
-	RawUpdateTopic       string           `yaml:"raw-topic" env:"RAW_KAFKA_TOPIC" env-default:"link-updates.raw"`
-	ProcessedUpdateTopic string           `yaml:"processed-topic" env:"PROCESSED_KAFKA_TOPIC" env-default:"link-updates.processed"`
-	DLQTopic             string           `yaml:"dlq-topic" env:"KAFKA_DLQ_TOPIC" env-default:"link-updates-dlq"`
-	SchemaRegistryURL    string           `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
-	ConsumerGroup        string           `yaml:"consumer-group" env:"KAFKA_AGENT_CONSUMER_GROUP" env-default:"agent-group-1"`
-	Retries              KafkaRetryConfig `yaml:"retries"`
+	Enable               bool              `yaml:"enabled" env:"KAFKA_ENABLED" env-default:"true"`
+	Brokers              []string          `yaml:"brokers" env:"KAFKA_BROKERS"`
+	RawUpdateTopic       string            `yaml:"raw-topic" env:"RAW_KAFKA_TOPIC" env-default:"link-updates.raw"`
+	ProcessedUpdateTopic string            `yaml:"processed-topic" env:"PROCESSED_KAFKA_TOPIC" env-default:"link-updates.processed"`
+	DLQTopic             string            `yaml:"dlq-topic" env:"KAFKA_DLQ_TOPIC" env-default:"link-updates-dlq"`
+	SchemaRegistryURL    string            `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
+	SchemaPath           string            `yaml:"schema-path" env:"SCHEMA_PATH"`
+	ConsumerGroup        string            `yaml:"consumer-group" env:"KAFKA_AGENT_CONSUMER_GROUP" env-default:"agent-group-1"`
+	Retries              KafkaRetryConfig  `yaml:"retries"`
+	Workers              KafkaWorkerConfig `yaml:"workers"`
 }
 
 type AuthorFilerConfig struct {

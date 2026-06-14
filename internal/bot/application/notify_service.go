@@ -32,14 +32,12 @@ func (service *NotifierService) HandleUpdate(ctx context.Context, update domain.
 
 	if update.URL == "" {
 		service.log.Warn("no URL provided",
-			slog.Int64("link-id", update.ID),
 			slog.String("error", "no url provided in link update"),
 		)
 		return errors.New("no url provided")
 	}
 	if len(update.TgChatIDs) == 0 {
 		service.log.Warn("no telegram chat IDs provided",
-			slog.Int64("link-id", update.ID),
 			slog.String("error", "no telegram chat IDs provided"),
 			slog.String("url", update.URL),
 		)

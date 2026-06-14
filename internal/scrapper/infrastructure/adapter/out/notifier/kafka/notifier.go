@@ -29,7 +29,6 @@ type linkUpdate struct {
 	URL         string  `json:"url"`
 	Author      string  `json:"author"`
 	Description string  `json:"description"`
-	Preview     string  `json:"preview"`
 	TgChatIDs   []int64 `json:"tgChatIds"`
 }
 

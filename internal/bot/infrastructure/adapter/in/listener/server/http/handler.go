@@ -25,10 +25,9 @@ func NewHandler(updateHandler domain.LinkUpdateHandler, logger *slog.Logger) *Ha
 }
 
 type updateRequest struct {
-	ID          int64   `json:"id"`
 	URL         string  `json:"url"`
-	Author      string  `json:"author"`
 	Description string  `json:"description"`
+	Priority    string  `json:"priority"`
 	TgChatIDs   []int64 `json:"tgChatIds"`
 }
 
@@ -78,10 +77,9 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	linkUpdate := domain.LinkUpdate{
-		ID:          request.ID,
 		URL:         request.URL,
-		Author:      request.Author,
 		Description: request.Description,
+		Priority:    domain.Priority(request.Priority),
 		TgChatIDs:   request.TgChatIDs,
 	}
 

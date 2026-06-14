@@ -91,7 +91,7 @@ func TestOutboxRepository_Integration(t *testing.T) {
 			assert.Equalf(t, topic, saved.Topic, "Expected topic %s, got %s", topic, saved.Topic)
 			assert.Equalf(t, payload, string(saved.Payload), "Expected payload %s, got %s", payload, saved.Payload)
 
-			pending, err := repo.GetPending(ctx, 1)
+			pending, err := repo.GetPending(ctx, topic, 1)
 			require.NoErrorf(t, err, "Failed to get saved outbox")
 			require.Len(t, pending, 1)
 			assert.Equalf(t, saved.Topic, pending[0].Topic, "Expected topic %s, got %s", saved.Topic, pending[0].Topic)
@@ -100,7 +100,7 @@ func TestOutboxRepository_Integration(t *testing.T) {
 			err = repo.UpdateStatus(ctx, pending[0].ID, domain.OutboxStatusFailed)
 			assert.NoErrorf(t, err, "Failed to update status: %v", err)
 
-			failed, err := repo.GetFailed(ctx, 1)
+			failed, err := repo.GetFailed(ctx, topic, 1)
 			require.NoErrorf(t, err, "Failed to get saved outbox")
 			require.Len(t, failed, 1)
 			assert.Equalf(t, saved.Topic, failed[0].Topic, "Expected topic %s, got %s", saved.Topic, failed[0].Topic)
