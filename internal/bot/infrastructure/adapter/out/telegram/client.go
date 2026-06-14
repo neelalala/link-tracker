@@ -132,7 +132,7 @@ func (client *Client) SendMessage(ctx context.Context, chatID int64, text string
 }
 
 func (client *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) {
-	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, client.url, int(client.timeout.Seconds()), client.offset)
+	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, client.url, int(client.timeout.Seconds()*0.9), client.offset)
 
 	ctx, cancel := context.WithTimeout(ctx, client.timeout)
 	defer cancel()
