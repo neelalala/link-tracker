@@ -54,10 +54,32 @@ type KafkaConfig struct {
 	Retries           KafkaRetryConfig `yaml:"retries"`
 }
 
+type AuthorFilerConfig struct {
+	Enabled  bool     `yaml:"enabled" env:"AUTHOR_FILTER_ENABLED" env-default:"false"`
+	Excluded []string `yaml:"excluded" env:"EXCLUDED_AUTHORS" env-default:"bot,bot-user"`
+}
+
+type StopWordsFilerConfig struct {
+	Enabled   bool     `yaml:"enabled" env:"STOP_WORDS_FILTER_ENABLED" env-default:"false"`
+	StopWords []string `yaml:"stop-words" env:"STOP_WORDS" env-default:"spam,ads,promo"`
+}
+
+type LengthFilerConfig struct {
+	Enabled   bool `yaml:"enabled" env:"MIN_LENGTH_FILTER_ENABLED" env-default:"false"`
+	MinLength int  `yaml:"min-length" env:"MIN_LENGTH" env-default:"20"`
+}
+
+type FiltersConfig struct {
+	Author    AuthorFilerConfig    `yaml:"author"`
+	StopWords StopWordsFilerConfig `yaml:"stop-words"`
+	Length    LengthFilerConfig    `yaml:"length"`
+}
+
 type Config struct {
 	Logger   LoggerConfig   `yaml:"logger"`
 	Kafka    KafkaConfig    `yaml:"kafka"`
 	Database DatabaseConfig `yaml:"database"`
+	Filters  FiltersConfig  `yaml:"filters"`
 }
 
 func Load(configPath string) (Config, error) {
