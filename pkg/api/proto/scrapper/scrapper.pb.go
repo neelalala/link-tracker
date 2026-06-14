@@ -159,7 +159,6 @@ type AddLinkRequest struct {
 	TgChatId      int64                  `protobuf:"varint,1,opt,name=tg_chat_id,json=tgChatId,proto3" json:"tg_chat_id,omitempty"`
 	Link          string                 `protobuf:"bytes,2,opt,name=link,proto3" json:"link,omitempty"`
 	Tags          []string               `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`
-	Filters       []string               `protobuf:"bytes,4,rep,name=filters,proto3" json:"filters,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -211,13 +210,6 @@ func (x *AddLinkRequest) GetLink() string {
 func (x *AddLinkRequest) GetTags() []string {
 	if x != nil {
 		return x.Tags
-	}
-	return nil
-}
-
-func (x *AddLinkRequest) GetFilters() []string {
-	if x != nil {
-		return x.Filters
 	}
 	return nil
 }
@@ -279,7 +271,6 @@ type LinkResponse struct {
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Url           string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
 	Tags          []string               `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`
-	Filters       []string               `protobuf:"bytes,4,rep,name=filters,proto3" json:"filters,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -331,13 +322,6 @@ func (x *LinkResponse) GetUrl() string {
 func (x *LinkResponse) GetTags() []string {
 	if x != nil {
 		return x.Tags
-	}
-	return nil
-}
-
-func (x *LinkResponse) GetFilters() []string {
-	if x != nil {
-		return x.Filters
 	}
 	return nil
 }
@@ -405,22 +389,20 @@ const file_scrapper_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"/\n" +
 	"\x0fGetLinksRequest\x12\x1c\n" +
 	"\n" +
-	"tg_chat_id\x18\x01 \x01(\x03R\btgChatId\"p\n" +
+	"tg_chat_id\x18\x01 \x01(\x03R\btgChatId\"V\n" +
 	"\x0eAddLinkRequest\x12\x1c\n" +
 	"\n" +
 	"tg_chat_id\x18\x01 \x01(\x03R\btgChatId\x12\x12\n" +
 	"\x04link\x18\x02 \x01(\tR\x04link\x12\x12\n" +
-	"\x04tags\x18\x03 \x03(\tR\x04tags\x12\x18\n" +
-	"\afilters\x18\x04 \x03(\tR\afilters\"E\n" +
+	"\x04tags\x18\x03 \x03(\tR\x04tags\"E\n" +
 	"\x11RemoveLinkRequest\x12\x1c\n" +
 	"\n" +
 	"tg_chat_id\x18\x01 \x01(\x03R\btgChatId\x12\x12\n" +
-	"\x04link\x18\x02 \x01(\tR\x04link\"^\n" +
+	"\x04link\x18\x02 \x01(\tR\x04link\"D\n" +
 	"\fLinkResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x12\n" +
-	"\x04tags\x18\x03 \x03(\tR\x04tags\x12\x18\n" +
-	"\afilters\x18\x04 \x03(\tR\afilters\"U\n" +
+	"\x04tags\x18\x03 \x03(\tR\x04tags\"U\n" +
 	"\x11ListLinksResponse\x12,\n" +
 	"\x05links\x18\x01 \x03(\v2\x16.scrapper.LinkResponseR\x05links\x12\x12\n" +
 	"\x04size\x18\x02 \x01(\x05R\x04size2\xdf\x02\n" +
