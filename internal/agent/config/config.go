@@ -45,13 +45,14 @@ type KafkaRetryConfig struct {
 }
 
 type KafkaConfig struct {
-	Enable            bool             `yaml:"enabled" env:"KAFKA_ENABLED" env-default:"true"`
-	Brokers           []string         `yaml:"brokers" env:"KAFKA_BROKERS"`
-	Topic             string           `yaml:"topic" env:"KAFKA_TOPIC" env-default:"link-updates"`
-	DLQTopic          string           `yaml:"dlq-topic" env:"KAFKA_DLQ_TOPIC" env-default:"link-updates-dlq"`
-	SchemaRegistryURL string           `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
-	ConsumerGroup     string           `yaml:"consumer-group" env:"KAFKA_AGENT_CONSUMER_GROUP" env-default:"agent-group-1"`
-	Retries           KafkaRetryConfig `yaml:"retries"`
+	Enable               bool             `yaml:"enabled" env:"KAFKA_ENABLED" env-default:"true"`
+	Brokers              []string         `yaml:"brokers" env:"KAFKA_BROKERS"`
+	RawUpdateTopic       string           `yaml:"raw-topic" env:"RAW_KAFKA_TOPIC" env-default:"link-updates.raw"`
+	ProcessedUpdateTopic string           `yaml:"processed-topic" env:"PROCESSED_KAFKA_TOPIC" env-default:"link-updates.processed"`
+	DLQTopic             string           `yaml:"dlq-topic" env:"KAFKA_DLQ_TOPIC" env-default:"link-updates-dlq"`
+	SchemaRegistryURL    string           `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
+	ConsumerGroup        string           `yaml:"consumer-group" env:"KAFKA_AGENT_CONSUMER_GROUP" env-default:"agent-group-1"`
+	Retries              KafkaRetryConfig `yaml:"retries"`
 }
 
 type AuthorFilerConfig struct {

@@ -1,5 +1,5 @@
 logger:
-  level: INFO
+  level: DEBUG
 
 kafka:
   enabled: true
@@ -7,7 +7,8 @@ kafka:
     - "kafka-1:9092"
     - "kafka-2:9092"
     - "kafka-3:9092"
-  topic: link-updates.raw
+  raw-topic: link-updates.raw
+  processed-topic: link-updates.processed
   dlq-topic: link-updates-dlq
   consumer-group: agent-group-1
   retries:
