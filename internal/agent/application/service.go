@@ -11,7 +11,8 @@ import (
 type Service struct {
 	filters     []domain.Filter
 	transformer domain.Transformer
-	summarizer  domain.Summarizer
+
+	sender domain.UpdateSender
 
 	log *slog.Logger
 }
@@ -19,18 +20,21 @@ type Service struct {
 func NewService(
 	filters []domain.Filter,
 	transformer domain.Transformer,
-	summarizer domain.Summarizer,
+	sender domain.UpdateSender,
 	log *slog.Logger,
 ) *Service {
 	return &Service{
 		filters:     filters,
 		transformer: transformer,
-		summarizer:  summarizer,
 		log:         log,
 	}
 }
 
-func (service *Service) Filter(_ context.Context, update domain.LinkUpdate) bool {
+func (service *Service) HandleUpdate(ctx context.Context, update domain.LinkUpdate) error {
+	service.log.Debug("Handling update",
+		"url", update.URL,
+	)
+
 	service.log.Debug("Filtering update",
 		"url", update.URL,
 	)
@@ -40,28 +44,32 @@ func (service *Service) Filter(_ context.Context, update domain.LinkUpdate) bool
 			service.log.Debug("Filter skipped",
 				"url", update.URL,
 			)
-			return false
+			return nil
 		}
 	}
 	service.log.Debug("Filter succeeded",
 		"url", update.URL,
 	)
 
-	return true
-}
-
-func (service *Service) Transform(ctx context.Context, update domain.LinkUpdate) (domain.ProcessedLinkUpdate, error) {
 	service.log.Debug("Transforming update",
 		"url", update.URL,
 	)
 
 	transformed, err := service.transformer.Transform(ctx, update)
 	if err != nil {
-		return domain.ProcessedLinkUpdate{}, fmt.Errorf("error transforming update: %w", err)
+		return fmt.Errorf("error transforming update: %w", err)
 	}
 	service.log.Debug("Transform succeeded",
 		"url", update.URL,
 	)
 
-	return transformed, nil
+	if err := service.sender.SendUpdate(ctx, transformed); err != nil {
+		return fmt.Errorf("error sending update: %w", err)
+	}
+
+	service.log.Debug("Update handled successfully",
+		"url", update.URL,
+	)
+
+	return nil
 }
