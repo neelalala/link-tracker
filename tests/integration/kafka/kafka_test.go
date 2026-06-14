@@ -240,7 +240,7 @@ func TestScrapperKafka_Integration(t *testing.T) {
 
 	outRepo := sql.NewOutboxRepository(pool)
 
-	schemaString, err := os.ReadFile("../../../docs/link_update.avsc")
+	schemaString, err := os.ReadFile("../../../docs/raw_link_update.avsc")
 	require.NoErrorf(t, err, "Failed to read schema from file %s", "docs/link_update.avsc")
 
 	configs := map[string]scrapperkafka.TopicConfig{
