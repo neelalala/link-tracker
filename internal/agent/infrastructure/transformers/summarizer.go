@@ -28,6 +28,7 @@ func (transformer Summarizer) Transform(ctx context.Context, raw domain.LinkUpda
 		URL:         raw.URL,
 		Author:      raw.Author,
 		Description: raw.Description,
+		Priority:    domain.PriorityHigh,
 		TgChatIDs:   raw.TgChatIDs,
 	}
 

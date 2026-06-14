@@ -44,5 +44,6 @@ type ProcessedLinkUpdate struct {
 	URL         string
 	Author      string
 	Description string
+	Priority    Priority
 	TgChatIDs   []int64
 }
