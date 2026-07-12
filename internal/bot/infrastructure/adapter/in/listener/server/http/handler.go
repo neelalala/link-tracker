@@ -34,7 +34,6 @@ type updateRequest struct {
 
 func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, BodyBytesLimit))
-	defer r.Body.Close()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			handler.logger.Warn("Request body EOF. Probably body size > 1 MB", slog.String("context", "handler.HandleUpdates"), slog.String("error", err.Error()))

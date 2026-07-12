@@ -4,6 +4,7 @@ go 1.25.1
 
 require (
 	github.com/IBM/sarama v1.48.0
+	github.com/avast/retry-go/v5 v5.0.0
 	github.com/docker/go-connections v0.6.0
 	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-co-op/gocron/v2 v2.19.1
@@ -14,11 +15,13 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/linkedin/goavro/v2 v2.15.0
 	github.com/riferrei/srclient v0.7.4
+	github.com/sony/gobreaker/v2 v2.4.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.41.0
 	github.com/valkey-io/valkey-go v1.0.75
 	go.uber.org/mock v0.6.0
 	golang.org/x/sync v0.20.0
+	golang.org/x/time v0.12.0
 	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 )

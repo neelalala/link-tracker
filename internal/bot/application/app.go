@@ -23,6 +23,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository/sql"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/repository/sqlbuilder"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/resilience"
 )
 
 type UpdateListener interface {
@@ -71,7 +72,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 	log := logger.NewLogger(cfg.Logger.Level, out)
 	app.log = log
 
-	tgClient, err := outtelegram.NewClient(cfg.Telegram.ApiURL, cfg.Telegram.Token, cfg.Telegram.Timeout)
+	tgClient, err := buildTelegramClient(cfg.Telegram, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating telegram client: %v", err)
 	}
@@ -84,7 +85,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 	}
 	app.listener = listener
 
-	scrapper, err := buildScrapperClient(cfg, log)
+	scrapper, err := buildScrapperClient(cfg.ScrapperService, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating scrapper client: %v", err)
 	}
@@ -99,7 +100,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 		return nil
 	})
 
-	sessionRepo, err := buildRepos(cfg, dbPool, log)
+	sessionRepo, err := buildRepos(cfg.Database, dbPool, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating session repository: %v", err)
 	}
@@ -110,7 +111,7 @@ func NewApp(configPath string, out io.Writer) (*App, error) {
 
 	dialogService := NewDialogService(scrapper, sessionRepo, log)
 
-	poller, err := intelegram.NewPoller(commandService, dialogService, tgClient, log, cfg.Telegram.Timeout)
+	poller, err := intelegram.NewPoller(commandService, dialogService, tgClient, cfg.Telegram.Resilience.Timeout, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating telegram poller: %v", err)
 	}
@@ -153,6 +154,35 @@ func (app *App) Shutdown(ctx context.Context) {
 	app.log.Info("bot successfully stopped")
 }
 
+func buildTelegramClient(cfg config.TelegramConfig, log *slog.Logger) (*outtelegram.Client, error) {
+	httpClientConfig := resilience.HTTPClientConfig{
+		Timeout: cfg.Resilience.Timeout,
+		Retry: resilience.RetryConfig{
+			Enabled:           cfg.Resilience.Retry.Enabled,
+			MaxRetries:        cfg.Resilience.Retry.MaxRetries,
+			Delay:             cfg.Resilience.Retry.Delay,
+			Backoff:           cfg.Resilience.Retry.Backoff,
+			BackoffFactor:     cfg.Resilience.Retry.BackoffFactor,
+			MaxDelay:          cfg.Resilience.Retry.MaxDelay,
+			RetryableStatuses: cfg.Resilience.Retry.RetryableStatuses,
+		},
+		Breaker: resilience.CircuitBreakerConfig{
+			Enabled:              cfg.Resilience.Breaker.Enabled,
+			MaxRequests:          cfg.Resilience.Breaker.MaxRequests,
+			SlidingWindow:        cfg.Resilience.Breaker.SlidingWindow,
+			WaitInOpenState:      cfg.Resilience.Breaker.WaitInOpenState,
+			MinimumNumberOfCalls: cfg.Resilience.Breaker.MinimumNumberOfCalls,
+			FailureRateThreshold: cfg.Resilience.Breaker.FailureRateThreshold,
+		},
+	}
+	httpClient := resilience.NewHTTPClient("telegram-in", httpClientConfig, nil, log)
+	tgClient, err := outtelegram.NewClient(cfg.ApiURL, cfg.Token, cfg.Resilience.Timeout, httpClient)
+	if err != nil {
+		return nil, fmt.Errorf("error creating telegram client: %v", err)
+	}
+	return tgClient, nil
+}
+
 func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *slog.Logger) (UpdateListener, error) {
 	if cfg.Kafka.Enable {
 		log.Info("using queue as listener")
@@ -176,8 +206,14 @@ func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *sl
 	}
 	switch cfg.Server.Protocol {
 	case config.ProtocolHTTP:
+		rateLimitConfig := resilience.RateLimitConfig{
+			Enabled: cfg.Server.RateLimit.Enabled,
+			RPS:     cfg.Server.RateLimit.RPS,
+			Burst:   cfg.Server.RateLimit.Burst,
+			TTL:     cfg.Server.RateLimit.TTL,
+		}
 		log.Info("using http server as listener")
-		server := http.NewServer(cfg.Server.Port, notifier, log)
+		server := http.NewServer(cfg.Server.Port, notifier, rateLimitConfig, log)
 		return server, nil
 	case config.ProtocolGRPC:
 		log.Info("using grpc server as listener")
@@ -188,26 +224,47 @@ func buildListener(cfg config.Config, notifier domain.LinkUpdateHandler, log *sl
 	}
 }
 
-func buildScrapperClient(cfg config.Config, log *slog.Logger) (ScrapperClient, error) {
-	switch cfg.ScrapperService.Protocol {
+func buildScrapperClient(cfg config.ScrapperServiceConfig, log *slog.Logger) (ScrapperClient, error) {
+	switch cfg.Protocol {
 	case config.ProtocolHTTP:
+		httpClientConfig := resilience.HTTPClientConfig{
+			Timeout: cfg.Resilience.Timeout,
+			Retry: resilience.RetryConfig{
+				Enabled:           cfg.Resilience.Retry.Enabled,
+				MaxRetries:        cfg.Resilience.Retry.MaxRetries,
+				Delay:             cfg.Resilience.Retry.Delay,
+				Backoff:           cfg.Resilience.Retry.Backoff,
+				BackoffFactor:     cfg.Resilience.Retry.BackoffFactor,
+				MaxDelay:          cfg.Resilience.Retry.MaxDelay,
+				RetryableStatuses: cfg.Resilience.Retry.RetryableStatuses,
+			},
+			Breaker: resilience.CircuitBreakerConfig{
+				Enabled:              cfg.Resilience.Breaker.Enabled,
+				MaxRequests:          cfg.Resilience.Breaker.MaxRequests,
+				SlidingWindow:        cfg.Resilience.Breaker.SlidingWindow,
+				WaitInOpenState:      cfg.Resilience.Breaker.WaitInOpenState,
+				MinimumNumberOfCalls: cfg.Resilience.Breaker.MinimumNumberOfCalls,
+				FailureRateThreshold: cfg.Resilience.Breaker.FailureRateThreshold,
+			},
+		}
+		httpClient := resilience.NewHTTPClient("scrapper", httpClientConfig, nil, log)
 		log.Info("using http scrapper client")
-		scrapper := scrapperhttp.NewClient(cfg.ScrapperService.URL)
+		scrapper := scrapperhttp.NewClient(cfg.URL, httpClient, cfg.Resilience.Timeout, log)
 		return scrapper, nil
 	case config.ProtocolGRPC:
 		log.Info("using grpc scrapper client")
-		scrapper, err := scrappergrpc.NewClient(cfg.ScrapperService.URL)
+		scrapper, err := scrappergrpc.NewClient(cfg.URL, cfg.Resilience.Timeout, log)
 		if err != nil {
 			return nil, fmt.Errorf("error creating scrapper: %v", err)
 		}
 		return scrapper, nil
 	default:
-		return nil, fmt.Errorf("unsupported protocol: %v", cfg.ScrapperService.Protocol)
+		return nil, fmt.Errorf("unsupported protocol: %v", cfg.Protocol)
 	}
 }
 
-func buildRepos(cfg config.Config, dbPool *pgxpool.Pool, log *slog.Logger) (domain.SessionRepository, error) {
-	switch cfg.Database.AccessType {
+func buildRepos(cfg config.DatabaseConfig, dbPool *pgxpool.Pool, log *slog.Logger) (domain.SessionRepository, error) {
+	switch cfg.AccessType {
 	case config.AccessTypeSQL:
 		log.Info("using raw sql database access type")
 		sessionRepo := sql.NewSessionRepository(dbPool)
@@ -217,7 +274,7 @@ func buildRepos(cfg config.Config, dbPool *pgxpool.Pool, log *slog.Logger) (doma
 		sessionRepo := sqlbuilder.NewSessionRepository(dbPool)
 		return sessionRepo, nil
 	default:
-		return nil, fmt.Errorf("unsupported database access type: %v", cfg.Database.AccessType)
+		return nil, fmt.Errorf("unsupported database access type: %v", cfg.AccessType)
 	}
 }
 

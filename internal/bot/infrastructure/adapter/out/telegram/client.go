@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,24 +14,40 @@ import (
 )
 
 type Client struct {
-	offset  int64
-	url     string
-	client  *http.Client
-	timeout time.Duration
+	offset     int64
+	url        string
+	httpClient *http.Client
+	timeout    time.Duration
 }
 
-func NewClient(apiUrl, token string, timeout time.Duration) (*Client, error) {
-	client := &Client{
-		offset:  0,
-		url:     apiUrl + token,
-		client:  &http.Client{Timeout: timeout*time.Second + 10*time.Second},
-		timeout: timeout,
+func NewClient(apiURL, token string, timeout time.Duration, httpClient *http.Client) (*Client, error) {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
 	}
 
+	client := &Client{
+		offset:     0,
+		url:        apiURL + token,
+		httpClient: httpClient,
+		timeout:    timeout,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), client.timeout)
+	defer cancel()
+
 	query := fmt.Sprintf("%s/getMe", client.url)
-	response, err := client.client.Get(query)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	response, err := client.httpClient.Do(req)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("register bot timed out: %w", err)
+		}
+		return nil, fmt.Errorf("error registering telegram bot: %w", err)
 	}
 	result := struct {
 		Ok          bool   `json:"ok"`
@@ -42,11 +59,11 @@ func NewClient(apiUrl, token string, timeout time.Duration) (*Client, error) {
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading response body from telegram: %w", err)
 	}
 
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error unmarshalling reposnse body: %w", err)
 	}
 
 	if !result.Ok {
@@ -57,41 +74,42 @@ func NewClient(apiUrl, token string, timeout time.Duration) (*Client, error) {
 }
 
 func (client *Client) SendMessage(ctx context.Context, chatID int64, text string) error {
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	query := fmt.Sprintf(`%s/sendMessage`, client.url)
 
-	type requestJson struct {
+	reqJson := struct {
 		ChatID int64  `json:"chat_id"`
 		Text   string `json:"text"`
-	}
-
-	reqJson := requestJson{
+	}{
 		ChatID: chatID,
 		Text:   text,
 	}
 
 	reqBody, err := json.Marshal(&reqJson)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshalling request body: %w", err)
 	}
 
-	sendCtx, cancel := context.WithTimeout(ctx, client.timeout)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(sendCtx, http.MethodPost, query, bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
 	if err != nil {
-		return err
+		return fmt.Errorf("error creaing http request: %w", err)
 	}
 
-	request.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json")
 
-	response, err := client.client.Do(request)
+	resp, err := client.httpClient.Do(req)
 	if err != nil {
-		return err
+		if errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("send message timed out: %w", err)
+		}
+		return fmt.Errorf("error sending http request: %w", err)
 	}
 
-	defer response.Body.Close()
+	defer resp.Body.Close()
 
-	bodyResp, err := io.ReadAll(response.Body)
+	bodyResp, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -103,7 +121,7 @@ func (client *Client) SendMessage(ctx context.Context, chatID int64, text string
 	}{}
 
 	if err := json.Unmarshal(bodyResp, &result); err != nil {
-		return err
+		return fmt.Errorf("error unmarshalling response body: %w", err)
 	}
 
 	if !result.Ok {
@@ -114,26 +132,29 @@ func (client *Client) SendMessage(ctx context.Context, chatID int64, text string
 }
 
 func (client *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) {
-	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, client.url, int(client.timeout.Seconds()), client.offset)
+	query := fmt.Sprintf(`%s/getUpdates?timeout=%d&offset=%d&allowed_updates=["message"]`, client.url, int(client.timeout.Seconds()*0.9), client.offset)
 
-	getCtx, cancel := context.WithTimeout(ctx, client.timeout)
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
 	defer cancel()
 
-	request, err := http.NewRequestWithContext(getCtx, http.MethodGet, query, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
 
-	response, err := client.client.Do(request)
+	resp, err := client.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("get updates timed out: %w", err)
+		}
+		return nil, fmt.Errorf("error sending request: %w", err)
 	}
 
-	defer response.Body.Close()
+	defer resp.Body.Close()
 
-	body, err := io.ReadAll(response.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	result := struct {
@@ -158,7 +179,7 @@ func (client *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) 
 	}{}
 
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error unmarshalling response body: %w", err)
 	}
 
 	if !result.Ok {
@@ -181,6 +202,9 @@ func (client *Client) GetUpdates(ctx context.Context) ([]domain.Message, error) 
 }
 
 func (client *Client) SetMyCommands(ctx context.Context, cmds []domain.CommandInfo) error {
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	query := fmt.Sprintf("%s/setMyCommands", client.url)
 
 	type botCommandJson struct {
@@ -202,21 +226,21 @@ func (client *Client) SetMyCommands(ctx context.Context, cmds []domain.CommandIn
 
 	reqBody, err := json.Marshal(body)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshalling request body: %w", err)
 	}
 
-	setCtx, cancel := context.WithTimeout(ctx, client.timeout)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(setCtx, http.MethodPost, query, bytes.NewReader(reqBody))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating http request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := client.client.Do(request)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return err
+		if errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("set commands timed out: %w", err)
+		}
+		return fmt.Errorf("error senfing http request: %w", err)
 	}
 	defer response.Body.Close()
 

@@ -14,7 +14,7 @@ import (
 )
 
 func TestClient_CanHandle(t *testing.T) {
-	client := NewClient(BaseURL, BaseApiURL, 10*time.Second, 200)
+	client := NewClient(nil, BaseURL, BaseApiURL, 10*time.Second, 200)
 
 	tests := []struct {
 		name     string
@@ -94,7 +94,7 @@ func TestClient_Fetch_Success(t *testing.T) {
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
-	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
+	client := NewClient(nil, BaseURL, server.URL, 10*time.Second, 200)
 
 	url := "https://github.com/owner/repo"
 	updates, err := client.Fetch(context.Background(), url, since)
@@ -114,7 +114,7 @@ func TestClient_Fetch_Success(t *testing.T) {
 }
 
 func TestClient_Fetch_InvalidURL(t *testing.T) {
-	client := NewClient(BaseURL, BaseApiURL, 10*time.Second, 200)
+	client := NewClient(nil, BaseURL, BaseApiURL, 10*time.Second, 200)
 
 	_, err := client.Fetch(context.Background(), "https://github.com/owner", time.Now())
 
@@ -128,7 +128,7 @@ func TestClient_Fetch_ApiError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
+	client := NewClient(nil, BaseURL, server.URL, 10*time.Second, 200)
 
 	_, err := client.Fetch(context.Background(), "https://github.com/owner/repo", time.Now())
 
@@ -182,7 +182,7 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
-	client := NewClient(BaseURL, server.URL, 10*time.Second, 200)
+	client := NewClient(nil, BaseURL, server.URL, 10*time.Second, 200)
 
 	url := "https://github.com/owner/repo"
 	updates, err := client.Fetch(context.Background(), url, since)

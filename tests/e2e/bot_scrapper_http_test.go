@@ -70,6 +70,67 @@ func loadPostgresContainer(ctx context.Context, net *testcontainers.DockerNetwor
 	})
 }
 
+func loadKafkaContainer(ctx context.Context, net *testcontainers.DockerNetwork) (testcontainers.Container, error) {
+	req := testcontainers.ContainerRequest{
+		Image:        "apache/kafka:latest",
+		ExposedPorts: []string{"9094:9094/tcp"},
+		Networks:     []string{net.Name},
+		NetworkAliases: map[string][]string{
+			net.Name: {"kafka"},
+		},
+		Env: map[string]string{
+			"KAFKA_NODE_ID":                          "1",
+			"KAFKA_PROCESS_ROLES":                    "controller,broker",
+			"KAFKA_CONTROLLER_QUORUM_VOTERS":         "1@kafka:9093",
+			"KAFKA_LISTENERS":                        "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094",
+			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP":   "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT",
+			"KAFKA_CONTROLLER_LISTENER_NAMES":        "CONTROLLER",
+			"KAFKA_INTER_BROKER_LISTENER_NAME":       "PLAINTEXT",
+			"KAFKA_ADVERTISED_LISTENERS":             "PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094",
+			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR": "1",
+		},
+		WaitingFor: wait.ForLog("Kafka Server started").
+			WithStartupTimeout(60 * time.Second),
+	}
+
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func loadSchemaRegistryContainer(ctx context.Context, net *testcontainers.DockerNetwork) (testcontainers.Container, error) {
+	req := testcontainers.ContainerRequest{
+		Image:        "confluentinc/cp-schema-registry:latest",
+		ExposedPorts: []string{"8081:8081/tcp"},
+		Networks:     []string{net.Name},
+		NetworkAliases: map[string][]string{
+			net.Name: {"schema-registry"},
+		},
+		Env: map[string]string{
+			"SCHEMA_REGISTRY_HOST_NAME":                    "schema-registry",
+			"SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS": "PLAINTEXT://kafka:9092",
+		},
+		WaitingFor: wait.ForLog("Server started").
+			WithStartupTimeout(60 * time.Second),
+	}
+
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
 func loadBotContainer(ctx context.Context, net *testcontainers.DockerNetwork, cfg Config) (testcontainers.Container, error) {
 	botReq := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
@@ -82,12 +143,13 @@ func loadBotContainer(ctx context.Context, net *testcontainers.DockerNetwork, cf
 			net.Name: {"bot"},
 		},
 		Env: map[string]string{
-			"TELEGRAM_TOKEN":        cfg.Token,
-			"BOT_API_PORT":          strconv.Itoa(BOT_API_PORT),
-			"SCRAPPER_URL":          fmt.Sprintf("scrapper:%d", SCRAPPER_API_PORT),
-			"BOT_API_PROTOCOL":      "http",
-			"SCRAPPER_API_PROTOCOL": "http",
-			"KAFKA_ENABLED":         "false",
+			"TELEGRAM_TOKEN":            cfg.Token,
+			"BOT_API_PORT":              strconv.Itoa(BOT_API_PORT),
+			"SCRAPPER_URL":              fmt.Sprintf("scrapper:%d", SCRAPPER_API_PORT),
+			"BOT_API_PROTOCOL":          "http",
+			"SCRAPPER_API_PROTOCOL":     "http",
+			"KAFKA_ENABLED":             "false",
+			"BOT_API_RATELIMIT_ENABLED": "false",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", BOT_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
@@ -111,13 +173,17 @@ func loadScrapperContainer(ctx context.Context, net *testcontainers.DockerNetwor
 		},
 
 		Env: map[string]string{
-			"SCRAPPER_API_PORT":     strconv.Itoa(SCRAPPER_API_PORT),
-			"BOT_URL":               fmt.Sprintf("bot:%d", BOT_API_PORT),
-			"DATABASE_URL":          dbURL,
-			"BOT_API_PROTOCOL":      "http",
-			"SCRAPPER_API_PROTOCOL": "http",
-			"KAFKA_ENABLED":         "false",
-			"CACHE_ENABLED":         "false",
+			"SCRAPPER_API_PORT":              strconv.Itoa(SCRAPPER_API_PORT),
+			"BOT_URL":                        fmt.Sprintf("bot:%d", BOT_API_PORT),
+			"DATABASE_URL":                   dbURL,
+			"BOT_API_PROTOCOL":               "http",
+			"SCRAPPER_API_PROTOCOL":          "http",
+			"KAFKA_ENABLED":                  "false",
+			"CACHE_ENABLED":                  "false",
+			"SCRAPPER_API_RATELIMIT_ENABLED": "false",
+			"KAFKA_BROKERS":                  "kafka:9094",
+			"SCHEMA_REGISTRY_URL":            "http://schema-registry:8081",
+			"SCHEMA_PATH":                    "./docs/link_update.avsc",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}
@@ -143,6 +209,14 @@ func TestEndToEnd_BotScrapperHTTP(t *testing.T) {
 	defer pgContainer.Terminate(ctx)
 
 	dbURL := fmt.Sprintf("postgres://%s:%s@postgres_db:5432/%s?sslmode=disable", dbUser, dbPass, dbName)
+
+	kafkaContainer, err := loadKafkaContainer(ctx, newNetwork)
+	require.NoErrorf(t, err, "Failed to start kafka")
+	defer kafkaContainer.Terminate(ctx)
+
+	srContainer, err := loadSchemaRegistryContainer(ctx, newNetwork)
+	require.NoError(t, err, "Failed to start Schema Registry container")
+	defer srContainer.Terminate(ctx)
 
 	botContainer, err := loadBotContainer(ctx, newNetwork, cfg)
 	require.NoErrorf(t, err, "failed to start bot container: %v", err)

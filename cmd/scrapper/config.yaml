@@ -7,9 +7,29 @@ scheduler:
 
 bot-service:
   protocol: grpc
+  resilience:
+    timeout: 15s
+    retry:
+      enabled: true
+      max-retries: 3
+      delay: 100ms
+      backoff: true
+      max-delay: 15s
+    breaker:
+      enabled: true
+      max-requests: 5
+      sliding-window: 1m
+      wait-in-open-state: 30s
+      minimum-number-of-calls: 5
+      failure-rate-threshold: 0.5
 
 server:
   protocol: grpc
+  rate-limit:
+    enabled: true
+    rps: 6
+    burst: 3
+    ttl: 30s
 
 database:
   migrations-dir-url: file://migrations
@@ -17,10 +37,23 @@ database:
 
 fetchers:
   preview-limit: 200
-  timeout: 10s
   concurrency: 4
   batch: 500
-
+  resilience:
+    timeout: 5s
+    retry:
+      enabled: true
+      max-retries: 3
+      delay: 50ms
+      backoff: true
+      max-delay: 10s
+    breaker:
+      enabled: true
+      max-requests: 5
+      sliding-window: 1m
+      wait-in-open-state: 30s
+      minimum-number-of-calls: 5
+      failure-rate-threshold: 0.5
 kafka:
   enabled: true
   brokers:

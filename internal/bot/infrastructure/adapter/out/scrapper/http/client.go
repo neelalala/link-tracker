@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
@@ -19,12 +22,20 @@ const (
 type Client struct {
 	httpClient *http.Client
 	baseURL    string
+	timeout    time.Duration
+	log        *slog.Logger
 }
 
-func NewClient(url string) *Client {
+func NewClient(url string, httpClient *http.Client, timeout time.Duration, log *slog.Logger) *Client {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
 	return &Client{
-		httpClient: &http.Client{},
+		httpClient: httpClient,
 		baseURL:    url,
+		timeout:    timeout,
+		log:        log,
 	}
 }
 
@@ -33,49 +44,77 @@ func (client *Client) Close() error {
 }
 
 func (client *Client) RegisterChat(ctx context.Context, chatId int64) error {
+	client.log.Debug("registering chat",
+		"id", chatId,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	query := fmt.Sprintf("%s/%s/%d", client.baseURL, tgChatEndpoint, chatId)
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, query, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	response, err := client.httpClient.Do(request)
+	resp, err := client.httpClient.Do(req)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("register chat timed out: %w", err)
+		}
 		return fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer response.Body.Close()
+	defer resp.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		if response.StatusCode == http.StatusConflict {
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusConflict {
 			return domain.ErrChatAlreadyRegistered
 		}
-		return fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
+		return fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
+
+	client.log.Debug("chat registered",
+		"id", chatId,
+	)
 
 	return nil
 }
 
 func (client *Client) DeleteChat(ctx context.Context, chatId int64) error {
+	client.log.Debug("deleting chat",
+		"id", chatId,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	query := fmt.Sprintf("%s/%s/%d", client.baseURL, tgChatEndpoint, chatId)
-	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, query, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, query, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	response, err := client.httpClient.Do(request)
+	resp, err := client.httpClient.Do(req)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("delete chat timed out: %w", err)
+		}
 		return fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer response.Body.Close()
+	defer resp.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		if response.StatusCode == http.StatusNotFound {
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
 			return domain.ErrChatNotRegistered
 		}
-		return fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
+		return fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
+
+	client.log.Debug("chat deleted",
+		"id", chatId,
+	)
 
 	return nil
 }
@@ -87,35 +126,43 @@ type linkJson struct {
 }
 
 func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]domain.TrackedLink, error) {
+	client.log.Debug("getting tracked links",
+		"id", chatId,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	query := fmt.Sprintf("%s/%s", client.baseURL, linksEndpoint)
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	request.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
+	req.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
 
-	response, err := client.httpClient.Do(request)
+	resp, err := client.httpClient.Do(req)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("get tracked links timed out: %w", err)
+		}
 		return nil, fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer response.Body.Close()
+	defer resp.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		if response.StatusCode == http.StatusNotFound {
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
 			return nil, domain.ErrChatNotRegistered
 		}
-		return nil, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
+		return nil, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
 
-	type responseJson struct {
+	var linksJson struct {
 		Links []linkJson `json:"links"`
 		Size  int32      `json:"size"`
 	}
 
-	var linksJson responseJson
-
-	data, err := io.ReadAll(response.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -134,18 +181,30 @@ func (client *Client) GetTrackedLinks(ctx context.Context, chatId int64) ([]doma
 		})
 	}
 
+	client.log.Debug("got tracked links",
+		"id", chatId,
+		"count", linksJson.Size,
+	)
+
 	return links, nil
 }
 
 func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tags []string) (domain.TrackedLink, error) {
+	client.log.Debug("adding link",
+		"id", chatId,
+		"url", url,
+		"tags", tags,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	query := fmt.Sprintf("%s/%s", client.baseURL, linksEndpoint)
 
-	type requestJson struct {
+	reqJson := struct {
 		Link string   `json:"link"`
 		Tags []string `json:"tags"`
-	}
-
-	reqJson := requestJson{
+	}{
 		Link: url,
 		Tags: tags,
 	}
@@ -155,61 +214,76 @@ func (client *Client) AddLink(ctx context.Context, chatId int64, url string, tag
 		return domain.TrackedLink{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(reqBody))
 	if err != nil {
 		return domain.TrackedLink{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	request.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
-	request.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
+	req.Header.Set("Content-Type", "application/json")
 
-	response, err := client.httpClient.Do(request)
+	resp, err := client.httpClient.Do(req)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return domain.TrackedLink{}, fmt.Errorf("add link timed out: %w", err)
+		}
 		return domain.TrackedLink{}, fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer response.Body.Close()
+	defer resp.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		if response.StatusCode == http.StatusNotFound {
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
 			return domain.TrackedLink{}, domain.ErrChatNotRegistered
 		}
-		if response.StatusCode == http.StatusConflict {
+		if resp.StatusCode == http.StatusConflict {
 			return domain.TrackedLink{}, domain.ErrAlreadySubscribed
 		}
-		if response.StatusCode == http.StatusUnprocessableEntity {
+		if resp.StatusCode == http.StatusUnprocessableEntity {
 			return domain.TrackedLink{}, domain.ErrURLNotSupported
 		}
-		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
+		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
 
-	var respJson linkJson
+	var link linkJson
 
-	data, err := io.ReadAll(response.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return domain.TrackedLink{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	err = json.Unmarshal(data, &respJson)
+	err = json.Unmarshal(data, &link)
 	if err != nil {
 		return domain.TrackedLink{}, fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
+	client.log.Debug("add link",
+		"id", chatId,
+		"url", url,
+		"id", link.Id,
+	)
+
 	return domain.TrackedLink{
-		ID:   respJson.Id,
-		URL:  respJson.Url,
-		Tags: respJson.Tags,
+		ID:   link.Id,
+		URL:  link.Url,
+		Tags: link.Tags,
 	}, nil
 }
 
 func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) (domain.TrackedLink, error) {
+	client.log.Debug("removing link",
+		"id", chatId,
+		"url", url,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
 	query := fmt.Sprintf("%s/%s", client.baseURL, linksEndpoint)
 
-	type requestJson struct {
+	reqJson := struct {
 		Link string `json:"link"`
-	}
-
-	reqJson := requestJson{
+	}{
 		Link: url,
 	}
 
@@ -226,36 +300,44 @@ func (client *Client) RemoveLink(ctx context.Context, chatId int64, url string) 
 	request.Header.Set("Tg-Chat-Id", fmt.Sprintf("%d", chatId))
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := client.httpClient.Do(request)
+	resp, err := client.httpClient.Do(request)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return domain.TrackedLink{}, fmt.Errorf("remove link timed out: %w", err)
+		}
 		return domain.TrackedLink{}, fmt.Errorf("failed to send request to scrapper: %w", err)
 	}
 
-	defer response.Body.Close()
+	defer resp.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		if response.StatusCode == http.StatusNotFound {
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
 			return domain.TrackedLink{}, domain.ErrChatNotRegisteredOrLinkNotFound
 		}
-
-		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", response.StatusCode)
+		return domain.TrackedLink{}, fmt.Errorf("scrapper api returned unexpected status: %d", resp.StatusCode)
 	}
 
-	var respJson linkJson
+	var link linkJson
 
-	data, err := io.ReadAll(response.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return domain.TrackedLink{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	err = json.Unmarshal(data, &respJson)
+	err = json.Unmarshal(data, &link)
 	if err != nil {
 		return domain.TrackedLink{}, fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
+	client.log.Debug("link removed",
+		"id", chatId,
+		"url", url,
+		"id", link.Id,
+	)
+
 	return domain.TrackedLink{
-		ID:   respJson.Id,
-		URL:  respJson.Url,
-		Tags: respJson.Tags,
+		ID:   link.Id,
+		URL:  link.Url,
+		Tags: link.Tags,
 	}, nil
 }

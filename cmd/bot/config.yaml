@@ -1,11 +1,42 @@
 telegram:
-  timeout: 15s
+  resilience:
+    timeout: 10s
+    retry:
+      enabled: true
+      max-retries: 5
+      delay: 100ms
+      backoff: true
+      backoff-factor: 3.0
+      max-delay: 15s
+    breaker:
+      enabled: true
+      max-requests: 5
+      sliding-window: 1m
+      wait-in-open-state: 30s
+      minimum-number-of-calls: 5
+      failure-rate-threshold: 0.5
 
 logger:
   level: INFO
 
 scrapper-service:
   protocol: grpc
+  resilience:
+    timeout: 10s
+    retry:
+      enabled: true
+      max-retries: 5
+      delay: 100ms
+      backoff: true
+      backoff-factor: 3.0
+      max-delay: 15s
+    breaker:
+      enabled: true
+      max-requests: 5
+      sliding-window: 1m
+      wait-in-open-state: 30s
+      minimum-number-of-calls: 5
+      failure-rate-threshold: 0.5
 
 database:
   access-type: SQL

@@ -32,3 +32,7 @@ type LinkRepository interface {
 	Delete(ctx context.Context, id int64) error
 	GetBatch(ctx context.Context, limit int, offset int) ([]Link, error)
 }
+
+type UpdateNotifier interface {
+	SendUpdate(ctx context.Context, update LinkUpdate) error
+}
