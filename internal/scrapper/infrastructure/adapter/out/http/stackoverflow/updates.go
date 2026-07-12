@@ -19,45 +19,53 @@ func cleanText(text string) string {
 }
 
 type AnswerUpdate struct {
-	Title     string
-	Owner     string
-	CreatedAt time.Time
-	Body      string
+	title     string
+	owner     string
+	createdAt time.Time
+	body      string
 
-	MaxPreviewLen int
+	maxPreviewLen int
 }
 
 func (soAnswerUpdate *AnswerUpdate) UpdatedAt() time.Time {
-	return soAnswerUpdate.CreatedAt
+	return soAnswerUpdate.createdAt
+}
+
+func (soAnswerUpdate *AnswerUpdate) Author() string {
+	return soAnswerUpdate.owner
 }
 
 func (soAnswerUpdate *AnswerUpdate) Description() string {
-	return fmt.Sprintf("New answer on question \"%s\" by %s", soAnswerUpdate.Title, soAnswerUpdate.Owner)
-}
-
-func (soAnswerUpdate *AnswerUpdate) Preview() string {
-	return truncateText(cleanText(soAnswerUpdate.Body), soAnswerUpdate.MaxPreviewLen)
+	return truncateText(
+		fmt.Sprintf("New answer on question \"%s\" by %s\n%s",
+			soAnswerUpdate.title, soAnswerUpdate.owner, cleanText(soAnswerUpdate.body)),
+		soAnswerUpdate.maxPreviewLen,
+	)
 }
 
 type CommentUpdate struct {
-	Title     string
-	Owner     string
-	CreatedAt time.Time
-	Body      string
+	title     string
+	owner     string
+	createdAt time.Time
+	body      string
 
-	MaxPreviewLen int
+	maxPreviewLen int
 }
 
 func (soCommentUpdate *CommentUpdate) UpdatedAt() time.Time {
-	return soCommentUpdate.CreatedAt
+	return soCommentUpdate.createdAt
+}
+
+func (soCommentUpdate *CommentUpdate) Author() string {
+	return soCommentUpdate.owner
 }
 
 func (soCommentUpdate *CommentUpdate) Description() string {
-	return fmt.Sprintf("New comment on question \"%s\" by %s", soCommentUpdate.Title, soCommentUpdate.Owner)
-}
-
-func (soCommentUpdate *CommentUpdate) Preview() string {
-	return truncateText(soCommentUpdate.Body, soCommentUpdate.MaxPreviewLen)
+	return truncateText(
+		fmt.Sprintf("New comment on question \"%s\" by %s\n%s",
+			soCommentUpdate.title, soCommentUpdate.owner, cleanText(soCommentUpdate.body),
+		), soCommentUpdate.maxPreviewLen,
+	)
 }
 
 func truncateText(s string, maxLen int) string {

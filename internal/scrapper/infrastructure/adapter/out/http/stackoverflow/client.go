@@ -20,15 +20,15 @@ const (
 )
 
 type Client struct {
-	httpClient    *http.Client
-	apiURL        string
-	baseURL       string
-	maxPreviewLen int
-	keyQuery      string
-	timeout       time.Duration
+	httpClient        *http.Client
+	apiURL            string
+	baseURL           string
+	maxDescriptionLen int
+	keyQuery          string
+	timeout           time.Duration
 }
 
-func NewClient(httpClient *http.Client, baseURL, baseAPIURL string, timeout time.Duration, maxPreviewLen int, key string) *Client {
+func NewClient(httpClient *http.Client, baseURL, baseAPIURL string, timeout time.Duration, maxDescriptionLen int, key string) *Client {
 	if key != "" {
 		key = fmt.Sprintf("&key=%s", key)
 	}
@@ -36,12 +36,12 @@ func NewClient(httpClient *http.Client, baseURL, baseAPIURL string, timeout time
 		httpClient = http.DefaultClient
 	}
 	return &Client{
-		httpClient:    httpClient,
-		apiURL:        baseAPIURL,
-		baseURL:       baseURL,
-		maxPreviewLen: maxPreviewLen,
-		keyQuery:      key,
-		timeout:       timeout,
+		httpClient:        httpClient,
+		apiURL:            baseAPIURL,
+		baseURL:           baseURL,
+		maxDescriptionLen: maxDescriptionLen,
+		keyQuery:          key,
+		timeout:           timeout,
 	}
 }
 
@@ -171,11 +171,11 @@ func (client *Client) fetchAnswers(ctx context.Context, questionURL string, sinc
 			continue
 		}
 		answerUpdates = append(answerUpdates, &AnswerUpdate{
-			Title:         questionTitle,
-			Owner:         answer.Owner.DisplayName,
-			CreatedAt:     timestamp,
-			Body:          answer.Body,
-			MaxPreviewLen: client.maxPreviewLen,
+			title:         questionTitle,
+			owner:         answer.Owner.DisplayName,
+			createdAt:     timestamp,
+			body:          answer.Body,
+			maxPreviewLen: client.maxDescriptionLen,
 		})
 	}
 
@@ -218,11 +218,11 @@ func (client *Client) fetchComments(ctx context.Context, questionURL string, sin
 	var commentUpdates []domain.UpdateEvent
 	for _, comment := range comments.Items {
 		commentUpdates = append(commentUpdates, &CommentUpdate{
-			Title:         questionTitle,
-			Owner:         comment.Owner.DisplayName,
-			CreatedAt:     time.Unix(comment.CreationDate, 0).UTC(),
-			Body:          comment.Body,
-			MaxPreviewLen: client.maxPreviewLen,
+			title:         questionTitle,
+			owner:         comment.Owner.DisplayName,
+			createdAt:     time.Unix(comment.CreationDate, 0).UTC(),
+			body:          comment.Body,
+			maxPreviewLen: client.maxDescriptionLen,
 		})
 	}
 

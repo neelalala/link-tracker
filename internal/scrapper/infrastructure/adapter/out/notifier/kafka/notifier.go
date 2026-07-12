@@ -27,8 +27,8 @@ func NewNotifier(outRepo domain.OutboxRepository, topic string, log *slog.Logger
 type linkUpdate struct {
 	ID          int64   `json:"id"`
 	URL         string  `json:"url"`
+	Author      string  `json:"author"`
 	Description string  `json:"description"`
-	Preview     string  `json:"preview"`
 	TgChatIDs   []int64 `json:"tgChatIds"`
 }
 
@@ -43,8 +43,8 @@ func (notifier *Notifier) SendUpdate(ctx context.Context, update domain.LinkUpda
 	updateJSON := linkUpdate{
 		ID:          update.ID,
 		URL:         update.URL,
+		Author:      update.Author,
 		Description: update.Description,
-		Preview:     update.Preview,
 		TgChatIDs:   update.TgChatIDs,
 	}
 

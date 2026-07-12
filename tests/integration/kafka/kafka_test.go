@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka/mapper"
-
 	"github.com/IBM/sarama"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -22,10 +20,16 @@ import (
 	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	agentdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/domain"
+	agentinkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/in/kafka"
+	agentoutkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/kafka"
+	agentmapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/adapter/out/kafka/mapper"
+	agentsql "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/infrastructure/repository/sql"
 	botdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	botkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/adapter/in/listener/kafka"
 	scrapperdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	scrapperkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka"
+	scrappermapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/adapter/out/notifier/kafka/mapper"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sql"
 )
 
@@ -35,9 +39,11 @@ const (
 	dbName     = "scrapper_test"
 	migrations = "file://../../../migrations"
 
-	topic         = "test-topic"
-	topicDql      = topic + "-dql"
-	consumerGroup = "test-consumer-group"
+	topicRaw               = "test-topic.raw"
+	topicProcessed         = "test-topic.processed"
+	topicDql               = "test-topic-dql"
+	consumerGroupRaw       = "test-consumer-group-raw"
+	consumerGroupProcessed = "test-consumer-group-processed"
 
 	delay         = 100 * time.Millisecond
 	maxDelay      = 10 * delay
@@ -157,15 +163,15 @@ func createKafkaTopic(broker, topic string) error {
 	return nil
 }
 
-type mockBotNotifier struct {
+type mockProcessedUpdateHandler struct {
 	ch chan botdomain.LinkUpdate
 }
 
-func newMockBotNotifier() *mockBotNotifier {
-	return &mockBotNotifier{ch: make(chan botdomain.LinkUpdate, 10)}
+func newMockProcessedUpdateHandler() *mockProcessedUpdateHandler {
+	return &mockProcessedUpdateHandler{ch: make(chan botdomain.LinkUpdate, 10)}
 }
 
-func (m *mockBotNotifier) HandleUpdate(ctx context.Context, update botdomain.LinkUpdate) error {
+func (m *mockProcessedUpdateHandler) HandleUpdate(ctx context.Context, update botdomain.LinkUpdate) error {
 	select {
 	case m.ch <- update:
 	default:
@@ -173,7 +179,7 @@ func (m *mockBotNotifier) HandleUpdate(ctx context.Context, update botdomain.Lin
 	return nil
 }
 
-func (m *mockBotNotifier) waitForUpdate(timeout time.Duration) (botdomain.LinkUpdate, error) {
+func (m *mockProcessedUpdateHandler) waitForUpdate(timeout time.Duration) (botdomain.LinkUpdate, error) {
 	select {
 	case u := <-m.ch:
 		return u, nil
@@ -182,11 +188,38 @@ func (m *mockBotNotifier) waitForUpdate(timeout time.Duration) (botdomain.LinkUp
 	}
 }
 
+type mockRawUpdateHandler struct {
+	ch chan agentdomain.LinkUpdate
+}
+
+func newMockRawUpdateHandler() *mockRawUpdateHandler {
+	return &mockRawUpdateHandler{
+		ch: make(chan agentdomain.LinkUpdate, 10),
+	}
+}
+
+func (m *mockRawUpdateHandler) HandleUpdate(ctx context.Context, update agentdomain.LinkUpdate) error {
+	select {
+	case m.ch <- update:
+	default:
+	}
+	return nil
+}
+
+func (m *mockRawUpdateHandler) waitForUpdate(timeout time.Duration) (agentdomain.LinkUpdate, error) {
+	select {
+	case u := <-m.ch:
+		return u, nil
+	case <-time.After(timeout):
+		return agentdomain.LinkUpdate{}, fmt.Errorf("timeout waiting for update")
+	}
+}
+
 func TestScrapperKafka_Integration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	newNetwork, err := network.New(ctx)
 	require.NoErrorf(t, err, "Failed to create network")
@@ -213,7 +246,8 @@ func TestScrapperKafka_Integration(t *testing.T) {
 	}
 	testBroker := fmt.Sprintf("%s:9094", kafkaHost)
 
-	require.NoError(t, createKafkaTopic(testBroker, topic))
+	require.NoError(t, createKafkaTopic(testBroker, topicRaw))
+	require.NoError(t, createKafkaTopic(testBroker, topicProcessed))
 
 	srContainer, err := loadSchemaRegistryContainer(ctx, newNetwork)
 	require.NoError(t, err, "Failed to start Schema Registry container")
@@ -240,65 +274,120 @@ func TestScrapperKafka_Integration(t *testing.T) {
 
 	outRepo := sql.NewOutboxRepository(pool)
 
-	schemaString, err := os.ReadFile("../../../docs/link_update.avsc")
-	require.NoErrorf(t, err, "Failed to read schema from file %s", "docs/link_update.avsc")
+	rawSchemaString, err := os.ReadFile("../../../docs/raw_link_update.avsc")
+	require.NoErrorf(t, err, "Failed to read schema from file %s", "docs/raw_link_update.avsc")
 
-	configs := map[string]scrapperkafka.TopicConfig{
-		topic: {
-			SchemaString: string(schemaString),
-			ParseFunc:    mapper.LinkUpdateToNative,
-		},
+	rawTopicCfg := scrapperkafka.TopicConfig{
+		Topic:        topicRaw,
+		SchemaString: string(rawSchemaString),
+		ParseFunc:    scrappermapper.RawLinkUpdateToNative,
 	}
 
-	producer, err := scrapperkafka.NewProducer([]string{testBroker}, testRegistry, configs, outRepo, 50, 5, log)
-	require.NoErrorf(t, err, "Failed to create producer")
-	defer producer.Close()
+	producerRaw, err := scrapperkafka.NewProducer([]string{testBroker}, testRegistry, rawTopicCfg, outRepo, 50, 5, log)
+	require.NoErrorf(t, err, "Failed to create scrapper producer")
+	defer producerRaw.Close()
 
-	scrapperNotifier := scrapperkafka.NewNotifier(outRepo, topic, log)
-	botNotifier := newMockBotNotifier()
+	scrapperNotifier := scrapperkafka.NewNotifier(outRepo, topicRaw, log)
 
-	listener, err := botkafka.NewListener(
+	agentOutboxRepo := agentsql.NewOutboxRepository(pool)
+
+	processedSchemaString, err := os.ReadFile("../../../docs/processed_link_update.avsc")
+	require.NoErrorf(t, err, "Failed to read schema from file %s", "docs/processed_link_update.avsc")
+
+	processedTopicCfg := agentoutkafka.TopicConfig{
+		Topic:        topicProcessed,
+		SchemaString: string(processedSchemaString),
+		ParseFunc:    agentmapper.ProcessedLinkUpdateToNative,
+	}
+
+	producerProcessed, err := agentoutkafka.NewProducer([]string{testBroker}, testRegistry, processedTopicCfg, agentOutboxRepo, 50, 5, log)
+	require.NoErrorf(t, err, "Failed to create agent producer")
+	defer producerProcessed.Close()
+
+	agentNotifier := agentoutkafka.NewNotifier(agentOutboxRepo, topicProcessed, log)
+
+	agentRawUpdatesHandler := newMockRawUpdateHandler()
+
+	listenerRaw, err := agentinkafka.NewListener(
 		[]string{testBroker},
-		consumerGroup,
-		topic,
+		consumerGroupRaw,
+		topicRaw,
 		topicDql,
 		delay,
 		maxDelay,
 		backoffFactor,
 		retries,
 		testRegistry,
-		botNotifier,
+		agentRawUpdatesHandler,
 		log,
 	)
-	require.NoErrorf(t, err, "Failed to create listener")
 
-	go func() { listener.Start() }()
-	defer listener.Stop(ctx)
+	botProcessedUpdateHandler := newMockProcessedUpdateHandler()
 
-	require.NoError(t, listener.WaitReady(ctx))
+	listenerProcessed, err := botkafka.NewListener(
+		[]string{testBroker},
+		consumerGroupProcessed,
+		topicProcessed,
+		topicDql,
+		delay,
+		maxDelay,
+		backoffFactor,
+		retries,
+		testRegistry,
+		botProcessedUpdateHandler,
+		log,
+	)
+	require.NoErrorf(t, err, "Failed to create listenerProcessed")
 
-	t.Run("Scrapper - Kafka - Bot flow", func(t *testing.T) {
-		update := scrapperdomain.LinkUpdate{
+	go func() { listenerRaw.Start() }()
+	defer listenerRaw.Stop(ctx)
+
+	go func() { listenerProcessed.Start() }()
+	defer listenerProcessed.Stop(ctx)
+
+	require.NoError(t, listenerRaw.WaitReady(ctx))
+	require.NoError(t, listenerProcessed.WaitReady(ctx))
+
+	t.Run("Scrapper - Kafka - Agent - Kafka - Bot flow", func(t *testing.T) {
+		updateRaw := scrapperdomain.LinkUpdate{
 			ID:          1,
 			URL:         "https://github.com/test/1",
 			Description: "1",
-			Preview:     "Test 1",
 			TgChatIDs:   []int64{1},
 		}
 
-		err := scrapperNotifier.SendUpdate(ctx, update)
+		err := scrapperNotifier.SendUpdate(ctx, updateRaw)
 		require.NoError(t, err, "Failed to send update from scrapper")
 
-		err = producer.SendEvents(ctx)
+		err = producerRaw.SendEvents(ctx)
 		require.NoError(t, err, "Failed to send events from scrapper")
 
-		received, err := botNotifier.waitForUpdate(15 * time.Second)
-		require.NoError(t, err, "Did not receive update in bot notifier")
+		receivedRaw, err := agentRawUpdatesHandler.waitForUpdate(15 * time.Second)
+		require.NoError(t, err, "Did not receive raw update in agent notifier")
 
-		assert.Equal(t, update.ID, received.ID)
-		assert.Equal(t, update.URL, received.URL)
-		assert.Equal(t, update.Description, received.Description)
-		assert.Equal(t, update.Preview, received.Preview)
-		assert.Equal(t, update.TgChatIDs, received.TgChatIDs)
+		updateProcessed := agentdomain.ProcessedLinkUpdate{
+			URL:         receivedRaw.URL,
+			Description: receivedRaw.Description,
+			Priority:    agentdomain.PriorityHigh,
+			TgChatIDs:   receivedRaw.TgChatIDs,
+		}
+		err = agentNotifier.SendUpdate(ctx, updateProcessed)
+		require.NoError(t, err, "Failed to send update from agent notifier")
+
+		err = producerProcessed.SendEvents(ctx)
+		require.NoError(t, err, "Did not send events from producer")
+
+		assert.Equal(t, updateRaw.ID, receivedRaw.ID)
+		assert.Equal(t, updateRaw.URL, receivedRaw.URL)
+		assert.Equal(t, updateRaw.Author, receivedRaw.Author)
+		assert.Equal(t, updateRaw.Description, receivedRaw.Description)
+		assert.Equal(t, updateRaw.TgChatIDs, receivedRaw.TgChatIDs)
+
+		receivedProcessed, err := botProcessedUpdateHandler.waitForUpdate(15 * time.Second)
+		require.NoError(t, err, "Did not receive processed update in bot notifier")
+
+		assert.Equal(t, updateRaw.URL, receivedProcessed.URL)
+		assert.Equal(t, string(agentdomain.PriorityHigh), string(receivedProcessed.Priority))
+		assert.Equal(t, updateRaw.TgChatIDs, receivedProcessed.TgChatIDs)
 	})
 }

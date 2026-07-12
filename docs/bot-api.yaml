@@ -50,9 +50,9 @@ components:
         url:
           type: string
           format: uri
-        description:
+        author:
           type: string
-        preview:
+        description:
           type: string
         tgChatIds:
           type: array

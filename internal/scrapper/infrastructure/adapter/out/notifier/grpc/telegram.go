@@ -46,14 +46,12 @@ func (bot *Bot) SendUpdate(ctx context.Context, update domain.LinkUpdate) error 
 	bot.log.Debug("sending update to bot",
 		"url", update.URL,
 		"description", update.Description,
-		"preview", update.Preview,
 	)
 
 	request := &pb.LinkUpdate{
 		Id:          update.ID,
 		Url:         update.URL,
 		Description: update.Description,
-		Preview:     update.Preview,
 		TgChatIds:   update.TgChatIDs,
 	}
 

@@ -14,7 +14,8 @@ COPY cmd/scrapper ./cmd/scrapper
 COPY internal/scrapper ./internal/scrapper
 COPY docs/scrapper.proto ./docs/
 COPY docs/bot.proto ./docs/
-COPY docs/link_update.avsc ./docs/
+COPY docs/raw_link_update.avsc ./docs/
+COPY docs/processed_link_update.avsc ./docs/
 COPY migrations ./migrations
 COPY internal/resilience ./internal/resilience
 

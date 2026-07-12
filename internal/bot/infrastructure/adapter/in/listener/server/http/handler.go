@@ -25,11 +25,10 @@ func NewHandler(updateHandler domain.LinkUpdateHandler, logger *slog.Logger) *Ha
 }
 
 type updateRequest struct {
-	Id          int64   `json:"id"`
-	Url         string  `json:"url"`
+	URL         string  `json:"url"`
 	Description string  `json:"description"`
-	Preview     string  `json:"preview"`
-	TgChatIds   []int64 `json:"tgChatIds"`
+	Priority    string  `json:"priority"`
+	TgChatIDs   []int64 `json:"tgChatIds"`
 }
 
 func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
@@ -78,11 +77,10 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	linkUpdate := domain.LinkUpdate{
-		ID:          request.Id,
-		URL:         request.Url,
+		URL:         request.URL,
 		Description: request.Description,
-		Preview:     request.Preview,
-		TgChatIDs:   request.TgChatIds,
+		Priority:    domain.Priority(request.Priority),
+		TgChatIDs:   request.TgChatIDs,
 	}
 
 	ctx := r.Context()
@@ -93,7 +91,7 @@ func (handler *Handler) HandleUpdates(w http.ResponseWriter, r *http.Request) {
 			"Error while handling update on link",
 			slog.String("context", "handler.updateHandler.HandleUpdate"),
 			slog.String("error", err.Error()),
-			slog.String("link", request.Url),
+			slog.String("link", request.URL),
 		)
 
 		handler.writeError(w, http.StatusInternalServerError,

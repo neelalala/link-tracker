@@ -108,7 +108,7 @@ type ServerConfig struct {
 }
 
 type FetchersConfig struct {
-	PreviewLimit     int              `yaml:"preview-limit" env:"FETCHER_PREVIEW_LIMIT" env-default:"200"`
+	DescriptionLimit int              `yaml:"description-limit" env:"FETCHER_DESCRIPTION_LIMIT" env-default:"5000"`
 	Concurrency      int              `yaml:"concurrency" env:"FETCHER_COUNT" env-default:"1"`
 	Batch            int              `yaml:"batch" env:"FETCHER_BATCH_SIZE" env-default:"100"`
 	StackOverflowKey string           `yaml:"stackoverflow-key" env:"STACKOVERFLOW_KEY" env-default:""`
@@ -126,7 +126,7 @@ type KafkaConfig struct {
 	Enable            bool              `yaml:"enabled" env:"KAFKA_ENABLED" env-default:"true"`
 	Brokers           []string          `yaml:"brokers" env:"KAFKA_BROKERS"`
 	SchemaRegistryURL string            `yaml:"schema-registry-url" env:"SCHEMA_REGISTRY_URL"`
-	Topic             string            `yaml:"topic" env:"KAFKA_TOPIC" env-default:"link-updates"`
+	Topic             string            `yaml:"topic" env:"KAFKA_SCRAPPER_TOPIC" env-default:"link-updates.raw"`
 	SchemaPath        string            `yaml:"schema-path" env:"SCHEMA_PATH"`
 	Workers           KafkaWorkerConfig `yaml:"workers"`
 }

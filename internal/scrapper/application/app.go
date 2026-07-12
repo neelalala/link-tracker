@@ -285,13 +285,13 @@ func buildKafka(
 		return nil, fmt.Errorf("unsupported database access type: %s", cfg.Database.AccessType)
 	}
 
-	configs, err := buildSchemaConfigs(cfg)
+	topic, err := buildSchemaTopic(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("error building schemas configs: %v", err)
 	}
 
 	log.Debug("Building kafka producer")
-	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.SchemaRegistryURL, configs, outRepo, cfg.Kafka.Workers.EventLimit, cfg.Kafka.Workers.MaxRetries, log)
+	producer, err := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.SchemaRegistryURL, topic, outRepo, cfg.Kafka.Workers.EventLimit, cfg.Kafka.Workers.MaxRetries, log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kafka producer: %v", err)
 	}
@@ -306,23 +306,22 @@ func buildKafka(
 	return notifier, nil
 }
 
-func buildSchemaConfigs(cfg config.Config) (map[string]kafka.TopicConfig, error) {
+func buildSchemaTopic(cfg config.Config) (kafka.TopicConfig, error) {
 	schemaFile, err := os.Open(cfg.Kafka.SchemaPath)
 	if err != nil {
-		return nil, fmt.Errorf("error opening kafka schema file: %v", err)
+		return kafka.TopicConfig{}, fmt.Errorf("error opening kafka raw update schema file: %v", err)
 	}
 	defer schemaFile.Close()
 
 	schemaBytes, err := io.ReadAll(schemaFile)
 	if err != nil {
-		return nil, fmt.Errorf("error reading kafka schema file: %v", err)
+		return kafka.TopicConfig{}, fmt.Errorf("error reading kafka raw update schema file: %v", err)
 	}
 
-	return map[string]kafka.TopicConfig{
-		cfg.Kafka.Topic: {
-			SchemaString: string(schemaBytes),
-			ParseFunc:    mapper.LinkUpdateToNative,
-		},
+	return kafka.TopicConfig{
+		Topic:        cfg.Kafka.Topic,
+		SchemaString: string(schemaBytes),
+		ParseFunc:    mapper.RawLinkUpdateToNative,
 	}, nil
 }
 
@@ -389,14 +388,14 @@ func buildFetchers(cfg config.FetchersConfig, log *slog.Logger) []domain.LinkFet
 		github.BaseURL,
 		github.BaseApiURL,
 		cfg.Resilience.Timeout,
-		cfg.PreviewLimit,
+		cfg.DescriptionLimit,
 	)
 	stackoverflowClient := stackoverflow.NewClient(
 		resilience.NewHTTPClient("stackoverflow-fetcher", httpClientConfig, nil, log),
 		stackoverflow.BaseURL,
 		stackoverflow.BaseApiURL,
 		cfg.Resilience.Timeout,
-		cfg.PreviewLimit,
+		cfg.DescriptionLimit,
 		cfg.StackOverflowKey,
 	)
 

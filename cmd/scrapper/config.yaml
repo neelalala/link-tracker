@@ -2,8 +2,8 @@ logger:
   level: INFO
 
 scheduler:
-  fetch-interval: 60s
-  fetch-timeout: 60s
+  job-interval: 60s
+  job-timeout: 60s
 
 bot-service:
   protocol: grpc
@@ -36,7 +36,7 @@ database:
   access-type: BUILDER
 
 fetchers:
-  preview-limit: 200
+  description-limit: 5000
   concurrency: 4
   batch: 500
   resilience:
@@ -60,14 +60,14 @@ kafka:
     - kafka-1:9092
     - kafka-2:9092
     - kafka-3:9092
-  topic: link-updates
+  topic: link-updates.raw
   workers:
     count: 1
     interval: 30s
     event-limit: 50
     max-retries: 7
   schema-registry-url: http://schema-registry:8081
-  schema-path: ./docs/link_update.avsc
+  schema-path: ./docs/raw_link_update.avsc
 
 valkey:
   enabled: true

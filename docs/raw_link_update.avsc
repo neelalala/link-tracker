@@ -1,7 +1,7 @@
 {
   "type": "record",
-  "name": "LinkUpdateEvent",
-  "namespace": "domain.LinkUpdate",
+  "name": "RawLinkUpdateEvent",
+  "namespace": "domain.RawLinkUpdate",
   "fields": [
     {
       "name": "id",
@@ -14,14 +14,14 @@
       "doc": "Link URL"
     },
     {
+      "name": "author",
+      "type": "string",
+      "doc": "Update author"
+    },
+    {
       "name": "description",
       "type": "string",
       "doc": "Short update description"
-    },
-    {
-      "name": "preview",
-      "type": "string",
-      "doc": "Update review"
     },
     {
       "name": "tgChatIds",

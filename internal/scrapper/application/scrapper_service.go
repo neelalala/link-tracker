@@ -186,15 +186,14 @@ func (service *ScrapperService) processLink(ctx context.Context, link domain.Lin
 				update := domain.LinkUpdate{
 					ID:          link.ID,
 					URL:         link.URL,
+					Author:      event.Author(),
 					Description: event.Description(),
-					Preview:     event.Preview(),
 					TgChatIDs:   chatIDs,
 				}
 
 				service.logger.Info("update",
 					slog.String("url", update.URL),
 					slog.String("description", update.Description),
-					slog.String("preview", update.Preview),
 				)
 
 				err = service.notifier.SendUpdate(ctx, update)

@@ -7,8 +7,8 @@ import (
 
 type UpdateEvent interface {
 	UpdatedAt() time.Time
+	Author() string
 	Description() string
-	Preview() string
 }
 
 //go:generate mockgen -source=update_event.go -destination=../mocks/mock_domain_link_fetcher.go -package=mocks

@@ -6,45 +6,51 @@ import (
 )
 
 type NewPRUpdate struct {
-	Title     string
-	Author    string
-	CreatedAt time.Time
-	Body      string
+	title     string
+	author    string
+	createdAt time.Time
+	body      string
 
-	MaxPreviewLen int
+	maxPreviewLen int
 }
 
 func (prUpdate *NewPRUpdate) UpdatedAt() time.Time {
-	return prUpdate.CreatedAt
+	return prUpdate.createdAt
+}
+
+func (prUpdate *NewPRUpdate) Author() string {
+	return prUpdate.author
 }
 
 func (prUpdate *NewPRUpdate) Description() string {
-	return fmt.Sprintf("New Pull Request: %s by %s", prUpdate.Title, prUpdate.Author)
-}
-
-func (prUpdate *NewPRUpdate) Preview() string {
-	return truncateText(prUpdate.Body, prUpdate.MaxPreviewLen)
+	return truncateText(
+		fmt.Sprintf("New Pull Request: %s by %s\n%s", prUpdate.title, prUpdate.author, prUpdate.body),
+		prUpdate.maxPreviewLen,
+	)
 }
 
 type NewIssueUpdate struct {
-	Title     string
-	Author    string
-	CreatedAt time.Time
-	Body      string
+	title     string
+	author    string
+	createdAt time.Time
+	body      string
 
-	MaxPreviewLen int
+	maxPreviewLen int
 }
 
 func (issueUpdate *NewIssueUpdate) UpdatedAt() time.Time {
-	return issueUpdate.CreatedAt
+	return issueUpdate.createdAt
+}
+
+func (issueUpdate *NewIssueUpdate) Author() string {
+	return issueUpdate.author
 }
 
 func (issueUpdate *NewIssueUpdate) Description() string {
-	return fmt.Sprintf("New Issue: %s by %s", issueUpdate.Title, issueUpdate.Author)
-}
-
-func (issueUpdate *NewIssueUpdate) Preview() string {
-	return truncateText(issueUpdate.Body, issueUpdate.MaxPreviewLen)
+	return truncateText(
+		fmt.Sprintf("New Issue: %s by %s\n%s", issueUpdate.title, issueUpdate.author, issueUpdate.body),
+		issueUpdate.maxPreviewLen,
+	)
 }
 
 func truncateText(s string, maxLen int) string {

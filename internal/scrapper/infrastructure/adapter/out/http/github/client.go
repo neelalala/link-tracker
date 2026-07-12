@@ -18,24 +18,24 @@ const (
 )
 
 type Client struct {
-	httpClient    *http.Client
-	apiURL        string
-	baseURL       string
-	maxPreviewLen int
-	timeout       time.Duration
+	httpClient        *http.Client
+	apiURL            string
+	baseURL           string
+	maxDescriptionLen int
+	timeout           time.Duration
 }
 
-func NewClient(httpClient *http.Client, baseURL, baseApiURL string, timeout time.Duration, maxPreviewLen int) *Client {
+func NewClient(httpClient *http.Client, baseURL, baseApiURL string, timeout time.Duration, maxDescriptionLen int) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 
 	return &Client{
-		httpClient:    httpClient,
-		apiURL:        baseApiURL,
-		baseURL:       baseURL,
-		maxPreviewLen: maxPreviewLen,
-		timeout:       timeout,
+		httpClient:        httpClient,
+		apiURL:            baseApiURL,
+		baseURL:           baseURL,
+		maxDescriptionLen: maxDescriptionLen,
+		timeout:           timeout,
 	}
 }
 
@@ -122,11 +122,11 @@ func (client *Client) fetchPullRequests(ctx context.Context, repoURL string, sin
 			continue
 		}
 		prUpdates = append(prUpdates, &NewPRUpdate{
-			Title:         pullRequest.Title,
-			Author:        pullRequest.User.Login,
-			CreatedAt:     pullRequest.CreatedAt.UTC(),
-			Body:          pullRequest.BodyText,
-			MaxPreviewLen: client.maxPreviewLen,
+			title:         pullRequest.Title,
+			author:        pullRequest.User.Login,
+			createdAt:     pullRequest.CreatedAt.UTC(),
+			body:          pullRequest.BodyText,
+			maxPreviewLen: client.maxDescriptionLen,
 		})
 	}
 
@@ -180,11 +180,11 @@ func (client *Client) fetchIssues(ctx context.Context, repoURL string, since tim
 		}
 
 		issueUpdates = append(issueUpdates, &NewIssueUpdate{
-			Title:         issue.Title,
-			Author:        issue.User.Login,
-			CreatedAt:     issue.CreatedAt.UTC(),
-			Body:          issue.BodyText,
-			MaxPreviewLen: client.maxPreviewLen,
+			title:         issue.Title,
+			author:        issue.User.Login,
+			createdAt:     issue.CreatedAt.UTC(),
+			body:          issue.BodyText,
+			maxPreviewLen: client.maxDescriptionLen,
 		})
 	}
 

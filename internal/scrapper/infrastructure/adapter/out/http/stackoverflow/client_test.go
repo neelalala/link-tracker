@@ -97,15 +97,15 @@ func TestClient_Fetch_Success(t *testing.T) {
 
 	answerUpdate, ok := updates[0].(*AnswerUpdate)
 	require.True(t, ok, "first update should be an answer")
-	assert.Equal(t, "Test title", answerUpdate.Title)
-	assert.Equal(t, "Test User", answerUpdate.Owner)
-	assert.Equal(t, "Test answer", answerUpdate.Body)
+	assert.Equal(t, "Test title", answerUpdate.title)
+	assert.Equal(t, "Test User", answerUpdate.owner)
+	assert.Equal(t, "Test answer", answerUpdate.body)
 
 	commentUpdate, ok := updates[1].(*CommentUpdate)
 	require.True(t, ok, "second update should be a comment")
-	assert.Equal(t, "Test title", commentUpdate.Title)
-	assert.Equal(t, "Test User 2", commentUpdate.Owner)
-	assert.Equal(t, "Test comment", commentUpdate.Body)
+	assert.Equal(t, "Test title", commentUpdate.title)
+	assert.Equal(t, "Test User 2", commentUpdate.owner)
+	assert.Equal(t, "Test comment", commentUpdate.body)
 }
 
 func TestClient_Fetch_InvalidURL(t *testing.T) {
@@ -212,6 +212,6 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 	require.Len(t, updates, 4)
 
 	for _, update := range updates {
-		assert.GreaterOrEqual(t, 200, len([]rune(update.Preview())))
+		assert.GreaterOrEqual(t, 200, len([]rune(update.Description())))
 	}
 }

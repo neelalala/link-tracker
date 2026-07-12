@@ -183,7 +183,7 @@ func loadScrapperContainer(ctx context.Context, net *testcontainers.DockerNetwor
 			"SCRAPPER_API_RATELIMIT_ENABLED": "false",
 			"KAFKA_BROKERS":                  "kafka:9094",
 			"SCHEMA_REGISTRY_URL":            "http://schema-registry:8081",
-			"SCHEMA_PATH":                    "./docs/link_update.avsc",
+			"SCHEMA_PATH":                    "./docs/raw_link_update.avsc",
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", SCRAPPER_API_PORT))).WithStartupTimeout(30 * time.Second),
 	}

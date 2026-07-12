@@ -104,13 +104,13 @@ func TestClient_Fetch_Success(t *testing.T) {
 
 	prUpdate, ok := updates[0].(*NewPRUpdate)
 	require.True(t, ok, "first update should be a PR")
-	assert.Equal(t, "New PR", prUpdate.Title)
-	assert.Equal(t, "alice", prUpdate.Author)
+	assert.Equal(t, "New PR", prUpdate.title)
+	assert.Equal(t, "alice", prUpdate.author)
 
 	issueUpdate, ok := updates[1].(*NewIssueUpdate)
 	require.True(t, ok, "second update should be an Issue")
-	assert.Equal(t, "New Issue", issueUpdate.Title)
-	assert.Equal(t, "charlie", issueUpdate.Author)
+	assert.Equal(t, "New Issue", issueUpdate.title)
+	assert.Equal(t, "charlie", issueUpdate.author)
 }
 
 func TestClient_Fetch_InvalidURL(t *testing.T) {
@@ -191,6 +191,6 @@ func TestClient_Preview_MaxLength(t *testing.T) {
 	require.Len(t, updates, 4)
 
 	for _, update := range updates {
-		assert.GreaterOrEqual(t, 200, len([]rune(update.Preview())))
+		assert.GreaterOrEqual(t, 200, len([]rune(update.Description())))
 	}
 }

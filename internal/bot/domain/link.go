@@ -6,6 +6,14 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/validation"
 )
 
+type Priority string
+
+const (
+	PriorityHigh   Priority = "HIGH"
+	PriorityMedium Priority = "MEDIUM"
+	PriorityLow    Priority = "LOW"
+)
+
 type TrackedLink struct {
 	ID   int64
 	URL  string
@@ -13,10 +21,9 @@ type TrackedLink struct {
 }
 
 type LinkUpdate struct {
-	ID          int64
 	URL         string
 	Description string
-	Preview     string
+	Priority    Priority
 	TgChatIDs   []int64
 }
 
@@ -27,17 +34,20 @@ type LinkUpdateHandler interface {
 func (update LinkUpdate) Validate() validation.Problems {
 	problems := make(validation.Problems)
 
-	if update.ID < 0 {
-		problems.Add("id", "must be positive")
-	}
-
 	if update.URL == "" {
 		problems.Add("url", "must not be empty")
 	}
 
-	if update.Description == "" && update.Preview == "" {
-		problems.Add("description", "either description or preview must be set")
-		problems.Add("preview", "either description or preview must be set")
+	if update.Description == "" {
+		problems.Add("description", "must not be empty")
+	}
+
+	switch update.Priority {
+	case PriorityHigh:
+	case PriorityMedium:
+	case PriorityLow:
+	default:
+		problems.Add("priority", "must be one of: HIGH, MEDIUM, LOW")
 	}
 
 	if len(update.TgChatIDs) == 0 {

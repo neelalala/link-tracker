@@ -126,7 +126,7 @@ func (h *Handler) handleUpdate(ctx context.Context, update domain.LinkUpdate) er
 			h.log.Warn("failed to handle update",
 				slog.String("error", err.Error()),
 				slog.Int("attempt", i+1),
-				slog.Int64("link_id", update.ID))
+				slog.String("link_url", update.URL))
 
 			select {
 			case <-time.After(backoff):
@@ -187,7 +187,7 @@ func (h *Handler) bytesToLinkUpdate(value []byte) (domain.LinkUpdate, error) {
 		return domain.LinkUpdate{}, fmt.Errorf("error decoding native from bytes: %w", err)
 	}
 
-	linkUpdate, err := mapper.LinkUpdateFromNative(native)
+	linkUpdate, err := mapper.ProcessedLinkUpdateFromNative(native)
 	if err != nil {
 		return domain.LinkUpdate{}, fmt.Errorf("error mapping native to domain LinkUpdate: %w", err)
 	}
